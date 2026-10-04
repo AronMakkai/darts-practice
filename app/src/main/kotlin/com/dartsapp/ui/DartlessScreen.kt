@@ -196,7 +196,7 @@ fun DartlessScreen(navController: NavHostController) {
 
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = if (metronomeMode) 130.dp else 16.dp)
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = if (metronomeMode) 110.dp else 16.dp)
     ) {
         ScreenHeader("Dartless Checkout", navController) {
             TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
@@ -264,11 +264,11 @@ fun DartlessScreen(navController: NavHostController) {
         )
         if (metronomeMode) {
             Text(
-                if (pulse) "▲  THROW  ▲" else timingNote.ifEmpty { " " },
-                fontSize = if (pulse) 16.sp else 13.sp,
-                fontWeight = if (pulse) FontWeight.Bold else FontWeight.Normal,
-                color = if (pulse) BrightGold else PaleGold,
+                timingNote.ifEmpty { " " },
+                fontSize = 13.sp,
+                color = PaleGold,
                 textAlign = TextAlign.Center,
+                maxLines = 1,
                 modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 2.dp)
             )
         }
@@ -293,13 +293,7 @@ fun DartlessScreen(navController: NavHostController) {
                     disabledThumbColor = Gold, disabledActiveTrackColor = DarkRed, disabledInactiveTrackColor = Charcoal
                 )
             )
-            if (metronomeMode) {
-                Text(
-                    preset?.let { "Beat every ${formatSec(it.dart)} s. Dart 1 starts the pendulum; darts 2 and 3 score by how close to upright you throw. Miss a beat? Wait for the next swing." }
-                        ?: "Pick a timing preset (top right) — learn one in the Metronome screen.",
-                    fontSize = 12.sp, color = Grey, modifier = Modifier.padding(top = 4.dp)
-                )
-            }
+        }
         }
 
         if (finished) {
@@ -311,7 +305,7 @@ fun DartlessScreen(navController: NavHostController) {
         MetronomePendulum(
             anchorMs = if (finished) 0L else beatAnchorMs,
             periodSec = preset?.dart ?: 0f,
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(120.dp).padding(horizontal = 24.dp, vertical = 8.dp)
+            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp).size(96.dp)
         )
     }
     StarRain(trigger = starTrigger, modifier = Modifier.fillMaxSize())
