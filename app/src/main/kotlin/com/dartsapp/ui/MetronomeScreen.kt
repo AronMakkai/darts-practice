@@ -177,6 +177,14 @@ fun MetronomeScreen(navController: NavHostController) {
         if (learning.complete) showSaveDialog = true else stop()
     }
 
+    /** Zero out the averages but keep learning from the zero point. */
+    fun resetLearning() {
+        learning = Learning()
+        turn = 1
+        step = Step.START
+        elapsedSec = 0f
+    }
+
     fun selectPreset(name: String?) {
         selectedName = name
         TimingPresets.setSelected(context, name)
@@ -293,7 +301,14 @@ fun MetronomeScreen(navController: NavHostController) {
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        if (s == Step.START) "0 s" else "${formatSec(durationSec(s))} s",
+                        when {
+                            s == Step.START -> "0 s"
+                            mode == Mode.LEARNING -> {
+                                val n = learning.counts[s.kind] ?: 0
+                                if (n == 0) "—" else "${formatSec(learning.avg(s.kind))} s  (${n})"
+                            }
+                            else -> "${formatSec(durationSec(s))} s"
+                        },
                         fontSize = if (sub) 13.sp else 15.sp, color = if (active) Gold else Grey
                     )
                 }
@@ -325,14 +340,18 @@ fun MetronomeScreen(navController: NavHostController) {
                 }
 
                 Text(
-                    preset?.summary()
+                    if (mode == Mode.LEARNING) {
+                        if (learning.counts.isEmpty()) "Averages update after every press."
+                        else "So far: " + learning.toPreset("").summary()
+                    } else preset?.summary()
                         ?: if (presets.isEmpty()) "No presets yet — press Learn my timing and play a few turns." else "Using the sliders below.",
-                    fontSize = 13.sp, color = Grey, modifier = Modifier.padding(top = 6.dp)
+                    fontSize = 13.sp, color = if (mode == Mode.LEARNING) PaleGold else Grey, modifier = Modifier.padding(top = 6.dp)
                 )
 
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     if (mode == Mode.LEARNING) {
                         Button(onClick = { finishLearning() }) { Text(if (learning.complete) "Finish & save" else "Cancel") }
+                        TextButton(onClick = { resetLearning() }, enabled = learning.counts.isNotEmpty()) { Text("Reset averages", color = Grey) }
                     } else {
                         OutlinedButton(onClick = { startLearning() }, enabled = mode == Mode.IDLE) { Text("Learn my timing", color = Gold) }
                     }
