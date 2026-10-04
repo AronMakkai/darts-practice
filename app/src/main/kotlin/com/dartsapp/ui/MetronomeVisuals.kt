@@ -2,6 +2,7 @@ package com.dartsapp.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -406,7 +407,7 @@ fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier
             )
         }.pointerInput(enabled) {
             if (!enabled) return@pointerInput
-            androidx.compose.foundation.gestures.detectTapGestures { p -> onChange((p.x / size.width).coerceIn(0f, 1f)) }
+            detectTapGestures { p -> onChange((p.x / size.width).coerceIn(0f, 1f)) }
         }
     ) {
         val w = size.width
