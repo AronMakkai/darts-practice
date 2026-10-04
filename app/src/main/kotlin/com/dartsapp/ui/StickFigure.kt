@@ -39,17 +39,13 @@ private data class Pose(
 // dart at eye level; the release extends the forearm towards the board with a relaxed follow-through.
 private val STAND = Pose(0.18f, 6f, 0f, -6f, 0f, 0.25f, 0f)
 private val WALK = Pose(0.50f, 20f, 15f, 55f, 70f, 0.9f, 4f)
-private val GRAB = Pose(0.50f, 45f, 85f, 60f, 60f, 0.4f, 6f)          // hands meet at chest height
 private val AIM = Pose(0.50f, 90f, 92f, 60f, 60f, 0.4f, 9f)           // forearm vertical, dart at the eye
-private val DRAW = Pose(0.50f, 88f, 104f, 60f, 60f, 0.4f, 9f)         // slight draw-back before release
 private val FOLLOW = Pose(0.50f, 96f, 4f, 60f, 60f, 0.45f, 12f)       // arm extended at the board
 private val REMOVE = Pose(0.76f, 120f, 0f, 15f, 0f, 0.3f, 8f)
 
 private fun poseFor(step: Step): Pose = when (step.kind) {
     Kind.APPROACH -> WALK
-    Kind.GRAB -> GRAB
-    Kind.AIM -> AIM
-    Kind.THROW -> DRAW
+    Kind.DART -> AIM
     Kind.REMOVE -> REMOVE
     else -> STAND
 }
@@ -66,7 +62,7 @@ fun StickFigure(step: Step, modifier: Modifier = Modifier) {
     val fly = remember { Animatable(0f) }
     var releasing by remember { mutableStateOf(false) }
     LaunchedEffect(step) {
-        val leavingThrow = prevStep.kind == Kind.THROW && step != prevStep
+        val leavingThrow = prevStep.kind == Kind.DART && step != prevStep
         prevStep = step
         if (leavingThrow) {
             releasing = true
@@ -83,7 +79,7 @@ fun StickFigure(step: Step, modifier: Modifier = Modifier) {
     var sway by remember { mutableStateOf(0f) }
     LaunchedEffect(step) {
         sway = 0f
-        if (step.kind != Kind.AIM) return@LaunchedEffect
+        if (step.kind != Kind.DART) return@LaunchedEffect
         val startNs = withFrameNanos { it }
         while (true) {
             val t = (withFrameNanos { it } - startNs) / 1_000_000_000f
@@ -104,7 +100,7 @@ fun StickFigure(step: Step, modifier: Modifier = Modifier) {
 
     // Darts in the board: every dart whose throw step is already complete.
     val dartsInBoard = when (step.kind) {
-        Kind.GRAB, Kind.AIM, Kind.THROW -> step.dart - 1
+        Kind.DART -> step.dart - 1
         Kind.REMOVE -> 3
         else -> 0
     }
@@ -143,7 +139,7 @@ fun StickFigure(step: Step, modifier: Modifier = Modifier) {
         val pose = Pose(x, sR, eR + sway, sL, eL, stride, lean)
         val me = Offset(w * x, floorY)
         val dimmed = step.kind == Kind.OPPONENT || step.kind == Kind.NONE
-        val holdingDart = !flying && (step.kind == Kind.AIM || step.kind == Kind.THROW || step.kind == Kind.GRAB)
+        val holdingDart = !flying && step.kind == Kind.DART
         drawFigure(me, h, pose, if (dimmed) Grey else Gold, stroke, thin, withDart = holdingDart)
 
         // Dart in flight: a shallow arc from the release point to the board, nose slightly up then down

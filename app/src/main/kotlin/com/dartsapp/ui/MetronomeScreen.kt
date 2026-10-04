@@ -23,8 +23,8 @@ import com.dartsapp.logic.TimingPresets
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
-/** What kind of action a step is. Grab/Aim/Throw repeat for each dart and share one timing. */
-enum class Kind { NONE, START, APPROACH, GRAB, AIM, THROW, REMOVE, OPPONENT }
+/** What kind of action a step is. The three dart steps share one timing. */
+enum class Kind { NONE, START, APPROACH, DART, REMOVE, OPPONENT }
 
 /** One step in the turn cycle. */
 enum class Step(val label: String, val doneLabel: String, val kind: Kind, val dart: Int = 0) {
@@ -32,33 +32,21 @@ enum class Step(val label: String, val doneLabel: String, val kind: Kind, val da
     /** Learning only: the zero point. Pressing it starts the clock; it is never timed itself. */
     START("Opponent done", "Opponent done — start", Kind.START),
     APPROACH("Approaching oche", "In my stance, darts in hand", Kind.APPROACH),
-    GRAB1("Dart 1 · Grabbing", "Dart in hand", Kind.GRAB, 1),
-    AIM1("Dart 1 · Aiming", "Aimed", Kind.AIM, 1),
-    THROW1("Dart 1 · Throwing", "Thrown", Kind.THROW, 1),
-    GRAB2("Dart 2 · Grabbing", "Dart in hand", Kind.GRAB, 2),
-    AIM2("Dart 2 · Aiming", "Aimed", Kind.AIM, 2),
-    THROW2("Dart 2 · Throwing", "Thrown", Kind.THROW, 2),
-    GRAB3("Dart 3 · Grabbing", "Dart in hand", Kind.GRAB, 3),
-    AIM3("Dart 3 · Aiming", "Aimed", Kind.AIM, 3),
-    THROW3("Dart 3 · Throwing", "Thrown", Kind.THROW, 3),
+    DART1("Dart 1", "Thrown", Kind.DART, 1),
+    DART2("Dart 2", "Thrown", Kind.DART, 2),
+    DART3("Dart 3", "Thrown", Kind.DART, 3),
     REMOVE("Clearing board and oche", "Board and oche cleared", Kind.REMOVE),
     OPPONENT("Opponent throws", "", Kind.OPPONENT);
 
-    val isDartStep: Boolean get() = kind == Kind.GRAB || kind == Kind.AIM || kind == Kind.THROW
+    val isDartStep: Boolean get() = kind == Kind.DART
 }
 
 /** The playback cycle. */
-private val sequence = listOf(
-    Step.APPROACH,
-    Step.GRAB1, Step.AIM1, Step.THROW1,
-    Step.GRAB2, Step.AIM2, Step.THROW2,
-    Step.GRAB3, Step.AIM3, Step.THROW3,
-    Step.REMOVE, Step.OPPONENT
-)
+private val sequence = listOf(Step.APPROACH, Step.DART1, Step.DART2, Step.DART3, Step.REMOVE, Step.OPPONENT)
 /** The part that is learned from the player: the zero point plus everything except the opponent. */
 private val learnSequence = listOf(Step.START) + sequence.dropLast(1)
 
-/** Running totals for one learning session. Grab, aim and throw are pooled across the three darts. */
+/** Running totals for one learning session. The three darts are pooled into one dart time. */
 private data class Learning(
     val sums: Map<Kind, Float> = emptyMap(),
     val counts: Map<Kind, Int> = emptyMap(),
@@ -78,7 +66,7 @@ private data class Learning(
     }
 
     fun toPreset(name: String) =
-        TimingPreset(name, avg(Kind.APPROACH), avg(Kind.GRAB), avg(Kind.AIM), avg(Kind.THROW), avg(Kind.REMOVE), rounds)
+        TimingPreset(name, avg(Kind.APPROACH), avg(Kind.DART), avg(Kind.REMOVE), rounds)
 }
 
 private enum class Mode { IDLE, PLAYING, LEARNING }
@@ -87,9 +75,7 @@ private enum class Mode { IDLE, PLAYING, LEARNING }
 internal fun stepSeconds(kind: Kind, preset: TimingPreset?, interval: Float, opponent: Float): Float = when (kind) {
     Kind.OPPONENT -> opponent
     Kind.APPROACH -> preset?.approach ?: interval
-    Kind.GRAB -> preset?.grab ?: (interval / 3f)
-    Kind.AIM -> preset?.aim ?: (interval / 3f)
-    Kind.THROW -> preset?.throwTime ?: (interval / 3f)
+    Kind.DART -> preset?.dart ?: interval
     Kind.REMOVE -> preset?.remove ?: interval
     else -> 0f
 }.coerceAtLeast(0.25f)
@@ -130,9 +116,7 @@ fun MetronomeScreen(navController: NavHostController) {
         when (done.kind) {
             Kind.START, Kind.OPPONENT -> toneGen.startTone(ToneGenerator.TONE_PROP_NACK, 220)   // opponent done
             Kind.APPROACH -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 200)                // in stance
-            Kind.GRAB -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 90)                     // dart in hand (low)
-            Kind.AIM -> toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 110)                    // aimed (mid)
-            Kind.THROW -> toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 160)                 // release (high)
+            Kind.DART -> toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 160)                  // release
             Kind.REMOVE -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 200)                  // cleared
             else -> {}
         }
@@ -207,9 +191,9 @@ fun MetronomeScreen(navController: NavHostController) {
                     "Darts is all about routine and rhythm. Either video yourself playing and set the timing from " +
                         "that video, or ask a friend to time you while you are playing, and save that.\n\n" +
                         "Once saved, you can use the metronome when you practice, or use it in Dartless Checkout practice.\n\n" +
-                        "Every dart is three moves: grab the dart from your other hand, aim, throw. Learn my timing walks " +
-                        "you through a full turn: press the button the moment each move is done, and the averages build " +
-                        "up round by round. The three darts always share one grab, aim and throw time.",
+                        "Learn my timing walks you through a full turn: press the button the moment each step is done " +
+                        "(in your stance, each dart thrown, board cleared), and the averages build up round by round. " +
+                        "The three darts always share one time.",
                     fontSize = 15.sp
                 )
             },
@@ -277,7 +261,7 @@ fun MetronomeScreen(navController: NavHostController) {
                 modifier = Modifier.fillMaxWidth(0.85f).padding(vertical = 10.dp).height(84.dp)
             ) { Text(step.doneLabel, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) }
             Text(
-                "Play a real turn. Press the button the moment each move is finished. The clock starts at the opponent's last dart.",
+                "Play a real turn. Press the button the moment each step is finished. The clock starts at the opponent's last dart.",
                 fontSize = 13.sp, color = Grey, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
@@ -289,7 +273,7 @@ fun MetronomeScreen(navController: NavHostController) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
             for (s in if (mode == Mode.LEARNING) learnSequence else sequence) {
                 val active = s == step
-                val sub = s.isDartStep
+                val sub = false
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -365,7 +349,7 @@ fun MetronomeScreen(navController: NavHostController) {
         Spacer(Modifier.height(12.dp))
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
             if (preset == null) {
-                Text("Seconds per dart: ${formatSec(intervalSec)} s  (grab, aim, throw share it)", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text("Seconds per dart: ${formatSec(intervalSec)} s", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 Slider(
                     value = intervalSec,
                     onValueChange = { intervalSec = (it * 2).roundToInt() / 2f },
