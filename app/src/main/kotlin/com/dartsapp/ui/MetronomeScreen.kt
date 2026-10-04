@@ -87,7 +87,12 @@ fun MetronomeScreen(navController: NavHostController) {
     var learning by remember { mutableStateOf(Learning()) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var presetMenuOpen by remember { mutableStateOf(false) }
-    var showInfo by remember { mutableStateOf(false) }
+    // Show the info box automatically the first time the screen is opened.
+    var showInfo by remember { mutableStateOf(!prefs.getBoolean("infoSeen", false)) }
+    fun dismissInfo() {
+        showInfo = false
+        prefs.edit().putBoolean("infoSeen", true).apply()
+    }
 
     val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }
     DisposableEffect(Unit) { onDispose { toneGen.release() } }
@@ -173,7 +178,7 @@ fun MetronomeScreen(navController: NavHostController) {
 
     if (showInfo) {
         AlertDialog(
-            onDismissRequest = { showInfo = false },
+            onDismissRequest = { dismissInfo() },
             title = { Text("Routine and rhythm") },
             text = {
                 Text(
@@ -185,7 +190,7 @@ fun MetronomeScreen(navController: NavHostController) {
                     fontSize = 15.sp
                 )
             },
-            confirmButton = { Button(onClick = { showInfo = false }) { Text("Got it") } }
+            confirmButton = { Button(onClick = { dismissInfo() }) { Text("Got it") } }
         )
     }
 
