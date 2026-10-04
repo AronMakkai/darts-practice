@@ -5,6 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -17,6 +18,7 @@ import com.dartsapp.data.Ring
 @Composable
 fun ValueCheckerScreen(navController: NavHostController) {
     var selected by remember { mutableStateOf<Hit?>(null) }
+    var focus by remember { mutableStateOf<Offset?>(null) }
 
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         ScreenHeader("Value Checker", navController)
@@ -24,7 +26,7 @@ fun ValueCheckerScreen(navController: NavHostController) {
         val s = selected
         Text(
             when {
-                s == null -> "Tap a sector"
+                s == null -> "Touch or slide over the board"
                 s.ring == Ring.MISS -> "Miss"
                 else -> "${s.label}  =  ${s.score}"
             },
@@ -36,11 +38,15 @@ fun ValueCheckerScreen(navController: NavHostController) {
         Dartboard(
             modifier = Modifier.padding(8.dp),
             showValues = true,
-            onTap = { selected = Board.hitTest(it.x, it.y) }
+            focus = focus,
+            onPointer = { p ->
+                focus = p
+                if (p != null) selected = Board.hitTest(p.x, p.y)
+            }
         )
 
         Text(
-            "Inner numbers = trebles, outer numbers = doubles",
+            "Inner numbers = trebles, outer numbers = doubles. Slide your finger to magnify.",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(16.dp)

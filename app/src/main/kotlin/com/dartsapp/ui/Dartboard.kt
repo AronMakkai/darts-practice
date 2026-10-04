@@ -3,23 +3,29 @@ package com.dartsapp.ui
 import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import com.dartsapp.data.Board
 import com.dartsapp.data.BoardGeometry
+import com.dartsapp.data.Ring
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 private val BoardBlack = Color(0xFF141414)
 private val BoardCream = Color(0xFFEDE3C4)
@@ -35,7 +41,9 @@ private val GoldInt = 0xFFD4AF37.toInt()
  * @param geometry ring sizes — STANDARD looks like a real board, WIDE has fat rings for tapping
  * @param showValues draws the double and treble values on their rings (Value Checker mode)
  * @param marks points (normalised board coords, 1.0 = board radius) to draw as landed darts
+ * @param focus finger position (normalised) — values near it are magnified
  * @param onTap called with the tap position in normalised board coords
+ * @param onPointer called continuously with the finger position while touching, and null on release
  */
 @Composable
 fun Dartboard(
@@ -43,7 +51,9 @@ fun Dartboard(
     geometry: BoardGeometry = BoardGeometry.STANDARD,
     showValues: Boolean = false,
     marks: List<Offset> = emptyList(),
-    onTap: ((Offset) -> Unit)? = null
+    focus: Offset? = null,
+    onTap: ((Offset) -> Unit)? = null,
+    onPointer: ((Offset?) -> Unit)? = null
 ) {
     var m = modifier.fillMaxWidth().aspectRatio(1f)
     if (onTap != null) {
@@ -56,15 +66,35 @@ fun Dartboard(
             }
         }
     }
+    if (onPointer != null) {
+        m = m.pointerInput(Unit) {
+            awaitEachGesture {
+                val cx = size.width / 2f
+                val cy = size.height / 2f
+                val radius = min(size.width, size.height) / 2f / RIM_SCALE
+                fun norm(p: Offset) = Offset((p.x - cx) / radius, (p.y - cy) / radius)
+                val down = awaitFirstDown()
+                onPointer(norm(down.position))
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: event.changes.first()
+                    if (!change.pressed) break
+                    onPointer(norm(change.position))
+                    change.consume()
+                }
+                onPointer(null)
+            }
+        }
+    }
     Canvas(modifier = m) {
-        drawBoard(geometry, showValues, marks)
+        drawBoard(geometry, showValues, marks, focus)
     }
 }
 
 /** Board radius × this = full canvas radius (leaves room for the numbers ring). */
 private const val RIM_SCALE = 1.2f
 
-private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: List<Offset>) {
+private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: List<Offset>, focus: Offset?) {
     val cx = size.width / 2f
     val cy = size.height / 2f
     val r = min(size.width, size.height) / 2f / RIM_SCALE
@@ -126,36 +156,76 @@ private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: Li
     }
 
     if (showValues) {
+        // Highlight the double/treble segment under the finger
+        if (focus != null) {
+            val hit = Board.hitTest(focus.x, focus.y, g)
+            val ring = when (hit.ring) {
+                Ring.DOUBLE -> g.doubleIn to g.doubleOut
+                Ring.TREBLE -> g.trebleIn to g.trebleOut
+                else -> null
+            }
+            if (ring != null) {
+                val idx = Board.segments.indexOf(hit.number)
+                val startDeg = -99f + idx * 18f
+                val path = Path()
+                val outer = ring.second * r
+                val inner = ring.first * r
+                path.arcTo(
+                    Rect(cx - outer, cy - outer, cx + outer, cy + outer),
+                    startDeg, 18f, true
+                )
+                path.arcTo(
+                    Rect(cx - inner, cy - inner, cx + inner, cy + inner),
+                    startDeg + 18f, -18f, false
+                )
+                path.close()
+                drawPath(path, Color(0xFFD4AF37), style = Stroke(width = r * 0.025f))
+            }
+        }
+
+        // Value labels. Those close to the finger are scaled up smoothly (magnifier effect).
+        val baseSize = r * 0.075f
         val valuePaint = Paint().apply {
             color = android.graphics.Color.WHITE
-            textSize = r * 0.075f
             textAlign = Paint.Align.CENTER
             isAntiAlias = true
             typeface = Typeface.DEFAULT_BOLD
             setShadowLayer(r * 0.015f, 0f, 0f, android.graphics.Color.BLACK)
         }
+        data class Label(val text: String, val nx: Float, val ny: Float, val scale: Float)
+        val labels = ArrayList<Label>(42)
         val doubleMid = (g.doubleIn + g.doubleOut) / 2f
         val trebleMid = (g.trebleIn + g.trebleOut) / 2f
+        fun scaleAt(nx: Float, ny: Float): Float {
+            if (focus == null) return 1f
+            val dx = nx - focus.x
+            val dy = ny - focus.y
+            val d = sqrt(dx * dx + dy * dy)
+            val t = (1f - d / 0.38f).coerceIn(0f, 1f)
+            val smooth = t * t * (3f - 2f * t)
+            return 1f + 2.2f * smooth
+        }
         for (i in 0 until 20) {
             val a = Math.toRadians(Board.segmentAngle(i).toDouble())
             val n = Board.segments[i]
-            val dy = valuePaint.textSize * 0.35f
+            val c = cos(a).toFloat()
+            val sn = sin(a).toFloat()
+            labels.add(Label((n * 2).toString(), doubleMid * c, doubleMid * sn, scaleAt(doubleMid * c, doubleMid * sn)))
+            labels.add(Label((n * 3).toString(), trebleMid * c, trebleMid * sn, scaleAt(trebleMid * c, trebleMid * sn)))
+        }
+        labels.add(Label("50", 0f, 0f, scaleAt(0f, 0f) * 0.75f))
+        labels.add(Label("25", 0f, -(g.bullR + g.outerBullR) / 2f - 0.02f, scaleAt(0f, -g.outerBullR) * 0.75f))
+        labels.sortBy { it.scale } // biggest drawn last, on top
+        for (l in labels) {
+            valuePaint.textSize = baseSize * l.scale
+            if (l.scale > 1.05f) valuePaint.color = GoldInt else valuePaint.color = android.graphics.Color.WHITE
             drawContext.canvas.nativeCanvas.drawText(
-                (n * 2).toString(),
-                cx + r * doubleMid * cos(a).toFloat(),
-                cy + r * doubleMid * sin(a).toFloat() + dy,
-                valuePaint
-            )
-            drawContext.canvas.nativeCanvas.drawText(
-                (n * 3).toString(),
-                cx + r * trebleMid * cos(a).toFloat(),
-                cy + r * trebleMid * sin(a).toFloat() + dy,
+                l.text,
+                cx + l.nx * r,
+                cy + l.ny * r + valuePaint.textSize * 0.35f,
                 valuePaint
             )
         }
-        val bullPaint = Paint(valuePaint).apply { textSize = r * 0.055f }
-        drawContext.canvas.nativeCanvas.drawText("50", cx, cy + bullPaint.textSize * 0.35f, bullPaint)
-        drawContext.canvas.nativeCanvas.drawText("25", cx, cy - r * 0.065f, bullPaint)
     }
 
     // Landed darts (gold flights)
