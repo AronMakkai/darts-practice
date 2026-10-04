@@ -10,7 +10,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -21,6 +24,7 @@ import com.dartsapp.data.BoardGeometry
 import com.dartsapp.data.Hit
 import com.dartsapp.logic.AccuracyModel
 import com.dartsapp.logic.CheckoutLogic
+import com.dartsapp.logic.Sounds
 import com.dartsapp.logic.TimingPreset
 import com.dartsapp.logic.TimingPresets
 import kotlinx.coroutines.delay
@@ -91,6 +95,9 @@ fun DartlessScreen(navController: NavHostController) {
     var allOnBeat by remember { mutableStateOf(true) }     // no judged throw off the beat so far this checkout
     var judgedThrows by remember { mutableStateOf(0) }
     var starTrigger by remember { mutableStateOf(0) }
+    var burstOrigin by remember { mutableStateOf(Offset.Zero) }      // screen px of the winning dart
+    var boardPos by remember { mutableStateOf(Offset.Zero) }
+    var boardSize by remember { mutableStateOf(IntSize.Zero) }
     val presets = remember { TimingPresets.load(context) }
     var presetName by remember { mutableStateOf(TimingPresets.selectedName(context) ?: presets.firstOrNull()?.name) }
     val preset: TimingPreset? = presets.firstOrNull { it.name == presetName }
@@ -186,9 +193,16 @@ fun DartlessScreen(navController: NavHostController) {
                 remaining = 0
                 finished = true
                 message = "$hitText — Checked out in $dartsTotal darts!"
-                if (metronomeMode && allOnBeat && judgedThrows > 0) {
-                    message += "  Never missed a beat!"
+                // Perfect rhythm: metronome mode on for the whole checkout, every dart judged,
+                // none early/late, no hesitation between throws.
+                if (metronomeMode && allOnBeat && judgedThrows == dartsTotal) {
+                    message += "  Perfect rhythm!"
+                    val cx = boardSize.width / 2f
+                    val cy = boardSize.height / 2f
+                    val r = minOf(boardSize.width, boardSize.height) / 2f / RIM_SCALE
+                    burstOrigin = Offset(boardPos.x + cx + lx * r, boardPos.y + cy + ly * r)
                     starTrigger++
+                    Sounds.playCheckoutJingle()
                 }
             }
             newRem < 0 || newRem == 1 || newRem == 0 -> {
@@ -288,7 +302,10 @@ fun DartlessScreen(navController: NavHostController) {
             )
         }
 
-        Box(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().padding(8.dp).onGloballyPositioned {
+            boardPos = it.positionInRoot()
+            boardSize = it.size
+        }) {
             Dartboard(
                 geometry = BoardGeo,
                 marks = marks,
@@ -331,6 +348,6 @@ fun DartlessScreen(navController: NavHostController) {
             modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).size(120.dp)
         )
     }
-    StarRain(trigger = starTrigger, modifier = Modifier.fillMaxSize())
+    StarBurst(trigger = starTrigger, origin = burstOrigin, modifier = Modifier.fillMaxSize())
     }
 }

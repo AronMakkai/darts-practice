@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -89,25 +90,25 @@ fun SwipeToThrowZone(armed: Boolean, enabled: Boolean, onSwipe: () -> Unit, modi
     }
 }
 
-private class Star(val x: Float, val speed: Float, val size: Float, val spin: Float, val delay: Float, val color: Color)
+private class Spark(val angle: Float, val speed: Float, val size: Float, val spin: Float, val color: Color, val life: Float)
 
 /**
- * Gold stars raining down the screen for a few seconds. Shown when a checkout is hit without
- * missing a single beat. Re-triggers whenever [trigger] changes to a new non-zero value.
+ * A burst of gold stars exploding out of [origin] (screen pixels) — shown when a checkout is hit
+ * in perfect rhythm. Re-triggers whenever [trigger] changes to a new non-zero value.
  */
 @Composable
-fun StarRain(trigger: Int, modifier: Modifier = Modifier) {
+fun StarBurst(trigger: Int, origin: Offset, modifier: Modifier = Modifier) {
     var progress by remember { mutableStateOf(-1f) }   // seconds since start, -1 = idle
-    val stars = remember(trigger) {
-        val rnd = Random(trigger)
-        List(60) {
-            Star(
-                x = rnd.nextFloat(),
-                speed = 0.35f + rnd.nextFloat() * 0.5f,
-                size = 0.5f + rnd.nextFloat(),
-                spin = (rnd.nextFloat() - 0.5f) * 6f,
-                delay = rnd.nextFloat() * 1.2f,
-                color = listOf(Gold, BrightGold, PaleGold, OffWhite)[rnd.nextInt(4)]
+    val sparks = remember(trigger) {
+        val rnd = Random(trigger * 7919)
+        List(70) {
+            Spark(
+                angle = rnd.nextFloat() * 2f * PI.toFloat(),
+                speed = 0.25f + rnd.nextFloat() * 0.9f,
+                size = 0.5f + rnd.nextFloat() * 1.1f,
+                spin = (rnd.nextFloat() - 0.5f) * 10f,
+                color = listOf(Gold, BrightGold, PaleGold, OffWhite, Red)[rnd.nextInt(5)],
+                life = 1.2f + rnd.nextFloat() * 1.0f
             )
         }
     }
@@ -117,22 +118,26 @@ fun StarRain(trigger: Int, modifier: Modifier = Modifier) {
         while (true) {
             val t = (withFrameNanos { it } - start) / 1_000_000_000f
             progress = t
-            if (t > 4.5f) { progress = -1f; break }
+            if (t > 2.4f) { progress = -1f; break }
         }
     }
     if (progress < 0f) return
 
     Canvas(modifier = modifier) {
-        val w = size.width
         val h = size.height
-        for (s in stars) {
-            val t = progress - s.delay
-            if (t < 0f) continue
-            val y = t * s.speed * h
-            if (y > h + 40f) continue
-            val x = s.x * w + sin(t * 2f + s.x * 10f) * w * 0.02f
-            val fade = (1f - (y / h)).coerceIn(0f, 1f)
-            drawStar(Offset(x, y), h * 0.018f * s.size, t * s.spin, s.color.copy(alpha = fade))
+        val t = progress
+        // Flash ring at the impact point
+        if (t < 0.25f) {
+            val k = t / 0.25f
+            drawCircle(BrightGold.copy(alpha = 1f - k), h * 0.02f + h * 0.12f * k, origin, style = Stroke(width = h * 0.01f * (1f - k)))
+        }
+        for (sp in sparks) {
+            if (t > sp.life) continue
+            val dist = sp.speed * h * 0.55f * (1f - exp(-2.2f * t)) / 2.2f * 2.2f  // ease-out burst
+            val x = origin.x + cos(sp.angle) * dist
+            val y = origin.y + sin(sp.angle) * dist + 0.35f * h * t * t          // gravity
+            val fade = (1f - t / sp.life).coerceIn(0f, 1f)
+            drawStar(Offset(x, y), h * 0.016f * sp.size, t * sp.spin, sp.color.copy(alpha = fade))
         }
     }
 }
