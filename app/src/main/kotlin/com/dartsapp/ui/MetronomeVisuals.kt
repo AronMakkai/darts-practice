@@ -452,56 +452,104 @@ fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier
     }
 }
 
-/** Flat-shaded vector coach: cap, glasses, big moustache. Fits a square. */
+/**
+ * Flat-shaded vector coach — a weathered pub-league veteran: cap, glasses, big moustache,
+ * jowls, a polo shirt. Three skin tones for shading, no gradients. Fits a square.
+ */
 @Composable
 fun CoachHead(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
         val cx = w / 2f
-        // Neck + shoulders
-        drawRect(DarkRed, Offset(w * 0.2f, h * 0.82f), Size(w * 0.6f, h * 0.18f))
-        drawRect(Color(0xFFD9A066), Offset(cx - w * 0.09f, h * 0.72f), Size(w * 0.18f, h * 0.14f))
-        // Head: flat polygon (octagon-ish)
-        val head = Path().apply {
-            moveTo(cx - w * 0.22f, h * 0.30f); lineTo(cx + w * 0.22f, h * 0.30f)
-            lineTo(cx + w * 0.27f, h * 0.45f); lineTo(cx + w * 0.22f, h * 0.70f)
-            lineTo(cx + w * 0.08f, h * 0.78f); lineTo(cx - w * 0.08f, h * 0.78f)
-            lineTo(cx - w * 0.22f, h * 0.70f); lineTo(cx - w * 0.27f, h * 0.45f); close()
+        val skin = Color(0xFFE2A878)
+        val skinDark = Color(0xFFC48A5B)
+        val skinLight = Color(0xFFF0C296)
+        val hair = Color(0xFF6B6B6B)
+
+        // Polo shirt + collar
+        val shirt = Path().apply {
+            moveTo(w * 0.08f, h); lineTo(w * 0.2f, h * 0.84f); lineTo(cx - w * 0.1f, h * 0.8f)
+            lineTo(cx, h * 0.9f); lineTo(cx + w * 0.1f, h * 0.8f); lineTo(w * 0.8f, h * 0.84f); lineTo(w * 0.92f, h); close()
         }
-        drawPath(head, Color(0xFFE8B07A))
-        // Shadow side of the face
+        drawPath(shirt, DarkRed)
+        drawPath(Path().apply { moveTo(cx - w * 0.1f, h * 0.8f); lineTo(cx, h * 0.9f); lineTo(cx - w * 0.16f, h * 0.9f); close() }, Red)
+        drawPath(Path().apply { moveTo(cx + w * 0.1f, h * 0.8f); lineTo(cx, h * 0.9f); lineTo(cx + w * 0.16f, h * 0.9f); close() }, Red)
+        // Neck
+        drawRect(skinDark, Offset(cx - w * 0.1f, h * 0.7f), Size(w * 0.2f, h * 0.13f))
+
+        // Ears
+        drawOval(skinDark, Offset(cx - w * 0.31f, h * 0.44f), Size(w * 0.08f, h * 0.13f))
+        drawOval(skinDark, Offset(cx + w * 0.23f, h * 0.44f), Size(w * 0.08f, h * 0.13f))
+
+        // Head: oval with a squarer jaw
+        drawOval(skin, Offset(cx - w * 0.26f, h * 0.22f), Size(w * 0.52f, h * 0.56f))
+        drawRect(skin, Offset(cx - w * 0.22f, h * 0.5f), Size(w * 0.44f, h * 0.2f))
+        // Right-side shade (light from the left)
         val shade = Path().apply {
-            moveTo(cx + w * 0.05f, h * 0.30f); lineTo(cx + w * 0.22f, h * 0.30f)
-            lineTo(cx + w * 0.27f, h * 0.45f); lineTo(cx + w * 0.22f, h * 0.70f)
-            lineTo(cx + w * 0.08f, h * 0.78f); lineTo(cx + w * 0.05f, h * 0.78f); close()
+            moveTo(cx + w * 0.06f, h * 0.24f); lineTo(cx + w * 0.2f, h * 0.3f); lineTo(cx + w * 0.26f, h * 0.5f)
+            lineTo(cx + w * 0.2f, h * 0.7f); lineTo(cx + w * 0.06f, h * 0.78f); close()
         }
-        drawPath(shade, Color(0xFFC98D5C))
-        // Cap
-        val cap = Path().apply {
-            moveTo(cx - w * 0.30f, h * 0.32f); lineTo(cx - w * 0.22f, h * 0.14f)
-            lineTo(cx + w * 0.22f, h * 0.14f); lineTo(cx + w * 0.30f, h * 0.32f); close()
+        drawPath(shade, skinDark)
+        // Cheek highlight + brow highlight
+        drawOval(skinLight, Offset(cx - w * 0.2f, h * 0.5f), Size(w * 0.12f, h * 0.09f))
+        drawRect(skinLight, Offset(cx - w * 0.18f, h * 0.3f), Size(w * 0.2f, h * 0.04f))
+        // Jowl lines
+        drawLine(skinDark, Offset(cx - w * 0.14f, h * 0.6f), Offset(cx - w * 0.12f, h * 0.7f), strokeWidth = h * 0.012f)
+        drawLine(skinDark, Offset(cx + w * 0.14f, h * 0.6f), Offset(cx + w * 0.12f, h * 0.7f), strokeWidth = h * 0.012f)
+
+        // Grey hair tufts under the cap
+        drawRect(hair, Offset(cx - w * 0.28f, h * 0.34f), Size(w * 0.06f, h * 0.1f))
+        drawRect(hair, Offset(cx + w * 0.22f, h * 0.34f), Size(w * 0.06f, h * 0.1f))
+
+        // Cap: crown, band and peak
+        drawOval(Red, Offset(cx - w * 0.3f, h * 0.12f), Size(w * 0.6f, h * 0.3f))
+        drawRect(Black, Offset(cx - w * 0.3f, h * 0.27f), Size(w * 0.6f, h * 0.1f))                   // the oval's lower half is hidden by the band
+        drawRect(Color(0xFF8E0E24), Offset(cx - w * 0.3f, h * 0.27f), Size(w * 0.6f, h * 0.06f))      // band
+        drawRect(skin, Offset(cx - w * 0.26f, h * 0.33f), Size(w * 0.52f, h * 0.05f))                 // forehead under the band
+        drawPath(shade.let { Path().apply { moveTo(cx + w * 0.06f, h * 0.33f); lineTo(cx + w * 0.26f, h * 0.33f); lineTo(cx + w * 0.26f, h * 0.38f); lineTo(cx + w * 0.06f, h * 0.38f); close() } }, skinDark)
+        val peak = Path().apply {
+            moveTo(cx - w * 0.3f, h * 0.3f); lineTo(cx + w * 0.3f, h * 0.3f)
+            lineTo(cx + w * 0.4f, h * 0.36f); lineTo(cx - w * 0.4f, h * 0.36f); close()
         }
-        drawPath(cap, Red)
-        drawRect(Color(0xFF8E0E24), Offset(cx - w * 0.36f, h * 0.30f), Size(w * 0.72f, h * 0.05f))   // peak
-        drawRect(Gold, Offset(cx - w * 0.04f, h * 0.18f), Size(w * 0.08f, h * 0.08f))                // badge
-        // Glasses
-        val gs = Stroke(width = h * 0.025f)
-        drawRect(Black, Offset(cx - w * 0.2f, h * 0.42f), Size(w * 0.15f, h * 0.1f), style = gs)
-        drawRect(Black, Offset(cx + w * 0.05f, h * 0.42f), Size(w * 0.15f, h * 0.1f), style = gs)
-        drawLine(Black, Offset(cx - w * 0.05f, h * 0.46f), Offset(cx + w * 0.05f, h * 0.46f), strokeWidth = h * 0.025f)
-        drawRect(OffWhite.copy(alpha = 0.35f), Offset(cx - w * 0.19f, h * 0.43f), Size(w * 0.06f, h * 0.03f))
-        drawRect(OffWhite.copy(alpha = 0.35f), Offset(cx + w * 0.06f, h * 0.43f), Size(w * 0.06f, h * 0.03f))
-        // Nose
-        drawLine(Color(0xFFB5784A), Offset(cx, h * 0.5f), Offset(cx + w * 0.04f, h * 0.6f), strokeWidth = h * 0.02f)
-        // Moustache: two flat wedges
+        drawPath(peak, Color(0xFF6E0A1A))
+        drawCircle(Gold, w * 0.035f, Offset(cx, h * 0.2f))   // badge
+
+        // Eyebrows (bushy, grey)
+        drawLine(hair, Offset(cx - w * 0.2f, h * 0.41f), Offset(cx - w * 0.06f, h * 0.4f), strokeWidth = h * 0.03f, cap = StrokeCap.Round)
+        drawLine(hair, Offset(cx + w * 0.06f, h * 0.4f), Offset(cx + w * 0.2f, h * 0.41f), strokeWidth = h * 0.03f, cap = StrokeCap.Round)
+        // Eyes
+        drawOval(OffWhite, Offset(cx - w * 0.17f, h * 0.45f), Size(w * 0.1f, h * 0.05f))
+        drawOval(OffWhite, Offset(cx + w * 0.07f, h * 0.45f), Size(w * 0.1f, h * 0.05f))
+        drawCircle(Color(0xFF3A2A1E), w * 0.02f, Offset(cx - w * 0.11f, h * 0.475f))
+        drawCircle(Color(0xFF3A2A1E), w * 0.02f, Offset(cx + w * 0.13f, h * 0.475f))
+        // Glasses: thin black frames with a highlight
+        val gs = Stroke(width = h * 0.018f)
+        drawOval(Black, Offset(cx - w * 0.2f, h * 0.43f), Size(w * 0.16f, h * 0.1f), style = gs)
+        drawOval(Black, Offset(cx + w * 0.04f, h * 0.43f), Size(w * 0.16f, h * 0.1f), style = gs)
+        drawLine(Black, Offset(cx - w * 0.04f, h * 0.47f), Offset(cx + w * 0.04f, h * 0.47f), strokeWidth = h * 0.018f)
+        drawLine(Black, Offset(cx - w * 0.2f, h * 0.47f), Offset(cx - w * 0.27f, h * 0.45f), strokeWidth = h * 0.015f)
+        drawLine(Black, Offset(cx + w * 0.2f, h * 0.47f), Offset(cx + w * 0.27f, h * 0.45f), strokeWidth = h * 0.015f)
+        drawLine(OffWhite.copy(alpha = 0.5f), Offset(cx - w * 0.17f, h * 0.445f), Offset(cx - w * 0.12f, h * 0.44f), strokeWidth = h * 0.012f)
+        drawLine(OffWhite.copy(alpha = 0.5f), Offset(cx + w * 0.07f, h * 0.445f), Offset(cx + w * 0.12f, h * 0.44f), strokeWidth = h * 0.012f)
+
+        // Nose: bulbous, shaded
+        drawOval(skinDark, Offset(cx - w * 0.03f, h * 0.5f), Size(w * 0.1f, h * 0.1f))
+        drawOval(skin, Offset(cx - w * 0.04f, h * 0.5f), Size(w * 0.08f, h * 0.08f))
+        drawOval(skinLight, Offset(cx - w * 0.035f, h * 0.51f), Size(w * 0.035f, h * 0.03f))
+
+        // Moustache: thick, drooping
         val tash = Path().apply {
-            moveTo(cx - w * 0.17f, h * 0.66f); lineTo(cx, h * 0.62f); lineTo(cx + w * 0.17f, h * 0.66f)
-            lineTo(cx + w * 0.12f, h * 0.70f); lineTo(cx, h * 0.67f); lineTo(cx - w * 0.12f, h * 0.70f); close()
+            moveTo(cx - w * 0.19f, h * 0.665f); lineTo(cx - w * 0.08f, h * 0.6f); lineTo(cx, h * 0.615f)
+            lineTo(cx + w * 0.08f, h * 0.6f); lineTo(cx + w * 0.19f, h * 0.665f)
+            lineTo(cx + w * 0.15f, h * 0.715f); lineTo(cx, h * 0.665f); lineTo(cx - w * 0.15f, h * 0.715f); close()
         }
-        drawPath(tash, Color(0xFF3A2A1E))
-        // Mouth line
-        drawLine(Color(0xFF7A3E2A), Offset(cx - w * 0.06f, h * 0.735f), Offset(cx + w * 0.06f, h * 0.735f), strokeWidth = h * 0.015f)
+        drawPath(tash, Color(0xFF4A4A4A))
+        drawPath(Path().apply { moveTo(cx - w * 0.12f, h * 0.62f); lineTo(cx, h * 0.63f); lineTo(cx - w * 0.04f, h * 0.65f); close() }, hair)
+        // Mouth under the moustache
+        drawLine(Color(0xFF7A3E2A), Offset(cx - w * 0.07f, h * 0.73f), Offset(cx + w * 0.07f, h * 0.73f), strokeWidth = h * 0.014f, cap = StrokeCap.Round)
+        // Chin shadow
+        drawOval(skinDark.copy(alpha = 0.6f), Offset(cx - w * 0.1f, h * 0.74f), Size(w * 0.2f, h * 0.04f))
     }
 }
 

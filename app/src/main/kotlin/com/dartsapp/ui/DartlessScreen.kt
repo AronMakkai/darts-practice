@@ -2,7 +2,13 @@ package com.dartsapp.ui
 
 import android.media.AudioManager
 import android.media.ToneGenerator
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CutCornerShape
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -451,24 +457,38 @@ private fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: 
     val suggestion = remember(start) { CheckoutLogic.suggest(start) }
     val optimal = suggestion?.best
     val pointers = remember(start, thrown.size) { coachPointers(start, thrown, aimed, busts, suggestion) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CoachHead(modifier = Modifier.size(64.dp))
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text("COACH", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, color = Gold, fontSize = 14.sp)
-                    Text(
-                        "Checkout $start in ${thrown.size} dart${if (thrown.size == 1) "" else "s"}" +
-                            (optimal?.let { "  ·  book: ${it.size}" } ?: ""),
-                        fontSize = 15.sp, fontWeight = FontWeight.SemiBold
+    Dialog(onDismissRequest = onDismiss) {
+        // Tap anywhere or swipe down to close
+        var dragY by remember { mutableStateOf(0f) }
+        Card(
+            colors = CardDefaults.cardColors(containerColor = NearBlack),
+            border = BorderStroke(2.dp, Gold),
+            shape = CutCornerShape(topStart = 16.dp, bottomEnd = 16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .pointerInput(Unit) { detectTapGestures { onDismiss() } }
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragStart = { dragY = 0f },
+                        onVerticalDrag = { change, dy -> change.consume(); dragY += dy },
+                        onDragEnd = { if (dragY > 90f) onDismiss() }
                     )
                 }
-            }
-        },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        ) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CoachHead(modifier = Modifier.size(84.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text("COACH", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, color = Gold, fontSize = 14.sp)
+                        Text(
+                            "Checkout $start in ${thrown.size} dart${if (thrown.size == 1) "" else "s"}" +
+                                (optimal?.let { "  ·  book: ${it.size}" } ?: ""),
+                            fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = OffWhite
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
                 Text("You threw", fontSize = 12.sp, color = Grey)
                 Text(thrown.joinToString("  ") { it.label }, fontSize = 16.sp, color = OffWhite, fontFamily = FontFamily.Monospace)
                 if (suggestion != null) {
@@ -482,11 +502,14 @@ private fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: 
                 for (p in pointers) {
                     Text("•  $p", fontSize = 14.sp, color = OffWhite, modifier = Modifier.padding(top = 3.dp))
                 }
+                Spacer(Modifier.height(14.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("tap or swipe down to close", fontSize = 11.sp, color = Grey)
+                    Button(onClick = onNext) { Text("Next checkout") }
+                }
             }
-        },
-        confirmButton = { Button(onClick = onNext) { Text("Next checkout") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Close", color = Grey) } }
-    )
+        }
+    }
 }
 
 private fun coachPointers(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: Int, s: CheckoutLogic.Suggestion?): List<String> {
