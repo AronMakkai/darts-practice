@@ -24,21 +24,28 @@ import com.dartsapp.logic.CheckoutLogic
 import com.dartsapp.logic.TimingPreset
 import com.dartsapp.logic.TimingPresets
 import kotlinx.coroutines.delay
-import kotlin.math.abs
 
 private val BoardGeo = BoardGeometry.PRACTICE
 
+/** Seconds from [sinceAnchor] to the nearest beat of a [period]-second beat. */
+internal fun beatDistance(sinceAnchor: Float, period: Float): Float {
+    val phase = ((sinceAnchor / period) % 1f + 1f) % 1f
+    return minOf(phase, 1f - phase) * period
+}
+
+/** Window (seconds) around a beat that counts as "on the beat". */
+internal fun beatWindow(period: Float): Float = minOf(maxOf(0.2f * period, 0.3f), period / 4f)
+
 /**
- * Accuracy from how close [measured] seconds is to the preset's [target].
- * A generous window counts as perfect: within 25 % of the target (or half a second, whichever
- * is larger) = 100 %. Beyond that, accuracy falls off linearly — 50 % off the target is still
- * about 75 % accuracy, double the target is about 25 %. Never below 20 %.
+ * Accuracy from how far a throw is from the nearest beat. Inside the window = 100 %; from there it
+ * falls linearly to 20 % halfway between beats. Missing a beat entirely costs nothing extra: wait
+ * for the next swing and throw on that one.
  */
-internal fun timingAccuracy(measured: Float, target: Float): Float {
-    if (target <= 0f) return 1f
-    val tolerance = maxOf(0.25f * target, 0.5f)
-    val excess = (abs(measured - target) - tolerance).coerceAtLeast(0f)
-    return (1f - excess / target).coerceIn(0.2f, 1f)
+internal fun beatAccuracy(distance: Float, period: Float): Float {
+    val tol = beatWindow(period)
+    if (distance <= tol) return 1f
+    val worst = period / 2f
+    return (1f - 0.8f * (distance - tol) / (worst - tol)).coerceIn(0.2f, 1f)
 }
 
 /**
@@ -71,6 +78,9 @@ fun DartlessScreen(navController: NavHostController) {
     var lastThrowMs by remember { mutableStateOf(0L) }
     var beatAnchorMs by remember { mutableStateOf(0L) }   // 0 = beat not running
     var pulse by remember { mutableStateOf(false) }
+    var allOnBeat by remember { mutableStateOf(true) }     // no judged throw off the beat so far this checkout
+    var judgedThrows by remember { mutableStateOf(0) }
+    var starTrigger by remember { mutableStateOf(0) }
     val presets = remember { TimingPresets.load(context) }
     var presetName by remember { mutableStateOf(TimingPresets.selectedName(context) ?: presets.firstOrNull()?.name) }
     val preset: TimingPreset? = presets.firstOrNull { it.name == presetName }
@@ -80,15 +90,17 @@ fun DartlessScreen(navController: NavHostController) {
     DisposableEffect(Unit) { onDispose { toneGen.release() } }
 
     // Beat: starts on the first throw of a visit and clicks once per preset dart time — the clicks
-    // are where the next throws should land. Stops after the third dart.
+    // are where the next throws should land. Aligned to the anchor so it never drifts.
     val beatSec = if (metronomeMode && !finished && beatAnchorMs > 0L) preset?.dart else null
     LaunchedEffect(beatSec, beatAnchorMs) {
         if (beatSec == null) { pulse = false; return@LaunchedEffect }
         val periodMs = (beatSec.coerceAtLeast(0.3f) * 1000).toLong()
-        // The anchoring throw itself is beat zero.
-        pulse = true; delay(120); pulse = false
+        var k = 0L
+        pulse = true; delay(120); pulse = false      // the anchoring throw is beat zero
         while (true) {
-            delay(periodMs - 120)
+            k++
+            val wait = beatAnchorMs + k * periodMs - System.currentTimeMillis()
+            if (wait > 0) delay(wait)
             toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 90)
             pulse = true
             delay(120)
@@ -96,7 +108,7 @@ fun DartlessScreen(navController: NavHostController) {
         }
     }
 
-    fun idleMessage() = if (metronomeMode) "Throw dart 1 to start the beat, then throw on the clicks" else "Tap the board to throw"
+    fun idleMessage() = if (metronomeMode) "Throw dart 1 to start the pendulum, then throw as it passes upright" else "Tap the board to throw"
 
     fun newCheckout() {
         start = CheckoutLogic.randomCheckout()
@@ -111,6 +123,8 @@ fun DartlessScreen(navController: NavHostController) {
         thrown.clear()
         lastThrowMs = 0L
         beatAnchorMs = 0L
+        allOnBeat = true
+        judgedThrows = 0
     }
 
     fun throwAt(aim: Offset) {
@@ -124,15 +138,19 @@ fun DartlessScreen(navController: NavHostController) {
             thrown.clear()
         }
 
-        // Metronome mode: darts 2 and 3 are judged on the interval since the previous throw.
+        // Metronome mode: darts 2 and 3 are judged on how close they are to the nearest beat.
+        // You may let a beat pass and throw on the next swing — only the distance to a beat counts.
         if (metronomeMode && preset != null) {
-            if (dartsInVisit == 0 || lastThrowMs == 0L) {
+            if (dartsInVisit == 0 || beatAnchorMs == 0L) {
                 beatAnchorMs = now
-                timingNote = "Dart 1 starts the beat — throw the next on the clicks (${formatSec(preset.dart)} s)"
+                timingNote = "Dart 1 sets the beat — throw as the pendulum passes upright"
             } else {
-                val measured = (now - lastThrowMs) / 1000f
-                accuracy = timingAccuracy(measured, preset.dart)
-                timingNote = "Interval ${formatSec(measured)} s vs ${formatSec(preset.dart)} s  →  accuracy ${(accuracy * 100).toInt()}%"
+                val dist = beatDistance((now - beatAnchorMs) / 1000f, preset.dart)
+                accuracy = beatAccuracy(dist, preset.dart)
+                val onBeat = dist <= beatWindow(preset.dart)
+                judgedThrows++
+                if (!onBeat) allOnBeat = false
+                timingNote = (if (onBeat) "On the beat" else "${formatSec(dist)} s off the beat") + "  →  accuracy ${(accuracy * 100).toInt()}%"
             }
         }
 
@@ -152,6 +170,10 @@ fun DartlessScreen(navController: NavHostController) {
                 remaining = 0
                 finished = true
                 message = "$hitText — Checked out in $dartsTotal darts!"
+                if (metronomeMode && allOnBeat && judgedThrows > 0) {
+                    message += "  Never missed a beat!"
+                    starTrigger++
+                }
             }
             newRem < 0 || newRem == 1 || newRem == 0 -> {
                 remaining = visitStart
@@ -172,8 +194,9 @@ fun DartlessScreen(navController: NavHostController) {
     val tip = remember(remaining) { if (remaining > 1) CheckoutLogic.tip(remaining) else "" }
     val dartNo = if (dartsInVisit >= 3) 3 else dartsInVisit
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 16.dp)
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = if (metronomeMode) 130.dp else 16.dp)
     ) {
         ScreenHeader("Dartless Checkout", navController) {
             TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
@@ -272,7 +295,7 @@ fun DartlessScreen(navController: NavHostController) {
             )
             if (metronomeMode) {
                 Text(
-                    preset?.let { "Target: ${formatSec(it.dart)} s between darts. Dart 1 starts the beat; darts 2 and 3 are judged against it." }
+                    preset?.let { "Beat every ${formatSec(it.dart)} s. Dart 1 starts the pendulum; darts 2 and 3 score by how close to upright you throw. Miss a beat? Wait for the next swing." }
                         ?: "Pick a timing preset (top right) — learn one in the Metronome screen.",
                     fontSize = 12.sp, color = Grey, modifier = Modifier.padding(top = 4.dp)
                 )
@@ -282,5 +305,15 @@ fun DartlessScreen(navController: NavHostController) {
         if (finished) {
             Button(onClick = { newCheckout() }, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp)) { Text("Next checkout") }
         }
+    }
+
+    if (metronomeMode) {
+        MetronomePendulum(
+            anchorMs = if (finished) 0L else beatAnchorMs,
+            periodSec = preset?.dart ?: 0f,
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(120.dp).padding(horizontal = 24.dp, vertical = 8.dp)
+        )
+    }
+    StarRain(trigger = starTrigger, modifier = Modifier.fillMaxSize())
     }
 }
