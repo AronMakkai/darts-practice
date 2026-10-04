@@ -1,5 +1,9 @@
 package com.dartsapp.ui
 
+import android.media.AudioManager
+import android.media.ToneGenerator
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -22,9 +26,12 @@ import com.dartsapp.logic.AccuracyModel
 import com.dartsapp.logic.CheckoutLogic
 import com.dartsapp.logic.TimingPreset
 import com.dartsapp.logic.TimingPresets
+import kotlinx.coroutines.delay
 import kotlin.math.abs
 
 private val Green = Color(0xFF1B9A3C)
+private val BrightGreen = Color(0xFF4FD672)
+private val BrightGold = Color(0xFFFFE27A)
 private val BoardGeo = BoardGeometry.PRACTICE
 
 /**
@@ -72,6 +79,25 @@ fun DartlessScreen(navController: NavHostController) {
     var presetName by remember { mutableStateOf(TimingPresets.selectedName(context) ?: presets.firstOrNull()?.name) }
     val preset: TimingPreset? = presets.firstOrNull { it.name == presetName }
     var presetMenuOpen by remember { mutableStateOf(false) }
+    var pulse by remember { mutableStateOf(false) }
+
+    val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 80) }
+    DisposableEffect(Unit) { onDispose { toneGen.release() } }
+
+    // Metronome beat: ticks at the preset's dart interval, anchored to the last "Grab darts" press,
+    // so the beats land where the throws should. Audible click + the buttons flash brighter.
+    val beatSec = if (metronomeMode && !finished) preset?.dart else null
+    LaunchedEffect(beatSec, grabbedAtMs) {
+        if (beatSec == null) { pulse = false; return@LaunchedEffect }
+        val periodMs = (beatSec.coerceAtLeast(0.3f) * 1000).toLong()
+        while (true) {
+            toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 60)
+            pulse = true
+            delay(120)
+            pulse = false
+            delay(periodMs - 120)
+        }
+    }
 
     fun idleMessage() = if (metronomeMode) "Grab your darts" else "Tap the board to throw"
 
@@ -267,6 +293,14 @@ fun DartlessScreen(navController: NavHostController) {
         // Metronome-mode action buttons pinned to the bottom of the screen.
         // Gold = waiting to be pressed, green = done. Both reset after every throw.
         if (metronomeMode) {
+            val grabColor by animateColorAsState(
+                targetValue = if (grabbed) (if (pulse) BrightGreen else Green) else (if (pulse) BrightGold else Gold),
+                animationSpec = tween(if (pulse) 40 else 220), label = "grab"
+            )
+            val aimColor by animateColorAsState(
+                targetValue = if (aimed) (if (pulse) BrightGreen else Green) else (if (pulse) BrightGold else Gold),
+                animationSpec = tween(if (pulse) 40 else 220), label = "aim"
+            )
             Row(
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -281,7 +315,7 @@ fun DartlessScreen(navController: NavHostController) {
                     },
                     enabled = !finished,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (grabbed) Green else Gold,
+                        containerColor = grabColor,
                         contentColor = if (grabbed) OffWhite else Black
                     ),
                     contentPadding = PaddingValues(horizontal = 8.dp),
@@ -297,7 +331,7 @@ fun DartlessScreen(navController: NavHostController) {
                     },
                     enabled = !finished,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (aimed) Green else Gold,
+                        containerColor = aimColor,
                         contentColor = if (aimed) OffWhite else Black
                     ),
                     modifier = Modifier.weight(1f).padding(horizontal = 4.dp).height(64.dp)
