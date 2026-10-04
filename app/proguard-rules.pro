@@ -1,0 +1,3 @@
+-keep class androidx.compose.** { *; }
+-dontwarn androidx.compose.**
+-keep class com.dartsapp.** { *; }

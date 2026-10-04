@@ -1,0 +1,43 @@
+package com.dartsapp.ui
+
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+
+val Black = Color(0xFF000000)
+val NearBlack = Color(0xFF121212)
+val Charcoal = Color(0xFF1E1E1E)
+val Red = Color(0xFFC8102E)
+val DarkRed = Color(0xFF7A0A1C)
+val Gold = Color(0xFFD4AF37)
+val PaleGold = Color(0xFFF1DC9A)
+val OffWhite = Color(0xFFF2F2F2)
+val Grey = Color(0xFFB0B0B0)
+
+private val DartsColors = darkColorScheme(
+    primary = Red,
+    onPrimary = OffWhite,
+    primaryContainer = DarkRed,
+    onPrimaryContainer = OffWhite,
+    secondary = Gold,
+    onSecondary = Black,
+    secondaryContainer = Charcoal,
+    onSecondaryContainer = Gold,
+    tertiary = Gold,
+    onTertiary = Black,
+    background = Black,
+    onBackground = OffWhite,
+    surface = NearBlack,
+    onSurface = OffWhite,
+    surfaceVariant = Charcoal,
+    onSurfaceVariant = Grey,
+    outline = Gold,
+    error = Red,
+    onError = OffWhite
+)
+
+@Composable
+fun DartsTheme(content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = DartsColors, content = content)
+}
