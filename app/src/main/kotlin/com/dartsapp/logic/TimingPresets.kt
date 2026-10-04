@@ -14,8 +14,11 @@ data class TimingPreset(
     val remove: Float,
     val rounds: Int
 ) {
+    val builtIn: Boolean get() = rounds == 0
+
     fun summary(): String =
-        "approach %.1f s  ·  dart %.1f s  ·  clear %.1f s  ·  %d round%s"
+        if (builtIn) "approach %.1f s  ·  dart %.1f s  ·  clear %.1f s  ·  built-in".format(approach, dart, remove)
+        else "approach %.1f s  ·  dart %.1f s  ·  clear %.1f s  ·  %d round%s"
             .format(approach, dart, remove, rounds, if (rounds == 1) "" else "s")
 }
 
@@ -27,14 +30,21 @@ object TimingPresets {
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun load(ctx: Context): List<TimingPreset> {
+    /** Presets that ship with the app. They cannot be deleted. */
+    val BUILT_IN = listOf(
+        TimingPreset("Pike (slow)", approach = 4f, dart = 5f, remove = 6f, rounds = 0)
+    )
+
+    fun load(ctx: Context): List<TimingPreset> = BUILT_IN + loadStored(ctx)
+
+    private fun loadStored(ctx: Context): List<TimingPreset> {
         val raw = prefs(ctx).getString(KEY_LIST, "") ?: ""
         if (raw.isBlank()) return emptyList()
         return raw.split('\n').mapNotNull { line ->
             val f = line.split('|')
             if (f.size < 5) return@mapNotNull null
             try {
-                TimingPreset(f[0], f[1].toFloat(), f[2].toFloat(), f[3].toFloat(), f[4].toInt())
+                TimingPreset(f[0], f[1].toFloat(), f[2].toFloat(), f[3].toFloat(), f[4].toInt().coerceAtLeast(1))
             } catch (e: NumberFormatException) {
                 null
             }
@@ -50,17 +60,19 @@ object TimingPresets {
 
     /** Adds [preset], replacing any preset with the same name. Returns the new list. */
     fun add(ctx: Context, preset: TimingPreset): List<TimingPreset> {
-        val clean = preset.copy(name = sanitize(preset.name))
-        val list = load(ctx).filter { it.name != clean.name } + clean
+        var clean = preset.copy(name = sanitize(preset.name), rounds = preset.rounds.coerceAtLeast(1))
+        if (BUILT_IN.any { it.name == clean.name }) clean = clean.copy(name = clean.name + " (mine)")
+        val list = loadStored(ctx).filter { it.name != clean.name } + clean
         save(ctx, list)
-        return list
+        return BUILT_IN + list
     }
 
     fun delete(ctx: Context, name: String): List<TimingPreset> {
-        val list = load(ctx).filter { it.name != name }
+        if (BUILT_IN.any { it.name == name }) return load(ctx)
+        val list = loadStored(ctx).filter { it.name != name }
         save(ctx, list)
         if (selectedName(ctx) == name) setSelected(ctx, null)
-        return list
+        return BUILT_IN + list
     }
 
     fun selectedName(ctx: Context): String? = prefs(ctx).getString(KEY_SELECTED, null)

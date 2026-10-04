@@ -211,7 +211,7 @@ fun MetronomeScreen(navController: NavHostController) {
 
     if (showSaveDialog) {
         SavePresetDialog(
-            defaultName = "Preset ${presets.size + 1}",
+            defaultName = "Preset ${presets.count { !it.builtIn } + 1}",
             summary = learning.toPreset("").summary(),
             onSave = { name ->
                 presets = TimingPresets.add(context, learning.toPreset(name))
@@ -355,7 +355,7 @@ fun MetronomeScreen(navController: NavHostController) {
                     } else {
                         OutlinedButton(onClick = { startLearning() }, enabled = mode == Mode.IDLE) { Text("Learn my timing", color = Gold) }
                     }
-                    if (preset != null && mode == Mode.IDLE) {
+                    if (preset != null && !preset.builtIn && mode == Mode.IDLE) {
                         TextButton(onClick = {
                             presets = TimingPresets.delete(context, preset.name)
                             selectPreset(null)
