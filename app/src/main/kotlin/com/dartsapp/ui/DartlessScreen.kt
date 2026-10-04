@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -89,6 +90,7 @@ fun DartlessScreen(navController: NavHostController) {
 
     // Metronome mode
     var metronomeMode by remember { mutableStateOf(false) }
+    var showTip by remember { mutableStateOf(false) }
     var throwStartMs by remember { mutableStateOf(0L) }   // 0 = no throw armed
     var lastTapMs by remember { mutableStateOf(0L) }      // previous throw in this visit, 0 = none
     var pauseSec by remember { mutableStateOf(-1f) }      // tap -> swipe pause for the armed throw, -1 = n/a
@@ -227,6 +229,7 @@ fun DartlessScreen(navController: NavHostController) {
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = if (metronomeMode) 130.dp else 16.dp)
     ) {
         ScreenHeader("Dartless Checkout", navController) {
+            TextButton(onClick = { showTip = !showTip }, enabled = !metronomeMode) { Text("Tip", color = if (showTip) Gold else Grey) }
             TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
         }
 
@@ -280,25 +283,28 @@ fun DartlessScreen(navController: NavHostController) {
                 }
             }
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            if (tip.isNotEmpty()) Text(tip, fontSize = 18.sp, color = PaleGold, textAlign = TextAlign.Center)
-            if (message.isNotEmpty()) Text(message, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp), textAlign = TextAlign.Center)
-        }
-
-        Text(
-            "Dart $dartNo/3   Visit: " + thrown.joinToString(" ") { it.label }.ifEmpty { "—" },
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp)
-        )
-        if (metronomeMode) {
+        // Fixed-height text block so the board never moves, whatever is written above it.
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth().height(96.dp).padding(horizontal = 16.dp)
+        ) {
             Text(
-                timingNote.ifEmpty { " " },
-                fontSize = 13.sp,
-                color = PaleGold,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 2.dp)
+                message.ifEmpty { " " },
+                fontSize = 17.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().height(46.dp)
+            )
+            Text(
+                "Dart $dartNo/3   Visit: " + thrown.joinToString(" ") { it.label }.ifEmpty { "—" },
+                fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.height(22.dp)
+            )
+            Text(
+                if (metronomeMode) timingNote.ifEmpty { " " } else if (showTip) tip else " ",
+                fontSize = 13.sp, color = PaleGold, textAlign = TextAlign.Center,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.height(20.dp)
             )
         }
 
