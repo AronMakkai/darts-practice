@@ -35,6 +35,7 @@ fun MainMenuScreen(navController: NavHostController) {
             RetroTitle("DARTS")
             RetroTitle("PRACTICE", small = true)
             Spacer(Modifier.height(36.dp))
+            RetroButton("501  ·  2 PLAYER") { navController.navigate("x01") }
             RetroButton("CHECKOUT") { navController.navigate("checkout") }
             RetroButton("DARTLESS CHECKOUT") { navController.navigate("dartless") }
             RetroButton("VALUE CHECKER") { navController.navigate("valuechecker") }
