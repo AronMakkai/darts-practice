@@ -381,7 +381,13 @@ fun DartlessScreen(navController: NavHostController) {
             modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp).width(44.dp).fillMaxHeight(0.62f)
         )
     }
-    val inHand = if (finished) 0 else if (dartsInVisit >= 3) 0 else 3 - dartsInVisit
+    // Darts still in hand this visit. Between visits (all three thrown) they are shown as outlines
+    // until you pick up again — the swipe in metronome mode, or the next tap otherwise.
+    val inHand = when {
+        finished -> 0
+        dartsInVisit >= 3 -> if (throwStartMs != 0L) 3 else 0
+        else -> 3 - dartsInVisit
+    }
     if (metronomeMode) {
         SwipeToThrowZone(
             armed = throwStartMs != 0L,
