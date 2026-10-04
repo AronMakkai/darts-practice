@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.exp
@@ -197,5 +198,120 @@ fun GoldBarStack(count: Int, modifier: Modifier = Modifier) {
         bars(hundreds, h * 0.055f, 0.9f, Color(0xFFDDB53E), Color(0xFFFFE98A), Color(0xFF8E6F18))
         bars(tens, h * 0.04f, 0.78f, Gold, PaleGold, Color(0xFF8A6A14))
         bars(ones, h * 0.026f, 0.62f, Color(0xFFC9A431), Color(0xFFEFD77E), Color(0xFF7A5E10))
+    }
+}
+
+/**
+ * Bust effect: the screen cracks out from the offending dart, then a chunky 80s graffiti "BUST"
+ * slams in, tilted, with a thick outline and drop shadow. Re-triggers on a new non-zero [trigger].
+ */
+@Composable
+fun BustOverlay(trigger: Int, origin: Offset, modifier: Modifier = Modifier) {
+    var progress by remember { mutableStateOf(-1f) }
+    val cracks = remember(trigger) {
+        val rnd = Random(trigger * 104729 + 7)
+        List(11) { i ->
+            val baseAngle = i * (2f * PI.toFloat() / 11f) + rnd.nextFloat() * 0.4f
+            // each crack is a jagged polyline: list of (angle jitter, segment length factor)
+            List(7) { Pair((rnd.nextFloat() - 0.5f) * 0.9f, 0.6f + rnd.nextFloat() * 0.8f) } to baseAngle
+        }
+    }
+    LaunchedEffect(trigger) {
+        if (trigger == 0) { progress = -1f; return@LaunchedEffect }
+        val start = withFrameNanos { it }
+        while (true) {
+            val t = (withFrameNanos { it } - start) / 1_000_000_000f
+            progress = t
+            if (t > 1.8f) { progress = -1f; break }
+        }
+    }
+    if (progress < 0f) return
+
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val t = progress
+        val fade = if (t > 1.3f) (1f - (t - 1.3f) / 0.5f).coerceIn(0f, 1f) else 1f
+
+        // Flash
+        if (t < 0.12f) drawRect(OffWhite.copy(alpha = 0.55f * (1f - t / 0.12f)))
+
+        // Cracks grow out over the first 0.35 s
+        val grow = (t / 0.35f).coerceIn(0f, 1f)
+        val reach = maxOf(w, h) * 0.9f
+        for ((segments, baseAngle) in cracks) {
+            var pos = origin
+            var angle = baseAngle
+            val segLen = reach / segments.size
+            val path = Path().apply { moveTo(origin.x, origin.y) }
+            var drawn = 0f
+            for ((jitter, lenF) in segments) {
+                val len = segLen * lenF
+                if (drawn + len > reach * grow) {
+                    val part = (reach * grow - drawn).coerceAtLeast(0f)
+                    pos = Offset(pos.x + cos(angle) * part, pos.y + sin(angle) * part)
+                    path.lineTo(pos.x, pos.y)
+                    break
+                }
+                angle += jitter
+                pos = Offset(pos.x + cos(angle) * len, pos.y + sin(angle) * len)
+                path.lineTo(pos.x, pos.y)
+                drawn += len
+            }
+            drawPath(path, Black.copy(alpha = 0.9f * fade), style = Stroke(width = 7f, cap = StrokeCap.Round))
+            drawPath(path, OffWhite.copy(alpha = 0.85f * fade), style = Stroke(width = 2.5f, cap = StrokeCap.Round))
+        }
+
+        // Darken behind the word
+        if (t > 0.15f) drawRect(Black.copy(alpha = 0.45f * fade))
+
+        // BUST slams in: scale 1.8 -> 1 with a little overshoot, tilted
+        if (t > 0.15f) {
+            val k = ((t - 0.15f) / 0.25f).coerceIn(0f, 1f)
+            val scale = 1.8f - 0.8f * k + (if (k >= 1f) 0f else 0.08f * sin(k * PI.toFloat()))
+            val paint = android.graphics.Paint().apply {
+                isAntiAlias = true
+                textAlign = android.graphics.Paint.Align.CENTER
+                typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT_BOLD, android.graphics.Typeface.BOLD)
+                textSize = w * 0.30f * scale
+                isFakeBoldText = true
+                letterSpacing = -0.04f
+            }
+            val cx = w / 2f
+            val cy = h * 0.46f
+            drawContext.canvas.nativeCanvas.apply {
+                save()
+                rotate(-9f, cx, cy)
+                val baseline = cy + paint.textSize * 0.36f
+                // drop shadow blocks (graffiti style: solid, offset)
+                paint.style = android.graphics.Paint.Style.FILL
+                paint.color = android.graphics.Color.argb((255 * fade).toInt(), 0x7A, 0x0A, 0x1C)
+                drawText("BUST", cx + paint.textSize * 0.09f, baseline + paint.textSize * 0.09f, paint)
+                // thick black outline
+                paint.style = android.graphics.Paint.Style.STROKE
+                paint.strokeWidth = paint.textSize * 0.11f
+                paint.strokeJoin = android.graphics.Paint.Join.ROUND
+                paint.color = android.graphics.Color.argb((255 * fade).toInt(), 0, 0, 0)
+                drawText("BUST", cx, baseline, paint)
+                // red fill
+                paint.style = android.graphics.Paint.Style.FILL
+                paint.color = android.graphics.Color.argb((255 * fade).toInt(), 0xE0, 0x1A, 0x3A)
+                drawText("BUST", cx, baseline, paint)
+                // gold highlight stroke, thin, offset up-left
+                paint.style = android.graphics.Paint.Style.STROKE
+                paint.strokeWidth = paint.textSize * 0.025f
+                paint.color = android.graphics.Color.argb((255 * fade).toInt(), 0xFF, 0xE2, 0x7A)
+                drawText("BUST", cx - paint.textSize * 0.02f, baseline - paint.textSize * 0.02f, paint)
+                restore()
+            }
+            // Spray dots around the word
+            val rnd = Random(trigger * 31)
+            for (i in 0 until 26) {
+                val dx = (rnd.nextFloat() - 0.5f) * w * 0.95f
+                val dy = (rnd.nextFloat() - 0.5f) * h * 0.28f
+                val r = 2f + rnd.nextFloat() * 6f
+                drawCircle((if (i % 3 == 0) Gold else Red).copy(alpha = 0.7f * fade * k), r, Offset(cx + dx, cy + dy))
+            }
+        }
     }
 }

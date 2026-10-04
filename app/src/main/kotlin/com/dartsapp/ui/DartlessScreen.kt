@@ -104,6 +104,8 @@ fun DartlessScreen(navController: NavHostController) {
     var judgedThrows by remember { mutableStateOf(0) }
     var starTrigger by remember { mutableStateOf(0) }
     var burstOrigin by remember { mutableStateOf(Offset.Zero) }      // screen px of the winning dart
+    var bustTrigger by remember { mutableStateOf(0) }
+    var bustOrigin by remember { mutableStateOf(Offset.Zero) }
     var boardPos by remember { mutableStateOf(Offset.Zero) }
     var boardSize by remember { mutableStateOf(IntSize.Zero) }
     val presets = remember { TimingPresets.load(context) }
@@ -224,7 +226,16 @@ fun DartlessScreen(navController: NavHostController) {
             newRem < 0 || newRem == 1 || newRem == 0 -> {
                 remaining = visitStart
                 dartsInVisit = 3
-                message = "$hitText — Bust! Back to $visitStart"
+                message = "$hitText — BUST! Back to $visitStart"
+                val cx = boardSize.width / 2f
+                val cy = boardSize.height / 2f
+                val r = minOf(boardSize.width, boardSize.height) / 2f / RIM_SCALE
+                bustOrigin = Offset(boardPos.x + cx + lx * r, boardPos.y + cy + ly * r)
+                bustTrigger++
+                throwStartMs = 0L
+                lastTapMs = 0L
+                pauseSec = -1f
+                Sounds.playBust()
             }
             else -> {
                 remaining = newRem
@@ -375,5 +386,6 @@ fun DartlessScreen(navController: NavHostController) {
         )
     }
     StarBurst(trigger = starTrigger, origin = burstOrigin, modifier = Modifier.fillMaxSize())
+    BustOverlay(trigger = bustTrigger, origin = bustOrigin, modifier = Modifier.fillMaxSize())
     }
 }

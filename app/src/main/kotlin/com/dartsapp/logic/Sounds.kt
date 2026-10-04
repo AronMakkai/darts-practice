@@ -41,6 +41,23 @@ object Sounds {
         }
     }
 
+    /** A dull thud with a crack: for a bust. */
+    fun playBust() {
+        thread(name = "bust") {
+            val n = (RATE * 0.6f).toInt()
+            val buf = FloatArray(n)
+            addSweep(buf, startSec = 0f, durSec = 0.35f, fromHz = 180f, toHz = 35f, amp = 1.0f)
+            // crack: short burst of noise
+            val rnd = java.util.Random(3)
+            val crackLen = (RATE * 0.06f).toInt()
+            for (i in 0 until crackLen) {
+                val env = 1f - i.toFloat() / crackLen
+                buf[i] += (rnd.nextFloat() * 2f - 1f) * 0.6f * env * env
+            }
+            play(buf)
+        }
+    }
+
     private fun addDing(buf: FloatArray, startSec: Float, freqHz: Float, amp: Float, decay: Float = 14f) {
         val start = (startSec * RATE).toInt()
         val dur = (0.35f * RATE).toInt()
