@@ -14,6 +14,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -91,7 +92,7 @@ fun DartlessScreen(navController: NavHostController) {
     var dartsInVisit by remember { mutableStateOf(0) }
     var dartsTotal by remember { mutableStateOf(0) }
     var accuracy by remember { mutableStateOf(0.8f) }
-    var message by remember { mutableStateOf("Tap the board to throw") }
+    var message by remember { mutableStateOf("Swipe up from the bottom-left corner to start a throw") }
     var timingNote by remember { mutableStateOf("") }
     var finished by remember { mutableStateOf(false) }
     val marks = remember { mutableStateListOf<Offset>() }
@@ -99,7 +100,7 @@ fun DartlessScreen(navController: NavHostController) {
     val model = remember { AccuracyModel() }
 
     // Metronome mode
-    var metronomeMode by remember { mutableStateOf(false) }
+    var metronomeMode by remember { mutableStateOf(true) }   // Metronome is the default; Simple is the alternative
     var showTip by remember { mutableStateOf(false) }
     var throwStartMs by remember { mutableStateOf(0L) }   // 0 = no throw armed
     var lastTapMs by remember { mutableStateOf(0L) }      // previous throw in this visit, 0 = none
@@ -141,7 +142,7 @@ fun DartlessScreen(navController: NavHostController) {
         message = "Tap your target when the ring is back at the centre"
     }
 
-    fun idleMessage() = if (metronomeMode) "Swipe up from the bottom-left corner to start a throw" else "Tap the board to throw"
+    fun idleMessage() = if (metronomeMode) "Swipe up from the bottom-left corner to start a throw" else "Simple mode — tap the board to throw"
 
     fun newCheckout() {
         if (!finished && dartsTotal > 0 && streak > 0) { streak = 0; saveStreak() }
@@ -262,22 +263,42 @@ fun DartlessScreen(navController: NavHostController) {
             TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
         }
 
-        // Metronome toggle (left) · remaining (centre) · preset picker (right)
+        // Accuracy power bar — set by your timing in Metronome mode, draggable in Simple mode
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("ACCURACY", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey, modifier = Modifier.width(78.dp))
+            PowerBar(
+                value = accuracy,
+                enabled = !metronomeMode,
+                onChange = { accuracy = it },
+                modifier = Modifier.weight(1f).height(26.dp)
+            )
+            Text(
+                "${(accuracy * 100).toInt()}%",
+                fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = Gold,
+                textAlign = TextAlign.End, modifier = Modifier.width(48.dp)
+            )
+        }
+
+        // Mode toggle (left) · remaining (centre) · preset picker (right)
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Metronome", fontSize = 12.sp, color = Grey)
-                Switch(
-                    checked = metronomeMode,
-                    onCheckedChange = {
-                        metronomeMode = it
+                Text("Mode", fontSize = 12.sp, color = Grey)
+                OutlinedButton(
+                    onClick = {
+                        metronomeMode = !metronomeMode
                         throwStartMs = 0L
                         lastTapMs = 0L
                         pauseSec = -1f
                         timingNote = ""
                         if (!finished) message = idleMessage()
                     },
-                    colors = SwitchDefaults.colors(checkedThumbColor = Gold, checkedTrackColor = DarkRed)
-                )
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(if (metronomeMode) "Metronome" else "Simple", fontSize = 13.sp, maxLines = 1, color = if (metronomeMode) Gold else OffWhite)
+                }
             }
             Column(modifier = Modifier.weight(1.4f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Checkout $start", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -353,21 +374,6 @@ fun DartlessScreen(navController: NavHostController) {
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f)
                 )
             }
-        }
-
-        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            Text(
-                "Accuracy: ${(accuracy * 100).toInt()}%" + if (metronomeMode) "  (set by your timing)" else "",
-                fontSize = 16.sp, fontWeight = FontWeight.SemiBold
-            )
-            Slider(
-                value = accuracy, onValueChange = { accuracy = it }, valueRange = 0f..1f,
-                enabled = !metronomeMode,
-                colors = SliderDefaults.colors(
-                    thumbColor = Gold, activeTrackColor = Red, inactiveTrackColor = Charcoal,
-                    disabledThumbColor = Gold, disabledActiveTrackColor = DarkRed, disabledInactiveTrackColor = Charcoal
-                )
-            )
         }
 
         if (finished) {

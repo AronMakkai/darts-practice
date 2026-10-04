@@ -385,3 +385,68 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawVectorDart(cent
         drawPath(flight2, Red.copy(alpha = alpha), style = stroke)
     }
 }
+
+/**
+ * Fighting-game style power bar for accuracy: chunky segmented blocks, red at the bottom end through
+ * orange to gold at the top, with a bevelled frame. Draggable when [enabled]; display-only otherwise.
+ */
+@Composable
+fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier: Modifier = Modifier) {
+    val shown by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = value.coerceIn(0f, 1f),
+        animationSpec = androidx.compose.animation.core.tween(220),
+        label = "power"
+    )
+    Canvas(
+        modifier = modifier.pointerInput(enabled) {
+            if (!enabled) return@pointerInput
+            detectDragGestures(
+                onDragStart = { p -> onChange((p.x / size.width).coerceIn(0f, 1f)) },
+                onDrag = { change, _ -> change.consume(); onChange((change.position.x / size.width).coerceIn(0f, 1f)) }
+            )
+        }.pointerInput(enabled) {
+            if (!enabled) return@pointerInput
+            androidx.compose.foundation.gestures.detectTapGestures { p -> onChange((p.x / size.width).coerceIn(0f, 1f)) }
+        }
+    ) {
+        val w = size.width
+        val h = size.height
+        // Bevelled frame: light top-left, dark bottom-right (flat shading)
+        drawRect(Color(0xFF3A3A3A))
+        drawRect(Color(0xFF6A6A6A), Offset(0f, 0f), Size(w, h * 0.12f))
+        drawRect(Color(0xFF6A6A6A), Offset(0f, 0f), Size(w * 0.01f, h))
+        drawRect(Color(0xFF151515), Offset(0f, h * 0.88f), Size(w, h * 0.12f))
+        drawRect(Color(0xFF151515), Offset(w * 0.99f, 0f), Size(w * 0.01f, h))
+        val inner = Offset(w * 0.02f, h * 0.18f)
+        val innerW = w * 0.96f
+        val innerH = h * 0.64f
+        drawRect(Black, inner, Size(innerW, innerH))
+
+        val segments = 24
+        val gap = innerW * 0.006f
+        val segW = (innerW - gap * (segments - 1)) / segments
+        val filled = (shown * segments)
+        for (i in 0 until segments) {
+            val x = inner.x + i * (segW + gap)
+            val frac = i.toFloat() / segments
+            val base = when {
+                frac < 0.33f -> Color(0xFFE0203A)
+                frac < 0.66f -> Color(0xFFF08A1E)
+                else -> Gold
+            }
+            val fill = (filled - i).coerceIn(0f, 1f)
+            if (fill <= 0f) {
+                drawRect(base.copy(alpha = if (enabled) 0.14f else 0.08f), Offset(x, inner.y), Size(segW, innerH))
+            } else {
+                drawRect(base.copy(alpha = 0.35f + 0.65f * fill), Offset(x, inner.y), Size(segW, innerH))
+                // highlight strip for the pixel-bevel look
+                drawRect(OffWhite.copy(alpha = 0.35f * fill), Offset(x, inner.y), Size(segW, innerH * 0.18f))
+            }
+        }
+        // Tick marks every quarter
+        for (q in 1..3) {
+            val x = inner.x + innerW * q / 4f
+            drawLine(Color(0xFF6A6A6A), Offset(x, h * 0.88f), Offset(x, h), strokeWidth = 2f)
+        }
+    }
+}
