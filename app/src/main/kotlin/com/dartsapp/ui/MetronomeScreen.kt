@@ -31,17 +31,17 @@ enum class Step(val label: String, val doneLabel: String, val kind: Kind, val da
     READY("Ready", "", Kind.NONE),
     /** Learning only: the zero point. Pressing it starts the clock; it is never timed itself. */
     START("Opponent done", "Opponent done — start", Kind.START),
-    APPROACH("Approach oche", "In my stance, darts in hand", Kind.APPROACH),
-    GRAB1("Dart 1 · Grab", "Dart in hand", Kind.GRAB, 1),
-    AIM1("Dart 1 · Aim", "Aimed", Kind.AIM, 1),
-    THROW1("Dart 1 · Throw", "Thrown", Kind.THROW, 1),
-    GRAB2("Dart 2 · Grab", "Dart in hand", Kind.GRAB, 2),
-    AIM2("Dart 2 · Aim", "Aimed", Kind.AIM, 2),
-    THROW2("Dart 2 · Throw", "Thrown", Kind.THROW, 2),
-    GRAB3("Dart 3 · Grab", "Dart in hand", Kind.GRAB, 3),
-    AIM3("Dart 3 · Aim", "Aimed", Kind.AIM, 3),
-    THROW3("Dart 3 · Throw", "Thrown", Kind.THROW, 3),
-    REMOVE("Board and oche cleared", "Board and oche cleared", Kind.REMOVE),
+    APPROACH("Approaching oche", "In my stance, darts in hand", Kind.APPROACH),
+    GRAB1("Dart 1 · Grabbing", "Dart in hand", Kind.GRAB, 1),
+    AIM1("Dart 1 · Aiming", "Aimed", Kind.AIM, 1),
+    THROW1("Dart 1 · Throwing", "Thrown", Kind.THROW, 1),
+    GRAB2("Dart 2 · Grabbing", "Dart in hand", Kind.GRAB, 2),
+    AIM2("Dart 2 · Aiming", "Aimed", Kind.AIM, 2),
+    THROW2("Dart 2 · Throwing", "Thrown", Kind.THROW, 2),
+    GRAB3("Dart 3 · Grabbing", "Dart in hand", Kind.GRAB, 3),
+    AIM3("Dart 3 · Aiming", "Aimed", Kind.AIM, 3),
+    THROW3("Dart 3 · Throwing", "Thrown", Kind.THROW, 3),
+    REMOVE("Clearing board and oche", "Board and oche cleared", Kind.REMOVE),
     OPPONENT("Opponent throws", "", Kind.OPPONENT);
 
     val isDartStep: Boolean get() = kind == Kind.GRAB || kind == Kind.AIM || kind == Kind.THROW
@@ -125,14 +125,15 @@ fun MetronomeScreen(navController: NavHostController) {
     val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }
     DisposableEffect(Unit) { onDispose { toneGen.release() } }
 
-    fun click(s: Step) {
-        when (s.kind) {
-            Kind.APPROACH -> toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 300)
-            Kind.GRAB -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 100)
-            Kind.AIM -> toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 120)
-            Kind.THROW -> toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 160)
-            Kind.REMOVE -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 200)
-            Kind.OPPONENT -> toneGen.startTone(ToneGenerator.TONE_PROP_NACK, 200)
+    /** Sound for the moment a move is COMPLETED (dart in hand, aimed, released, cleared...). */
+    fun clickDone(done: Step) {
+        when (done.kind) {
+            Kind.START, Kind.OPPONENT -> toneGen.startTone(ToneGenerator.TONE_PROP_NACK, 220)   // opponent done
+            Kind.APPROACH -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 200)                // in stance
+            Kind.GRAB -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 90)                     // dart in hand (low)
+            Kind.AIM -> toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 110)                    // aimed (mid)
+            Kind.THROW -> toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 160)                 // release (high)
+            Kind.REMOVE -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 200)                  // cleared
             else -> {}
         }
     }
@@ -145,9 +146,9 @@ fun MetronomeScreen(navController: NavHostController) {
         turn = 0
         while (mode == Mode.PLAYING) {
             turn++
-            for (s in sequence) {
+            for ((i, s) in sequence.withIndex()) {
                 step = s
-                click(s)
+                clickDone(if (i == 0) Step.OPPONENT else sequence[i - 1])
                 delay((durationSec(s) * 1000).toLong())
             }
         }
@@ -175,12 +176,12 @@ fun MetronomeScreen(navController: NavHostController) {
         if (step != Step.START) {
             learning = learning.record(step, (now - stepStartMs) / 1000f)
         }
+        clickDone(step)
         val idx = learnSequence.indexOf(step)
         val next = if (idx == learnSequence.lastIndex) { turn++; learnSequence.first() } else learnSequence[idx + 1]
         step = next
         stepStartMs = now
         elapsedSec = 0f
-        click(next)
     }
 
     fun stop() {

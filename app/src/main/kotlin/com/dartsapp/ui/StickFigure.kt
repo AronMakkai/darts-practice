@@ -7,6 +7,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -31,18 +33,21 @@ private data class Pose(
     val lean: Float        // body lean towards board, degrees
 )
 
-private val STAND = Pose(0.18f, 8f, 0f, -8f, 0f, 0.25f, 0f)
-private val WALK = Pose(0.50f, 25f, 20f, 60f, 70f, 0.9f, 6f)
-private val GRAB = Pose(0.50f, 55f, 85f, 70f, 65f, 0.35f, 4f)
-private val AIM = Pose(0.50f, 95f, 115f, 70f, 65f, 0.35f, 6f)
-private val THROW = Pose(0.50f, 105f, 5f, 70f, 65f, 0.45f, 12f)
-private val REMOVE = Pose(0.76f, 125f, 0f, 20f, 0f, 0.3f, 8f)
+// Darts form, side-on to the board. Upper arm points at the board, forearm vertical with the
+// dart at eye level; the release extends the forearm towards the board with a relaxed follow-through.
+private val STAND = Pose(0.18f, 6f, 0f, -6f, 0f, 0.25f, 0f)
+private val WALK = Pose(0.50f, 20f, 15f, 55f, 70f, 0.9f, 4f)
+private val GRAB = Pose(0.50f, 45f, 85f, 60f, 60f, 0.4f, 6f)          // hands meet at chest height
+private val AIM = Pose(0.50f, 90f, 92f, 60f, 60f, 0.4f, 9f)           // forearm vertical, dart at the eye
+private val DRAW = Pose(0.50f, 88f, 104f, 60f, 60f, 0.4f, 9f)         // slight draw-back before release
+private val FOLLOW = Pose(0.50f, 96f, 4f, 60f, 60f, 0.45f, 12f)       // arm extended at the board
+private val REMOVE = Pose(0.76f, 120f, 0f, 15f, 0f, 0.3f, 8f)
 
 private fun poseFor(step: Step): Pose = when (step.kind) {
     Kind.APPROACH -> WALK
     Kind.GRAB -> GRAB
     Kind.AIM -> AIM
-    Kind.THROW -> THROW
+    Kind.THROW -> DRAW
     Kind.REMOVE -> REMOVE
     else -> STAND
 }
@@ -54,8 +59,26 @@ private fun poseFor(step: Step): Pose = when (step.kind) {
  */
 @Composable
 fun StickFigure(step: Step, modifier: Modifier = Modifier) {
-    val target = poseFor(step)
-    val spec = tween<Float>(280)
+    // The dart leaves the hand at the moment a Throw step is COMPLETED, i.e. when the step moves on.
+    var prevStep by remember { mutableStateOf(step) }
+    val fly = remember { Animatable(0f) }
+    var releasing by remember { mutableStateOf(false) }
+    LaunchedEffect(step) {
+        val leavingThrow = prevStep.kind == Kind.THROW && step != prevStep
+        prevStep = step
+        if (leavingThrow) {
+            releasing = true
+            fly.snapTo(0f)
+            fly.animateTo(1f, tween(320))
+            releasing = false
+        } else if (step.kind == Kind.NONE || step.kind == Kind.OPPONENT) {
+            fly.snapTo(0f)
+        }
+    }
+    val flying = fly.value > 0f && fly.value < 1f
+
+    val target = if (releasing) FOLLOW.copy(x = poseFor(step).x) else poseFor(step)
+    val spec = tween<Float>(if (releasing) 110 else 300)
     val x by animateFloatAsState(target.x, spec, label = "x")
     val sR by animateFloatAsState(target.shoulderR, spec, label = "sR")
     val eR by animateFloatAsState(target.elbowR, spec, label = "eR")
@@ -64,24 +87,14 @@ fun StickFigure(step: Step, modifier: Modifier = Modifier) {
     val stride by animateFloatAsState(target.stride, spec, label = "stride")
     val lean by animateFloatAsState(target.lean, spec, label = "lean")
 
-    // Dart flight on a throw step
-    val fly = remember { Animatable(0f) }
-    LaunchedEffect(step) {
-        if (step.kind == Kind.THROW) {
-            fly.snapTo(0f)
-            fly.animateTo(1f, tween(380))
-        } else {
-            fly.snapTo(0f)
-        }
-    }
-
-    // How many darts are in the board at this step
+    // Darts in the board: every dart whose throw step is already complete.
     val dartsInBoard = when (step.kind) {
-        Kind.THROW -> step.dart          // the one flying lands at the end of the flight
-        Kind.GRAB, Kind.AIM -> step.dart - 1
+        Kind.GRAB, Kind.AIM, Kind.THROW -> step.dart - 1
         Kind.REMOVE -> 3
         else -> 0
     }
+    // The one in flight counts in dartsInBoard already (its throw step is over) — hide it until it lands.
+    val landed = if (flying) dartsInBoard - 1 else dartsInBoard
 
     Canvas(modifier = modifier) {
         val w = size.width
@@ -101,10 +114,9 @@ fun StickFigure(step: Step, modifier: Modifier = Modifier) {
         drawCircle(Red, boardR * 0.55f, boardC)
         drawCircle(Black, boardR * 0.25f, boardC)
         drawCircle(Gold, boardR, boardC, style = Stroke(width = thin))
-        val landed = if (step.kind == Kind.THROW) dartsInBoard - 1 + (if (fly.value >= 1f) 1 else 0) else dartsInBoard
         for (i in 0 until landed.coerceIn(0, 3)) {
             val dy = (i - 1) * boardR * 0.3f
-            drawDart(Offset(boardC.x - boardR * 0.1f, boardC.y + dy), 180f, h * 0.09f, thin)
+            drawDart(Offset(boardC.x - boardR * 0.1f, boardC.y + dy), 92f, h * 0.075f, thin)
         }
 
         // Opponent (only while the opponent throws)
@@ -116,17 +128,19 @@ fun StickFigure(step: Step, modifier: Modifier = Modifier) {
         val pose = Pose(x, sR, eR, sL, eL, stride, lean)
         val me = Offset(w * x, floorY)
         val dimmed = step.kind == Kind.OPPONENT || step.kind == Kind.NONE
-        drawFigure(me, h, pose, if (dimmed) Grey else Gold, stroke, thin, withDart = step.kind == Kind.AIM || (step.kind == Kind.THROW && fly.value <= 0.02f) || step.kind == Kind.GRAB)
+        val holdingDart = !flying && (step.kind == Kind.AIM || step.kind == Kind.THROW || step.kind == Kind.GRAB)
+        drawFigure(me, h, pose, if (dimmed) Grey else Gold, stroke, thin, withDart = holdingDart)
 
-        // Dart in flight
-        if (step.kind == Kind.THROW && fly.value > 0.02f && fly.value < 1f) {
-            val hand = handPosition(me, h, pose)
-            val targetPt = Offset(boardC.x - boardR * 0.1f, boardC.y + (step.dart - 2) * boardR * 0.3f)
+        // Dart in flight: a shallow arc from the release point to the board, nose slightly up then down
+        if (flying) {
+            val hand = handPosition(me, h, FOLLOW.copy(x = pose.x))
+            val slot = (dartsInBoard - 1).coerceIn(0, 2)
+            val targetPt = Offset(boardC.x - boardR * 0.1f, boardC.y + (slot - 1) * boardR * 0.3f)
             val t = fly.value
             val px = hand.x + (targetPt.x - hand.x) * t
-            val arc = -h * 0.12f * 4f * t * (1f - t)
+            val arc = -h * 0.06f * 4f * t * (1f - t)
             val py = hand.y + (targetPt.y - hand.y) * t + arc
-            drawDart(Offset(px, py), 170f + 20f * t, h * 0.09f, thin)
+            drawDart(Offset(px, py), 82f + 14f * t, h * 0.075f, thin)
         }
     }
 }
@@ -181,7 +195,9 @@ private fun DrawScope.drawFigure(feet: Offset, h: Float, p: Pose, color: Color, 
     drawLine(color, elbowR, handR, strokeWidth = stroke.width, cap = StrokeCap.Round)
 
     if (withDart) {
-        drawDart(handR, 90f + (p.shoulderR + p.elbowR - 90f) * 0.3f, h * 0.09f, thin)
+        // Dart held between thumb and fingers, level with a slightly raised nose, pointing at the board.
+        val nose = Offset(handR.x + h * 0.045f, handR.y - h * 0.008f)
+        drawDart(nose, 80f, h * 0.075f, thin)
     }
 }
 
