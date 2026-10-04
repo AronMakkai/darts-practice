@@ -32,7 +32,8 @@ object TimingPresets {
 
     /** Presets that ship with the app. They cannot be deleted. */
     val BUILT_IN = listOf(
-        TimingPreset("Pike (slow)", approach = 4f, dart = 5f, remove = 6f, rounds = 0)
+        TimingPreset("Pike (slow)", approach = 4f, dart = 5f, remove = 6f, rounds = 0),
+        TimingPreset("Littler (fast)", approach = 1.5f, dart = 1.9f, remove = 3.5f, rounds = 0)
     )
 
     fun load(ctx: Context): List<TimingPreset> = BUILT_IN + loadStored(ctx)
