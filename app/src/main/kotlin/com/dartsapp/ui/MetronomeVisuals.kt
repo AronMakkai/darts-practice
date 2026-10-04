@@ -153,3 +153,48 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStar(c: Offset,
     path.close()
     drawPath(path, color)
 }
+
+/**
+ * Gold bars stacked at the side of the screen, one per perfect checkout in a row. Ten small bars
+ * compact into one medium bar, ten medium into one large (100), ten large into one huge (1000).
+ */
+@Composable
+fun GoldBarStack(count: Int, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val ones = count % 10
+        val tens = (count / 10) % 10
+        val hundreds = (count / 100) % 10
+        val thousands = count / 1000
+
+        var y = h - 4f
+        fun bars(n: Int, barH: Float, widthFrac: Float, face: Color, top: Color, side: Color) {
+            val bw = w * widthFrac
+            val x0 = (w - bw) / 2f
+            val skew = barH * 0.45f
+            for (i in 0 until n) {
+                val yTop = y - barH
+                if (yTop < 0f) return
+                // front face
+                drawRect(face, Offset(x0, yTop + skew), Size(bw - skew, barH - skew))
+                // top face (parallelogram)
+                val topPath = Path().apply {
+                    moveTo(x0, yTop + skew); lineTo(x0 + skew, yTop); lineTo(x0 + bw, yTop); lineTo(x0 + bw - skew, yTop + skew); close()
+                }
+                drawPath(topPath, top)
+                // right side face
+                val sidePath = Path().apply {
+                    moveTo(x0 + bw - skew, yTop + skew); lineTo(x0 + bw, yTop); lineTo(x0 + bw, y - skew); lineTo(x0 + bw - skew, y); close()
+                }
+                drawPath(sidePath, side)
+                drawRect(Black.copy(alpha = 0.6f), Offset(x0, yTop + skew), Size(bw - skew, barH - skew), style = Stroke(width = 1.2f))
+                y -= barH + 2f
+            }
+        }
+        bars(thousands, h * 0.075f, 1.0f, Color(0xFFE8C14A), Color(0xFFFFF0A0), Color(0xFF9A7A1E))
+        bars(hundreds, h * 0.055f, 0.9f, Color(0xFFDDB53E), Color(0xFFFFE98A), Color(0xFF8E6F18))
+        bars(tens, h * 0.04f, 0.78f, Gold, PaleGold, Color(0xFF8A6A14))
+        bars(ones, h * 0.026f, 0.62f, Color(0xFFC9A431), Color(0xFFEFD77E), Color(0xFF7A5E10))
+    }
+}

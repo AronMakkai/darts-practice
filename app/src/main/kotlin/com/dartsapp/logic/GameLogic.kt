@@ -29,6 +29,18 @@ object CheckoutLogic {
 
     fun isFinishable(n: Int): Boolean = n in 2..170 && n !in bogeyNumbers
 
+    /**
+     * Checkout range that gets harder as the perfect-rhythm streak grows:
+     * 0–2: 2–60 · 3–5: 40–100 · 6–9: 80–140 · 10–19: 100–170 · 20+: 121–170 (big finishes only).
+     */
+    fun randomCheckoutForStreak(streak: Int): Int = when {
+        streak < 3 -> randomCheckout(2, 60)
+        streak < 6 -> randomCheckout(40, 100)
+        streak < 10 -> randomCheckout(80, 140)
+        streak < 20 -> randomCheckout(100, 170)
+        else -> randomCheckout(121, 170)
+    }
+
     fun randomCheckout(min: Int = 2, max: Int = 170): Int {
         while (true) {
             val n = Random.nextInt(min, max + 1)

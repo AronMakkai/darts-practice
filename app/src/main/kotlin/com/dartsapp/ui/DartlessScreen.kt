@@ -74,6 +74,12 @@ internal fun pauseFactor(pauseSec: Float, period: Float): Float {
 @Composable
 fun DartlessScreen(navController: NavHostController) {
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("dartless", android.content.Context.MODE_PRIVATE) }
+
+    // Perfect-rhythm streak (gold bars) and the all-time best
+    var streak by remember { mutableStateOf(prefs.getInt("streak", 0)) }
+    var best by remember { mutableStateOf(prefs.getInt("best", 0)) }
+    fun saveStreak() { prefs.edit().putInt("streak", streak).putInt("best", best).apply() }
 
     var start by remember { mutableStateOf(CheckoutLogic.randomCheckout()) }
     var remaining by remember { mutableStateOf(start) }
@@ -132,7 +138,8 @@ fun DartlessScreen(navController: NavHostController) {
     fun idleMessage() = if (metronomeMode) "Swipe up from the bottom-left corner to start a throw" else "Tap the board to throw"
 
     fun newCheckout() {
-        start = CheckoutLogic.randomCheckout()
+        if (!finished && dartsTotal > 0 && streak > 0) { streak = 0; saveStreak() }
+        start = if (metronomeMode) CheckoutLogic.randomCheckoutForStreak(streak) else CheckoutLogic.randomCheckout()
         remaining = start
         visitStart = start
         dartsInVisit = 0
@@ -197,14 +204,21 @@ fun DartlessScreen(navController: NavHostController) {
                 message = "$hitText — Checked out in $dartsTotal darts!"
                 // Perfect rhythm: metronome mode on for the whole checkout, every dart judged,
                 // none early/late, no hesitation between throws.
-                if (metronomeMode && allOnBeat && judgedThrows == dartsTotal) {
-                    message += "  Perfect rhythm!"
+                val perfect = metronomeMode && allOnBeat && judgedThrows == dartsTotal
+                if (perfect) {
+                    streak++
+                    if (streak > best) best = streak
+                    saveStreak()
+                    message += "  Perfect rhythm!  ×$streak"
                     val cx = boardSize.width / 2f
                     val cy = boardSize.height / 2f
                     val r = minOf(boardSize.width, boardSize.height) / 2f / RIM_SCALE
                     burstOrigin = Offset(boardPos.x + cx + lx * r, boardPos.y + cy + ly * r)
                     starTrigger++
                     Sounds.playCheckoutJingle()
+                } else if (streak > 0) {
+                    streak = 0
+                    saveStreak()
                 }
             }
             newRem < 0 || newRem == 1 || newRem == 0 -> {
@@ -256,7 +270,7 @@ fun DartlessScreen(navController: NavHostController) {
             }
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Preset", fontSize = 12.sp, color = Grey)
+                    Text(if (metronomeMode) "×$streak  ·  best $best" else "Preset", fontSize = 12.sp, color = if (metronomeMode) Gold else Grey, maxLines = 1)
                     OutlinedButton(
                         onClick = { presetMenuOpen = true },
                         enabled = metronomeMode,
@@ -346,6 +360,12 @@ fun DartlessScreen(navController: NavHostController) {
         }
     }
 
+    if (metronomeMode && streak > 0) {
+        GoldBarStack(
+            count = streak,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp).width(44.dp).fillMaxHeight(0.62f)
+        )
+    }
     if (metronomeMode) {
         SwipeToThrowZone(
             armed = throwStartMs != 0L,
