@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -17,6 +18,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.sin
 
 /**
@@ -77,6 +79,19 @@ fun StickFigure(step: Step, modifier: Modifier = Modifier) {
     }
     val flying = fly.value > 0f && fly.value < 1f
 
+    // Aiming: the elbow sways a little as the arm comes up, then settles within about half a second.
+    var sway by remember { mutableStateOf(0f) }
+    LaunchedEffect(step) {
+        sway = 0f
+        if (step.kind != Kind.AIM) return@LaunchedEffect
+        val startNs = withFrameNanos { it }
+        while (true) {
+            val t = (withFrameNanos { it } - startNs) / 1_000_000_000f
+            if (t > 0.9f) { sway = 0f; break }
+            sway = (9f * exp(-t / 0.18f) * sin(2.0 * Math.PI * 4.0 * t)).toFloat()
+        }
+    }
+
     val target = if (releasing) FOLLOW.copy(x = poseFor(step).x) else poseFor(step)
     val spec = tween<Float>(if (releasing) 110 else 300)
     val x by animateFloatAsState(target.x, spec, label = "x")
@@ -125,7 +140,7 @@ fun StickFigure(step: Step, modifier: Modifier = Modifier) {
         }
 
         // The player
-        val pose = Pose(x, sR, eR, sL, eL, stride, lean)
+        val pose = Pose(x, sR, eR + sway, sL, eL, stride, lean)
         val me = Offset(w * x, floorY)
         val dimmed = step.kind == Kind.OPPONENT || step.kind == Kind.NONE
         val holdingDart = !flying && (step.kind == Kind.AIM || step.kind == Kind.THROW || step.kind == Kind.GRAB)
