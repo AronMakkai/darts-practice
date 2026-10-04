@@ -467,10 +467,10 @@ private fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: 
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text("You threw", fontSize = 12.sp, color = Grey)
                 Text(thrown.joinToString("  ") { it.label }, fontSize = 16.sp, color = OffWhite, fontFamily = FontFamily.Monospace)
-                if (optimal != null) {
+                if (suggestion != null) {
                     Spacer(Modifier.height(10.dp))
                     Text("The book", fontSize = 12.sp, color = Grey)
-                    Text(CheckoutLogic.routeLabel(optimal), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Gold, fontFamily = FontFamily.Monospace)
+                    Text(CheckoutLogic.routeLabel(suggestion.best), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Gold, fontFamily = FontFamily.Monospace)
                     Text(suggestion.bestWhy, fontSize = 13.sp, color = PaleGold, modifier = Modifier.padding(top = 4.dp))
                 }
                 Spacer(Modifier.height(10.dp))
@@ -487,7 +487,8 @@ private fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: 
 
 private fun coachPointers(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: Int, s: CheckoutLogic.Suggestion?): List<String> {
     val out = mutableListOf<String>()
-    val optimal = s?.best ?: return listOf("No three-dart finish exists from $start — getting it done at all is the job.")
+    if (s == null) return listOf("No three-dart finish exists from $start — getting it done at all is the job.")
+    val optimal = s.best
     val extra = thrown.size - optimal.size
     if (extra <= 0 && busts == 0) {
         out.add("Textbook. ${optimal.size} dart${if (optimal.size == 1) "" else "s"}, no wasted throws — nothing to add.")
