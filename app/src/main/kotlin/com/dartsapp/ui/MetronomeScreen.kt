@@ -1,7 +1,6 @@
 package com.dartsapp.ui
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.media.AudioManager
 import android.media.ToneGenerator
 import androidx.compose.foundation.background
@@ -19,6 +18,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.dartsapp.logic.TimingPreset
+import com.dartsapp.logic.TimingPresets
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -37,15 +38,13 @@ enum class Step(val label: String, val doneLabel: String) {
     val isDart: Boolean get() = this == DART1 || this == DART2 || this == DART3
 }
 
+/** The playback cycle. */
 private val sequence = listOf(Step.APPROACH, Step.DART1, Step.DART2, Step.DART3, Step.REMOVE, Step.OPPONENT)
-/** The part of the cycle that is learned from the player. The opponent's time is a constant from the slider. */
+/** The part that is learned from the player. The opponent's time is a constant from the slider. */
 private val learnSequence = listOf(Step.START, Step.APPROACH, Step.DART1, Step.DART2, Step.DART3, Step.REMOVE)
 
-/**
- * Timings learned from the player. All three darts share ONE average — the first, second and
- * third dart are never timed differently.
- */
-data class Learned(
+/** Running totals for one learning session. All three darts share ONE average. */
+private data class Learning(
     val approachSum: Float = 0f, val approachN: Int = 0,
     val dartSum: Float = 0f, val dartN: Int = 0,
     val removeSum: Float = 0f, val removeN: Int = 0,
@@ -54,37 +53,16 @@ data class Learned(
     val approach: Float get() = if (approachN > 0) approachSum / approachN else 0f
     val dart: Float get() = if (dartN > 0) dartSum / dartN else 0f
     val remove: Float get() = if (removeN > 0) removeSum / removeN else 0f
-    val hasData: Boolean get() = dartN > 0 && approachN > 0 && removeN > 0
+    val complete: Boolean get() = rounds > 0
 
-    fun record(step: Step, seconds: Float): Learned = when {
+    fun record(step: Step, seconds: Float): Learning = when {
         step == Step.APPROACH -> copy(approachSum = approachSum + seconds, approachN = approachN + 1)
         step.isDart -> copy(dartSum = dartSum + seconds, dartN = dartN + 1)
         step == Step.REMOVE -> copy(removeSum = removeSum + seconds, removeN = removeN + 1, rounds = rounds + 1)
         else -> this
     }
 
-    /** Learned seconds for a step; the opponent step is not learned and returns null. */
-    fun secondsFor(step: Step): Float? = when {
-        step == Step.APPROACH -> approach
-        step.isDart -> dart
-        step == Step.REMOVE -> remove
-        else -> null
-    }
-
-    fun save(p: SharedPreferences) = p.edit()
-        .putFloat("aS", approachSum).putInt("aN", approachN)
-        .putFloat("dS", dartSum).putInt("dN", dartN)
-        .putFloat("rS", removeSum).putInt("rN", removeN)
-        .putInt("rounds", rounds).apply()
-
-    companion object {
-        fun load(p: SharedPreferences) = Learned(
-            p.getFloat("aS", 0f), p.getInt("aN", 0),
-            p.getFloat("dS", 0f), p.getInt("dN", 0),
-            p.getFloat("rS", 0f), p.getInt("rN", 0),
-            p.getInt("rounds", 0)
-        )
-    }
+    fun toPreset(name: String) = TimingPreset(name, approach, dart, remove, rounds)
 }
 
 private enum class Mode { IDLE, PLAYING, LEARNING }
@@ -96,14 +74,19 @@ fun MetronomeScreen(navController: NavHostController) {
 
     var intervalSec by remember { mutableStateOf(prefs.getFloat("interval", 3f)) }
     var opponentSec by remember { mutableStateOf(prefs.getFloat("opponent", 12f)) }
-    var useLearned by remember { mutableStateOf(prefs.getBoolean("useLearned", false)) }
-    var learned by remember { mutableStateOf(Learned.load(prefs)) }
+
+    var presets by remember { mutableStateOf(TimingPresets.load(context)) }
+    var selectedName by remember { mutableStateOf(TimingPresets.selectedName(context)) }
+    val preset: TimingPreset? = presets.firstOrNull { it.name == selectedName }
 
     var mode by remember { mutableStateOf(Mode.IDLE) }
     var step by remember { mutableStateOf(Step.READY) }
     var turn by remember { mutableStateOf(0) }
     var stepStartMs by remember { mutableStateOf(0L) }
     var elapsedSec by remember { mutableStateOf(0f) }
+    var learning by remember { mutableStateOf(Learning()) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var presetMenuOpen by remember { mutableStateOf(false) }
 
     val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }
     DisposableEffect(Unit) { onDispose { toneGen.release() } }
@@ -117,12 +100,15 @@ fun MetronomeScreen(navController: NavHostController) {
         }
     }
 
-    val playingLearned = useLearned && learned.hasData
-
     /** Duration of a step when the metronome drives itself. */
     fun durationSec(s: Step): Float = when {
         s == Step.OPPONENT -> opponentSec
-        playingLearned -> (learned.secondsFor(s) ?: intervalSec).coerceAtLeast(0.3f)
+        preset != null -> when {
+            s == Step.APPROACH -> preset.approach
+            s.isDart -> preset.dart
+            s == Step.REMOVE -> preset.remove
+            else -> intervalSec
+        }.coerceAtLeast(0.3f)
         else -> intervalSec
     }
 
@@ -140,7 +126,7 @@ fun MetronomeScreen(navController: NavHostController) {
         }
     }
 
-    // Learning mode: a live stopwatch for the current step
+    // Learning mode: a live stopwatch once the clock has started
     LaunchedEffect(mode, step) {
         if (mode != Mode.LEARNING || step == Step.START) return@LaunchedEffect
         while (true) {
@@ -150,6 +136,7 @@ fun MetronomeScreen(navController: NavHostController) {
     }
 
     fun startLearning() {
+        learning = Learning()
         mode = Mode.LEARNING
         turn = 1
         step = Step.START
@@ -159,8 +146,7 @@ fun MetronomeScreen(navController: NavHostController) {
     fun learningStepDone() {
         val now = System.currentTimeMillis()
         if (step != Step.START) {
-            val seconds = (now - stepStartMs) / 1000f
-            learned = learned.record(step, seconds).also { it.save(prefs) }
+            learning = learning.record(step, (now - stepStartMs) / 1000f)
         }
         val idx = learnSequence.indexOf(step)
         val next = if (idx == learnSequence.lastIndex) { turn++; learnSequence.first() } else learnSequence[idx + 1]
@@ -173,6 +159,29 @@ fun MetronomeScreen(navController: NavHostController) {
     fun stop() {
         mode = Mode.IDLE
         step = Step.READY
+    }
+
+    fun finishLearning() {
+        if (learning.complete) showSaveDialog = true else stop()
+    }
+
+    fun selectPreset(name: String?) {
+        selectedName = name
+        TimingPresets.setSelected(context, name)
+    }
+
+    if (showSaveDialog) {
+        SavePresetDialog(
+            defaultName = "Preset ${presets.size + 1}",
+            summary = learning.toPreset("").summary(),
+            onSave = { name ->
+                presets = TimingPresets.add(context, learning.toPreset(name))
+                selectPreset(TimingPresets.sanitize(name))
+                showSaveDialog = false
+                stop()
+            },
+            onDiscard = { showSaveDialog = false; stop() }
+        )
     }
 
     Column(
@@ -198,14 +207,17 @@ fun MetronomeScreen(navController: NavHostController) {
         )
         Text(
             when (mode) {
-                Mode.IDLE -> if (playingLearned) "Using your learned timing" else "Using the sliders"
-                Mode.PLAYING -> "Turn $turn" + if (playingLearned) "  ·  learned timing" else ""
-                Mode.LEARNING -> if (step == Step.START) "Learning  ·  round $turn  ·  press when the opponent has finished"
-                                 else "Learning  ·  round $turn  ·  ${formatSec(elapsedSec)} s"
+                Mode.IDLE -> if (preset != null) "Timing: ${preset.name}" else "Timing: sliders"
+                Mode.PLAYING -> "Turn $turn" + if (preset != null) "  ·  ${preset.name}" else ""
+                Mode.LEARNING -> {
+                    if (step == Step.START) "Learning  ·  round $turn  ·  press when the opponent has finished"
+                    else "Learning  ·  round $turn  ·  ${formatSec(elapsedSec)} s"
+                }
             },
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(4.dp)
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
         )
 
         // Learning mode: the big "done" button
@@ -213,7 +225,7 @@ fun MetronomeScreen(navController: NavHostController) {
             Button(
                 onClick = { learningStepDone() },
                 modifier = Modifier.fillMaxWidth(0.85f).padding(vertical = 12.dp).height(88.dp)
-            ) { Text(step.doneLabel, fontSize = 26.sp, fontWeight = FontWeight.Bold) }
+            ) { Text(step.doneLabel, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) }
             Text(
                 "Play a real turn. Press the button the moment each step is finished. The clock starts at the opponent's last dart.",
                 fontSize = 13.sp, color = Grey, textAlign = TextAlign.Center,
@@ -255,47 +267,53 @@ fun MetronomeScreen(navController: NavHostController) {
 
         Spacer(Modifier.height(16.dp))
 
-        // Learned timing summary + controls
+        // Timing presets card
         Card(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
             colors = CardDefaults.cardColors(containerColor = Charcoal)
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Your timing", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Gold)
-                        Text(
-                            if (learned.rounds == 0) "Not learned yet — press Learn and play a few turns."
-                            else "From ${learned.rounds} round${if (learned.rounds == 1) "" else "s"}:  " +
-                                "approach ${formatSec(learned.approach)} s  ·  dart ${formatSec(learned.dart)} s  ·  " +
-                                "remove ${formatSec(learned.remove)} s",
-                            fontSize = 13.sp, color = Grey
-                        )
+                Text("Timing preset", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Gold)
+
+                Box {
+                    OutlinedButton(
+                        onClick = { presetMenuOpen = true },
+                        enabled = mode == Mode.IDLE,
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                    ) { Text(preset?.name ?: "Sliders (manual)", color = OffWhite) }
+                    DropdownMenu(expanded = presetMenuOpen, onDismissRequest = { presetMenuOpen = false }) {
+                        DropdownMenuItem(text = { Text("Sliders (manual)") }, onClick = { selectPreset(null); presetMenuOpen = false })
+                        for (p in presets) {
+                            DropdownMenuItem(text = { Text(p.name) }, onClick = { selectPreset(p.name); presetMenuOpen = false })
+                        }
                     }
-                    Switch(
-                        checked = useLearned,
-                        onCheckedChange = { useLearned = it; prefs.edit().putBoolean("useLearned", it).apply() },
-                        enabled = learned.hasData && mode == Mode.IDLE,
-                        colors = SwitchDefaults.colors(checkedThumbColor = Gold, checkedTrackColor = DarkRed)
-                    )
                 }
+
+                Text(
+                    preset?.summary()
+                        ?: if (presets.isEmpty()) "No presets yet — press Learn my timing and play a few turns." else "Using the sliders below.",
+                    fontSize = 13.sp, color = Grey, modifier = Modifier.padding(top = 6.dp)
+                )
+
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     if (mode == Mode.LEARNING) {
-                        Button(onClick = { stop() }) { Text("Finish learning") }
+                        Button(onClick = { finishLearning() }) { Text(if (learning.complete) "Finish & save" else "Cancel") }
                     } else {
                         OutlinedButton(onClick = { startLearning() }, enabled = mode == Mode.IDLE) { Text("Learn my timing", color = Gold) }
                     }
-                    TextButton(
-                        onClick = { learned = Learned().also { it.save(prefs) }; useLearned = false },
-                        enabled = learned.rounds > 0 && mode == Mode.IDLE
-                    ) { Text("Reset", color = Grey) }
+                    if (preset != null && mode == Mode.IDLE) {
+                        TextButton(onClick = {
+                            presets = TimingPresets.delete(context, preset.name)
+                            selectPreset(null)
+                        }) { Text("Delete", color = Grey) }
+                    }
                 }
             }
         }
 
         Spacer(Modifier.height(12.dp))
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-            if (!playingLearned) {
+            if (preset == null) {
                 Text("Seconds between beats: ${formatSec(intervalSec)} s", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 Slider(
                     value = intervalSec,
@@ -328,5 +346,27 @@ fun MetronomeScreen(navController: NavHostController) {
     }
 }
 
-private fun formatSec(v: Float): String =
+@Composable
+private fun SavePresetDialog(defaultName: String, summary: String, onSave: (String) -> Unit, onDiscard: () -> Unit) {
+    var name by remember { mutableStateOf(defaultName) }
+    AlertDialog(
+        onDismissRequest = onDiscard,
+        title = { Text("Save timing preset") },
+        text = {
+            Column {
+                Text(summary, fontSize = 13.sp, color = Grey, modifier = Modifier.padding(bottom = 10.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Preset name") },
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = { Button(onClick = { onSave(name) }) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDiscard) { Text("Discard", color = Grey) } }
+    )
+}
+
+internal fun formatSec(v: Float): String =
     if (v == v.roundToInt().toFloat()) v.roundToInt().toString() else String.format("%.1f", v)
