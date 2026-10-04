@@ -30,12 +30,14 @@ enum class Step(val label: String, val doneLabel: String) {
     DART2("Dart 2", "Thrown"),
     DART3("Dart 3", "Thrown"),
     REMOVE("Remove darts", "Darts removed"),
-    OPPONENT("Opponent throws", "Opponent finished");
+    OPPONENT("Opponent throws", "");
 
     val isDart: Boolean get() = this == DART1 || this == DART2 || this == DART3
 }
 
 private val sequence = listOf(Step.APPROACH, Step.DART1, Step.DART2, Step.DART3, Step.REMOVE, Step.OPPONENT)
+/** The part of the cycle that is learned from the player. The opponent's time is a constant from the slider. */
+private val learnSequence = listOf(Step.APPROACH, Step.DART1, Step.DART2, Step.DART3, Step.REMOVE)
 
 /**
  * Timings learned from the player. All three darts share ONE average — the first, second and
@@ -45,35 +47,32 @@ data class Learned(
     val approachSum: Float = 0f, val approachN: Int = 0,
     val dartSum: Float = 0f, val dartN: Int = 0,
     val removeSum: Float = 0f, val removeN: Int = 0,
-    val opponentSum: Float = 0f, val opponentN: Int = 0,
     val rounds: Int = 0
 ) {
     val approach: Float get() = if (approachN > 0) approachSum / approachN else 0f
     val dart: Float get() = if (dartN > 0) dartSum / dartN else 0f
     val remove: Float get() = if (removeN > 0) removeSum / removeN else 0f
-    val opponent: Float get() = if (opponentN > 0) opponentSum / opponentN else 0f
-    val hasData: Boolean get() = dartN > 0 && approachN > 0 && removeN > 0 && opponentN > 0
+    val hasData: Boolean get() = dartN > 0 && approachN > 0 && removeN > 0
 
     fun record(step: Step, seconds: Float): Learned = when {
         step == Step.APPROACH -> copy(approachSum = approachSum + seconds, approachN = approachN + 1)
         step.isDart -> copy(dartSum = dartSum + seconds, dartN = dartN + 1)
-        step == Step.REMOVE -> copy(removeSum = removeSum + seconds, removeN = removeN + 1)
-        step == Step.OPPONENT -> copy(opponentSum = opponentSum + seconds, opponentN = opponentN + 1, rounds = rounds + 1)
+        step == Step.REMOVE -> copy(removeSum = removeSum + seconds, removeN = removeN + 1, rounds = rounds + 1)
         else -> this
     }
 
-    fun secondsFor(step: Step): Float = when {
+    /** Learned seconds for a step; the opponent step is not learned and returns null. */
+    fun secondsFor(step: Step): Float? = when {
         step == Step.APPROACH -> approach
         step.isDart -> dart
         step == Step.REMOVE -> remove
-        else -> opponent
+        else -> null
     }
 
     fun save(p: SharedPreferences) = p.edit()
         .putFloat("aS", approachSum).putInt("aN", approachN)
         .putFloat("dS", dartSum).putInt("dN", dartN)
         .putFloat("rS", removeSum).putInt("rN", removeN)
-        .putFloat("oS", opponentSum).putInt("oN", opponentN)
         .putInt("rounds", rounds).apply()
 
     companion object {
@@ -81,7 +80,6 @@ data class Learned(
             p.getFloat("aS", 0f), p.getInt("aN", 0),
             p.getFloat("dS", 0f), p.getInt("dN", 0),
             p.getFloat("rS", 0f), p.getInt("rN", 0),
-            p.getFloat("oS", 0f), p.getInt("oN", 0),
             p.getInt("rounds", 0)
         )
     }
@@ -120,9 +118,11 @@ fun MetronomeScreen(navController: NavHostController) {
     val playingLearned = useLearned && learned.hasData
 
     /** Duration of a step when the metronome drives itself. */
-    fun durationSec(s: Step): Float =
-        if (playingLearned) learned.secondsFor(s).coerceAtLeast(0.3f)
-        else if (s == Step.OPPONENT) opponentSec else intervalSec
+    fun durationSec(s: Step): Float = when {
+        s == Step.OPPONENT -> opponentSec
+        playingLearned -> (learned.secondsFor(s) ?: intervalSec).coerceAtLeast(0.3f)
+        else -> intervalSec
+    }
 
     // Automatic metronome
     LaunchedEffect(mode) {
@@ -160,8 +160,8 @@ fun MetronomeScreen(navController: NavHostController) {
         val now = System.currentTimeMillis()
         val seconds = (now - stepStartMs) / 1000f
         learned = learned.record(step, seconds).also { it.save(prefs) }
-        val idx = sequence.indexOf(step)
-        val next = if (idx == sequence.lastIndex) { turn++; sequence.first() } else sequence[idx + 1]
+        val idx = learnSequence.indexOf(step)
+        val next = if (idx == learnSequence.lastIndex) { turn++; learnSequence.first() } else learnSequence[idx + 1]
         step = next
         stepStartMs = now
         elapsedSec = 0f
@@ -212,7 +212,7 @@ fun MetronomeScreen(navController: NavHostController) {
                 modifier = Modifier.fillMaxWidth(0.85f).padding(vertical = 12.dp).height(88.dp)
             ) { Text(step.doneLabel, fontSize = 26.sp, fontWeight = FontWeight.Bold) }
             Text(
-                "Play a real turn. Press the button the moment each step is finished.",
+                "Play a real turn. Press the button the moment each step is finished. The opponent's time comes from the slider.",
                 fontSize = 13.sp, color = Grey, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
@@ -262,7 +262,7 @@ fun MetronomeScreen(navController: NavHostController) {
                             if (learned.rounds == 0) "Not learned yet — press Learn and play a few turns."
                             else "From ${learned.rounds} round${if (learned.rounds == 1) "" else "s"}:  " +
                                 "approach ${formatSec(learned.approach)} s  ·  dart ${formatSec(learned.dart)} s  ·  " +
-                                "remove ${formatSec(learned.remove)} s  ·  opponent ${formatSec(learned.opponent)} s",
+                                "remove ${formatSec(learned.remove)} s",
                             fontSize = 13.sp, color = Grey
                         )
                     }
@@ -287,10 +287,9 @@ fun MetronomeScreen(navController: NavHostController) {
             }
         }
 
-        // Manual sliders (only matter when not using learned timing)
-        if (!playingLearned) {
-            Spacer(Modifier.height(12.dp))
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+        Spacer(Modifier.height(12.dp))
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+            if (!playingLearned) {
                 Text("Seconds between beats: ${formatSec(intervalSec)} s", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 Slider(
                     value = intervalSec,
@@ -300,16 +299,16 @@ fun MetronomeScreen(navController: NavHostController) {
                     enabled = mode == Mode.IDLE,
                     colors = SliderDefaults.colors(thumbColor = Gold, activeTrackColor = Red, inactiveTrackColor = Charcoal)
                 )
-                Text("Opponent's turn: ${formatSec(opponentSec)} s", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Slider(
-                    value = opponentSec,
-                    onValueChange = { opponentSec = it.roundToInt().toFloat() },
-                    onValueChangeFinished = { prefs.edit().putFloat("opponent", opponentSec).apply() },
-                    valueRange = 1f..40f,
-                    enabled = mode == Mode.IDLE,
-                    colors = SliderDefaults.colors(thumbColor = Gold, activeTrackColor = Red, inactiveTrackColor = Charcoal)
-                )
             }
+            Text("Opponent's turn: ${formatSec(opponentSec)} s", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Slider(
+                value = opponentSec,
+                onValueChange = { opponentSec = it.roundToInt().toFloat() },
+                onValueChangeFinished = { prefs.edit().putFloat("opponent", opponentSec).apply() },
+                valueRange = 1f..40f,
+                enabled = mode == Mode.IDLE,
+                colors = SliderDefaults.colors(thumbColor = Gold, activeTrackColor = Red, inactiveTrackColor = Charcoal)
+            )
         }
 
         Spacer(Modifier.height(20.dp))

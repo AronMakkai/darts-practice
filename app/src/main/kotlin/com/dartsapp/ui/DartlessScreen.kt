@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -18,9 +19,15 @@ import com.dartsapp.data.Hit
 import com.dartsapp.logic.AccuracyModel
 import com.dartsapp.logic.CheckoutLogic
 
+private val Green = Color(0xFF1B9A3C)
+private val BoardGeo = BoardGeometry.PRACTICE
+
 /**
  * Dartless checkout: tap the board where you would aim. The accuracy slider adds random
  * scatter to where the dart actually lands, so at low accuracy T20 might become S1 or S5.
+ *
+ * Metronome mode adds the physical rhythm: press "Grab darts" at the start of each visit and
+ * "Aim" before every dart; only then does a tap on the board count as a throw.
  */
 @Composable
 fun DartlessScreen(navController: NavHostController) {
@@ -36,6 +43,11 @@ fun DartlessScreen(navController: NavHostController) {
     val thrown = remember { mutableStateListOf<Hit>() }
     val model = remember { AccuracyModel() }
 
+    // Metronome mode gating
+    var metronomeMode by remember { mutableStateOf(false) }
+    var grabbed by remember { mutableStateOf(false) }
+    var aimed by remember { mutableStateOf(false) }
+
     fun newCheckout() {
         start = CheckoutLogic.randomCheckout()
         remaining = start
@@ -43,13 +55,19 @@ fun DartlessScreen(navController: NavHostController) {
         dartsInVisit = 0
         dartsTotal = 0
         finished = false
-        message = "Tap the board to throw"
+        message = if (metronomeMode) "Grab your darts" else "Tap the board to throw"
         marks.clear()
         thrown.clear()
+        grabbed = false
+        aimed = false
     }
 
     fun throwAt(aim: Offset) {
         if (finished) return
+        if (metronomeMode) {
+            if (!grabbed) { message = "Grab your darts first"; return }
+            if (!aimed) { message = "Aim first"; return }
+        }
         // Start a fresh visit if the previous one is complete.
         if (dartsInVisit >= 3) {
             dartsInVisit = 0
@@ -57,15 +75,16 @@ fun DartlessScreen(navController: NavHostController) {
             marks.clear()
             thrown.clear()
         }
-        val aimed = Board.hitTest(aim.x, aim.y, BoardGeometry.WIDE)
+        val target = Board.hitTest(aim.x, aim.y, BoardGeo)
         val (lx, ly) = model.land(aim.x, aim.y, accuracy)
-        val hit = Board.hitTest(lx, ly, BoardGeometry.WIDE)
+        val hit = Board.hitTest(lx, ly, BoardGeo)
         marks.add(Offset(lx, ly))
         thrown.add(hit)
         dartsInVisit++
         dartsTotal++
+        aimed = false
 
-        val hitText = if (aimed == hit) "Hit ${hit.label} (${hit.score})" else "Aimed ${aimed.label}, hit ${hit.label} (${hit.score})"
+        val hitText = if (target == hit) "Hit ${hit.label} (${hit.score})" else "Aimed ${target.label}, hit ${hit.label} (${hit.score})"
         val newRem = remaining - hit.score
         when {
             newRem == 0 && hit.isDoubleOut -> {
@@ -83,40 +102,93 @@ fun DartlessScreen(navController: NavHostController) {
                 message = hitText
             }
         }
+        // Visit over: the darts are in the board, you'll have to grab them again.
+        if (dartsInVisit >= 3 || finished) grabbed = false
     }
 
     val tip = remember(remaining) { if (remaining > 1) CheckoutLogic.tip(remaining) else "" }
     val dartNo = if (dartsInVisit >= 3) 3 else dartsInVisit
+    val canAim = metronomeMode && grabbed && !aimed && !finished
 
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
-        ScreenHeader("Dartless Checkout", navController) {
-            TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = if (metronomeMode) 96.dp else 16.dp)
+        ) {
+            ScreenHeader("Dartless Checkout", navController) {
+                TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
+            }
+
+            RemainingDisplay(start, remaining, tip, message)
+
+            Text(
+                "Dart $dartNo/3   Visit: " + thrown.joinToString(" ") { it.label }.ifEmpty { "—" },
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp)
+            )
+
+            Dartboard(
+                modifier = Modifier.padding(8.dp),
+                geometry = BoardGeo,
+                marks = marks,
+                onTap = { throwAt(it) }
+            )
+
+            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                Text("Accuracy: ${(accuracy * 100).toInt()}%", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Slider(
+                    value = accuracy, onValueChange = { accuracy = it }, valueRange = 0f..1f,
+                    colors = SliderDefaults.colors(thumbColor = Gold, activeTrackColor = Red, inactiveTrackColor = Charcoal)
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Metronome mode", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Grab darts, aim, then throw", fontSize = 12.sp, color = Grey)
+                    }
+                    Switch(
+                        checked = metronomeMode,
+                        onCheckedChange = {
+                            metronomeMode = it
+                            grabbed = false
+                            aimed = false
+                            if (!finished) message = if (it) "Grab your darts" else "Tap the board to throw"
+                        },
+                        colors = SwitchDefaults.colors(checkedThumbColor = Gold, checkedTrackColor = DarkRed)
+                    )
+                }
+            }
+
+            if (finished) {
+                Button(onClick = { newCheckout() }, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp)) { Text("Next checkout") }
+            }
         }
 
-        RemainingDisplay(start, remaining, tip, message)
+        // Metronome-mode action buttons pinned to the bottom of the screen
+        if (metronomeMode) {
+            Button(
+                onClick = { grabbed = true; message = "Aim" },
+                enabled = !grabbed && !finished,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Red,
+                    disabledContainerColor = if (grabbed) Green else Charcoal,
+                    disabledContentColor = if (grabbed) OffWhite else Grey
+                ),
+                modifier = Modifier.align(Alignment.BottomStart).padding(16.dp).height(64.dp)
+            ) { Text("Grab darts", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
 
-        Text(
-            "Dart $dartNo/3   Visit: " + thrown.joinToString(" ") { it.label }.ifEmpty { "—" },
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp)
-        )
-
-        Dartboard(
-            modifier = Modifier.padding(8.dp),
-            geometry = BoardGeometry.WIDE,
-            marks = marks,
-            onTap = { throwAt(it) }
-        )
-
-        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            Text("Accuracy: ${(accuracy * 100).toInt()}%", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Slider(value = accuracy, onValueChange = { accuracy = it }, valueRange = 0f..1f,
-                colors = SliderDefaults.colors(thumbColor = Gold, activeTrackColor = Red, inactiveTrackColor = Charcoal))
-        }
-
-        if (finished) {
-            Button(onClick = { newCheckout() }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Next checkout") }
+            Button(
+                onClick = { aimed = true; message = "Throw — tap the board" },
+                enabled = canAim,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Red,
+                    disabledContainerColor = if (aimed) Green else Charcoal,
+                    disabledContentColor = if (aimed) OffWhite else Grey
+                ),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp).height(64.dp).width(120.dp)
+            ) { Text("Aim", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
         }
     }
 }

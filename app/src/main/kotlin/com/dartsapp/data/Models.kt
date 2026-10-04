@@ -58,6 +58,13 @@ data class BoardGeometry(
             trebleIn = 0.50f, trebleOut = 0.66f,
             doubleIn = 0.84f
         )
+
+        /** Halfway between a real board and WIDE — used by Dartless Checkout. */
+        val PRACTICE = BoardGeometry(
+            bullR = 0.061f, outerBullR = 0.132f,
+            trebleIn = 0.541f, trebleOut = 0.645f,
+            doubleIn = 0.897f
+        )
     }
 }
 
