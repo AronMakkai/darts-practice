@@ -36,12 +36,15 @@ private val BoardGeo = BoardGeometry.PRACTICE
 
 /**
  * Accuracy from how close [measured] seconds is to the preset's [target].
- * Within 10 % of the target = 100 %. Every further 10 % off costs 15 %. Never below 5 %.
+ * A generous window counts as perfect: within 25 % of the target (or half a second, whichever
+ * is larger) = 100 %. Beyond that, accuracy falls off linearly — 50 % off the target is still
+ * about 75 % accuracy, double the target is about 25 %. Never below 20 %.
  */
 internal fun timingAccuracy(measured: Float, target: Float): Float {
     if (target <= 0f) return 1f
-    val error = abs(measured - target) / target
-    return (1f - (error - 0.10f).coerceAtLeast(0f) * 1.5f).coerceIn(0.05f, 1f)
+    val tolerance = maxOf(0.25f * target, 0.5f)
+    val excess = (abs(measured - target) - tolerance).coerceAtLeast(0f)
+    return (1f - excess / target).coerceIn(0.2f, 1f)
 }
 
 /**
@@ -74,6 +77,7 @@ fun DartlessScreen(navController: NavHostController) {
     var grabbed by remember { mutableStateOf(false) }
     var aimed by remember { mutableStateOf(false) }
     var grabbedAtMs by remember { mutableStateOf(0L) }
+    var beatAnchorMs by remember { mutableStateOf(0L) }   // 0 = beat not running
     var lastThrowMs by remember { mutableStateOf(0L) }
     val presets = remember { TimingPresets.load(context) }
     var presetName by remember { mutableStateOf(TimingPresets.selectedName(context) ?: presets.firstOrNull()?.name) }
@@ -86,8 +90,8 @@ fun DartlessScreen(navController: NavHostController) {
 
     // Metronome beat: ticks at the preset's dart interval, anchored to the last "Grab darts" press,
     // so the beats land where the throws should. Audible click + the buttons flash brighter.
-    val beatSec = if (metronomeMode && !finished) preset?.dart else null
-    LaunchedEffect(beatSec, grabbedAtMs) {
+    val beatSec = if (metronomeMode && !finished && beatAnchorMs > 0L) preset?.dart else null
+    LaunchedEffect(beatSec, beatAnchorMs) {
         if (beatSec == null) { pulse = false; return@LaunchedEffect }
         val periodMs = (beatSec.coerceAtLeast(0.3f) * 1000).toLong()
         while (true) {
@@ -99,7 +103,7 @@ fun DartlessScreen(navController: NavHostController) {
         }
     }
 
-    fun idleMessage() = if (metronomeMode) "Grab your darts" else "Tap the board to throw"
+    fun idleMessage() = if (metronomeMode) "Press Grab darts to start the beat" else "Tap the board to throw"
 
     fun newCheckout() {
         start = CheckoutLogic.randomCheckout()
@@ -115,6 +119,7 @@ fun DartlessScreen(navController: NavHostController) {
         grabbed = false
         aimed = false
         lastThrowMs = 0L
+        beatAnchorMs = 0L
     }
 
     fun throwAt(aim: Offset) {
@@ -170,7 +175,11 @@ fun DartlessScreen(navController: NavHostController) {
                 message = hitText
             }
         }
-        if (dartsInVisit >= 3) lastThrowMs = 0L
+        if (dartsInVisit >= 3 || finished) {
+            lastThrowMs = 0L
+            beatAnchorMs = 0L
+            if (!finished) message += "  ·  Grab darts to start the next visit"
+        }
     }
 
     val tip = remember(remaining) { if (remaining > 1) CheckoutLogic.tip(remaining) else "" }
@@ -198,6 +207,7 @@ fun DartlessScreen(navController: NavHostController) {
                             grabbed = false
                             aimed = false
                             lastThrowMs = 0L
+                            beatAnchorMs = 0L
                             timingNote = ""
                             if (!finished) message = idleMessage()
                         },
@@ -278,7 +288,7 @@ fun DartlessScreen(navController: NavHostController) {
 
                 if (metronomeMode) {
                     Text(
-                        preset?.let { "Target: ${formatSec(it.dart)} s per dart (Grab darts to throw for dart 1, then dart to dart)" }
+                        preset?.let { "Target: ${formatSec(it.dart)} s per dart. The beat starts when you press Grab darts; throw on the clicks." }
                             ?: "Pick a timing preset (top right) — learn one in the Metronome screen.",
                         fontSize = 12.sp, color = Grey, modifier = Modifier.padding(top = 4.dp)
                     )
@@ -310,6 +320,7 @@ fun DartlessScreen(navController: NavHostController) {
                         if (!grabbed) {
                             grabbed = true
                             grabbedAtMs = System.currentTimeMillis()
+                            if (beatAnchorMs == 0L || dartsInVisit == 0 || dartsInVisit >= 3) beatAnchorMs = grabbedAtMs
                             message = "Aim"
                         }
                     },
