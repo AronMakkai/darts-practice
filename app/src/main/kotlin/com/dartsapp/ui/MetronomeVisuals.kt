@@ -1,6 +1,8 @@
 package com.dartsapp.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -20,59 +22,70 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * An inverted metronome pendulum. It passes upright on every beat: [periodSec] is the time between
- * beats (one throw), so a full left-right-left swing takes two beats. [anchorMs] is the wall-clock
- * time of beat zero; when it is 0 the pendulum rests upright.
+ * Throw-pace ring drawn over the board. Started by a swipe, it grows from the centre to the edge of
+ * the board and shrinks back to the centre over [periodSec] (the preset's dart time). The ideal
+ * moment to tap the target is when it is smallest again. After that it pulses small at the centre
+ * until the throw is made. [startMs] = 0 means no throw is armed and nothing is drawn.
  */
 @Composable
-fun MetronomePendulum(anchorMs: Long, periodSec: Float, modifier: Modifier = Modifier) {
+fun ThrowRing(startMs: Long, periodSec: Float, modifier: Modifier = Modifier) {
     var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(anchorMs) {
-        if (anchorMs == 0L) return@LaunchedEffect
+    LaunchedEffect(startMs) {
+        if (startMs == 0L) return@LaunchedEffect
         while (true) {
             withFrameNanos { }
             nowMs = System.currentTimeMillis()
         }
     }
+    if (startMs == 0L || periodSec <= 0f) return
 
-    val running = anchorMs > 0L && periodSec > 0f
-    val t = if (running) (nowMs - anchorMs) / 1000f else 0f
-    val maxDeg = 32f
-    val angleDeg = if (running) maxDeg * sin(PI.toFloat() * t / periodSec) else 0f
-    // How close we are to a beat, 1 = on the beat, 0 = halfway between beats
-    val phase = if (running) ((t / periodSec) % 1f + 1f) % 1f else 0f
-    val closeness = 1f - 2f * minOf(phase, 1f - phase)
+    val t = (nowMs - startMs) / 1000f
+    val inCycle = t <= periodSec
+    // 0 -> 1 -> 0 over one period, then a gentle pulse around the centre
+    val scale = if (inCycle) sin(PI.toFloat() * t / periodSec) else 0.06f + 0.03f * sin((t - periodSec) * 8f)
+    val nearCentre = !inCycle || (t > periodSec * 0.85f)
 
     Canvas(modifier = modifier) {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val boardR = minOf(size.width, size.height) / 2f / RIM_SCALE
+        val r = boardR * scale.coerceIn(0.02f, 1f)
+        val color = if (nearCentre) BrightGold else Gold
+        drawCircle(color.copy(alpha = 0.18f), r, Offset(cx, cy))
+        drawCircle(color.copy(alpha = 0.75f), r, Offset(cx, cy), style = Stroke(width = boardR * 0.05f))
+        // Centre dot marks the ideal moment
+        drawCircle(color.copy(alpha = if (nearCentre) 0.9f else 0.35f), boardR * 0.025f, Offset(cx, cy))
+    }
+}
+
+/**
+ * The swipe zone in the bottom-left corner. A diagonal swipe up-and-right arms a throw.
+ * Draws a translucent arrow; brighter while a throw is armed.
+ */
+@Composable
+fun SwipeToThrowZone(armed: Boolean, enabled: Boolean, onSwipe: () -> Unit, modifier: Modifier = Modifier) {
+    var dragX by remember { mutableStateOf(0f) }
+    var dragY by remember { mutableStateOf(0f) }
+    Canvas(
+        modifier = modifier.pointerInput(enabled) {
+            if (!enabled) return@pointerInput
+            detectDragGestures(
+                onDragStart = { dragX = 0f; dragY = 0f },
+                onDrag = { change, amount -> change.consume(); dragX += amount.x; dragY += amount.y },
+                onDragEnd = { if (dragX > 60f && dragY < -60f) onSwipe() },
+                onDragCancel = { }
+            )
+        }
+    ) {
         val w = size.width
         val h = size.height
-        val pivot = Offset(w / 2f, h * 0.88f)
-        val rodLen = h * 0.74f
-
-        // Base
-        val base = Path().apply {
-            moveTo(w * 0.30f, h); lineTo(w * 0.70f, h); lineTo(w * 0.62f, h * 0.80f); lineTo(w * 0.38f, h * 0.80f); close()
-        }
-        drawPath(base, Charcoal)
-        drawPath(base, Gold, style = Stroke(width = h * 0.015f))
-
-        // Beat marker (upright) and swing limits
-        val tickTop = pivot.y - rodLen - h * 0.06f
-        drawLine(if (closeness > 0.85f) BrightGold else DarkRed, Offset(pivot.x, tickTop), Offset(pivot.x, tickTop + h * 0.08f), strokeWidth = h * 0.02f, cap = StrokeCap.Round)
-        for (sign in listOf(-1f, 1f)) {
-            val r = Math.toRadians((maxDeg * sign).toDouble())
-            val tip = Offset(pivot.x + (rodLen + h * 0.03f) * sin(r).toFloat(), pivot.y - (rodLen + h * 0.03f) * cos(r).toFloat())
-            drawCircle(Grey, h * 0.012f, tip)
-        }
-
-        // Rod and weight
-        val r = Math.toRadians(angleDeg.toDouble())
-        val tip = Offset(pivot.x + rodLen * sin(r).toFloat(), pivot.y - rodLen * cos(r).toFloat())
-        val weight = Offset(pivot.x + rodLen * 0.72f * sin(r).toFloat(), pivot.y - rodLen * 0.72f * cos(r).toFloat())
-        drawLine(OffWhite, pivot, tip, strokeWidth = h * 0.022f, cap = StrokeCap.Round)
-        drawCircle(if (closeness > 0.85f) BrightGold else Gold, h * 0.07f, weight)
-        drawCircle(Black, h * 0.03f, weight)
-        drawCircle(Red, h * 0.035f, pivot)
+        val color = (if (armed) BrightGold else Gold).copy(alpha = if (enabled) (if (armed) 0.9f else 0.45f) else 0.15f)
+        val stroke = h * 0.06f
+        val from = Offset(w * 0.2f, h * 0.8f)
+        val to = Offset(w * 0.8f, h * 0.2f)
+        drawLine(color, from, to, strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color, to, Offset(to.x - w * 0.3f, to.y), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color, to, Offset(to.x, to.y + h * 0.3f), strokeWidth = stroke, cap = StrokeCap.Round)
     }
 }
 

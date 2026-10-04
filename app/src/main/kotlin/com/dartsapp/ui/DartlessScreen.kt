@@ -27,34 +27,28 @@ import kotlinx.coroutines.delay
 
 private val BoardGeo = BoardGeometry.PRACTICE
 
-/** Seconds from [sinceAnchor] to the nearest beat of a [period]-second beat. */
-internal fun beatDistance(sinceAnchor: Float, period: Float): Float {
-    val phase = ((sinceAnchor / period) % 1f + 1f) % 1f
-    return minOf(phase, 1f - phase) * period
-}
-
-/** Window (seconds) around a beat that counts as "on the beat". */
-internal fun beatWindow(period: Float): Float = minOf(maxOf(0.2f * period, 0.3f), period / 4f)
+/** Window (seconds) around the ideal moment that counts as "on pace". */
+internal fun paceWindow(period: Float): Float = minOf(maxOf(0.2f * period, 0.3f), period / 4f)
 
 /**
- * Accuracy from how far a throw is from the nearest beat. Inside the window = 100 %; from there it
- * falls linearly to 20 % halfway between beats. Missing a beat entirely costs nothing extra: wait
- * for the next swing and throw on that one.
+ * Accuracy from how far the tap was from the ideal moment (the ring back at the centre, [period]
+ * seconds after the swipe). Inside the window = 100 %; falls linearly to 20 % at half a period off.
  */
-internal fun beatAccuracy(distance: Float, period: Float): Float {
-    val tol = beatWindow(period)
-    if (distance <= tol) return 1f
+internal fun paceAccuracy(offSec: Float, period: Float): Float {
+    val tol = paceWindow(period)
+    if (offSec <= tol) return 1f
     val worst = period / 2f
-    return (1f - 0.8f * (distance - tol) / (worst - tol)).coerceIn(0.2f, 1f)
+    return (1f - 0.8f * (offSec - tol) / (worst - tol)).coerceIn(0.2f, 1f)
 }
 
 /**
  * Dartless checkout: tap the board where you would aim. The accuracy slider adds random
  * scatter to where the dart actually lands, so at low accuracy T20 might become S1 or S5.
  *
- * Metronome mode: pick a timing preset learned in the Metronome screen. The first dart of a visit
- * starts the beat; darts 2 and 3 are judged by the interval since the previous throw against the
- * preset's dart time. The closer your rhythm, the more accurate the throw — the slider sets itself.
+ * Metronome mode: pick a timing preset learned in the Metronome screen. Swipe diagonally up from the
+ * bottom-left corner to start a throw: a ring grows from the centre of the board to its edge and
+ * shrinks back over the preset's dart time. Tap your target — ideally the moment the ring is back at
+ * the centre. The closer to that moment, the more accurate the throw; the slider sets itself.
  */
 @Composable
 fun DartlessScreen(navController: NavHostController) {
@@ -75,9 +69,7 @@ fun DartlessScreen(navController: NavHostController) {
 
     // Metronome mode
     var metronomeMode by remember { mutableStateOf(false) }
-    var lastThrowMs by remember { mutableStateOf(0L) }
-    var beatAnchorMs by remember { mutableStateOf(0L) }   // 0 = beat not running
-    var pulse by remember { mutableStateOf(false) }
+    var throwStartMs by remember { mutableStateOf(0L) }   // 0 = no throw armed
     var allOnBeat by remember { mutableStateOf(true) }     // no judged throw off the beat so far this checkout
     var judgedThrows by remember { mutableStateOf(0) }
     var starTrigger by remember { mutableStateOf(0) }
@@ -89,26 +81,26 @@ fun DartlessScreen(navController: NavHostController) {
     val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 80) }
     DisposableEffect(Unit) { onDispose { toneGen.release() } }
 
-    // Beat: starts on the first throw of a visit and clicks once per preset dart time — the clicks
-    // are where the next throws should land. Aligned to the anchor so it never drifts.
-    val beatSec = if (metronomeMode && !finished && beatAnchorMs > 0L) preset?.dart else null
-    LaunchedEffect(beatSec, beatAnchorMs) {
-        if (beatSec == null) { pulse = false; return@LaunchedEffect }
-        val periodMs = (beatSec.coerceAtLeast(0.3f) * 1000).toLong()
-        var k = 0L
-        pulse = true; delay(120); pulse = false      // the anchoring throw is beat zero
-        while (true) {
-            k++
-            val wait = beatAnchorMs + k * periodMs - System.currentTimeMillis()
-            if (wait > 0) delay(wait)
-            toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 90)
-            pulse = true
-            delay(120)
-            pulse = false
-        }
+    // Cue tones for an armed throw: a low tick when the ring reaches the edge, a high beep when it is
+    // back at the centre (the ideal moment).
+    LaunchedEffect(throwStartMs) {
+        val period = preset?.dart ?: return@LaunchedEffect
+        if (throwStartMs == 0L) return@LaunchedEffect
+        toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 60)
+        val half = (period * 500).toLong()
+        delay(half)
+        toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 60)
+        delay(half)
+        toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 120)
     }
 
-    fun idleMessage() = if (metronomeMode) "Tap the board once to start the beat" else "Tap the board to throw"
+    fun armThrow() {
+        if (finished || !metronomeMode || preset == null) return
+        throwStartMs = System.currentTimeMillis()
+        message = "Tap your target when the ring is back at the centre"
+    }
+
+    fun idleMessage() = if (metronomeMode) "Swipe up from the bottom-left corner to start a throw" else "Tap the board to throw"
 
     fun newCheckout() {
         start = CheckoutLogic.randomCheckout()
@@ -121,8 +113,7 @@ fun DartlessScreen(navController: NavHostController) {
         timingNote = ""
         marks.clear()
         thrown.clear()
-        lastThrowMs = 0L
-        beatAnchorMs = 0L
+        throwStartMs = 0L
         allOnBeat = true
         judgedThrows = 0
     }
@@ -138,22 +129,19 @@ fun DartlessScreen(navController: NavHostController) {
             thrown.clear()
         }
 
-        // Metronome mode: the first tap of a visit only starts the beat — it is not a throw.
-        // Every dart after that is judged on how close it is to the nearest beat. You may let a
-        // beat pass and throw on the next swing; only the distance to a beat counts.
+        // Metronome mode: a throw must be armed by the swipe. The tap is judged by how far it is from
+        // the ideal moment — the ring back at the centre, one dart time after the swipe.
         if (metronomeMode && preset != null) {
-            if (beatAnchorMs == 0L) {
-                beatAnchorMs = now
-                message = "Beat started — throw as the pendulum passes upright"
-                timingNote = ""
-                return
-            }
-            val dist = beatDistance((now - beatAnchorMs) / 1000f, preset.dart)
-            accuracy = beatAccuracy(dist, preset.dart)
-            val onBeat = dist <= beatWindow(preset.dart)
+            if (throwStartMs == 0L) { message = "Swipe up from the bottom-left corner first"; return }
+            val elapsed = (now - throwStartMs) / 1000f
+            val off = kotlin.math.abs(elapsed - preset.dart)
+            accuracy = paceAccuracy(off, preset.dart)
+            val onPace = off <= paceWindow(preset.dart)
             judgedThrows++
-            if (!onBeat) allOnBeat = false
-            timingNote = (if (onBeat) "On the beat" else "${formatSec(dist)} s off the beat") + "  →  accuracy ${(accuracy * 100).toInt()}%"
+            if (!onPace) allOnBeat = false
+            timingNote = (if (onPace) "On pace" else if (elapsed < preset.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late") +
+                "  →  accuracy ${(accuracy * 100).toInt()}%"
+            throwStartMs = 0L
         }
 
         val target = Board.hitTest(aim.x, aim.y, BoardGeo)
@@ -163,7 +151,6 @@ fun DartlessScreen(navController: NavHostController) {
         thrown.add(hit)
         dartsInVisit++
         dartsTotal++
-        lastThrowMs = now
 
         val hitText = if (target == hit) "Hit ${hit.label} (${hit.score})" else "Aimed ${target.label}, hit ${hit.label} (${hit.score})"
         val newRem = remaining - hit.score
@@ -187,11 +174,7 @@ fun DartlessScreen(navController: NavHostController) {
                 message = hitText
             }
         }
-        if (dartsInVisit >= 3 || finished) {
-            lastThrowMs = 0L
-            beatAnchorMs = 0L
-            if (metronomeMode && !finished) message += "  ·  Tap once to start the beat for the next visit"
-        }
+        if (metronomeMode && !finished && dartsInVisit < 3) message += "  ·  Swipe for the next dart"
     }
 
     val tip = remember(remaining) { if (remaining > 1) CheckoutLogic.tip(remaining) else "" }
@@ -199,7 +182,7 @@ fun DartlessScreen(navController: NavHostController) {
 
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = if (metronomeMode) 110.dp else 16.dp)
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = if (metronomeMode) 130.dp else 16.dp)
     ) {
         ScreenHeader("Dartless Checkout", navController) {
             TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
@@ -213,8 +196,7 @@ fun DartlessScreen(navController: NavHostController) {
                     checked = metronomeMode,
                     onCheckedChange = {
                         metronomeMode = it
-                        lastThrowMs = 0L
-                        beatAnchorMs = 0L
+                        throwStartMs = 0L
                         timingNote = ""
                         if (!finished) message = idleMessage()
                     },
@@ -223,7 +205,7 @@ fun DartlessScreen(navController: NavHostController) {
             }
             Column(modifier = Modifier.weight(1.4f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Checkout $start", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(remaining.toString(), fontSize = 64.sp, fontWeight = FontWeight.Bold, color = if (pulse) BrightGold else Gold)
+                Text(remaining.toString(), fontSize = 64.sp, fontWeight = FontWeight.Bold, color = Gold)
             }
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -276,12 +258,20 @@ fun DartlessScreen(navController: NavHostController) {
             )
         }
 
-        Dartboard(
-            modifier = Modifier.padding(8.dp),
-            geometry = BoardGeo,
-            marks = marks,
-            onTap = { throwAt(it) }
-        )
+        Box(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+            Dartboard(
+                geometry = BoardGeo,
+                marks = marks,
+                onTap = { throwAt(it) }
+            )
+            if (metronomeMode) {
+                ThrowRing(
+                    startMs = if (finished) 0L else throwStartMs,
+                    periodSec = preset?.dart ?: 0f,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                )
+            }
+        }
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             Text(
@@ -304,10 +294,11 @@ fun DartlessScreen(navController: NavHostController) {
     }
 
     if (metronomeMode) {
-        MetronomePendulum(
-            anchorMs = if (finished) 0L else beatAnchorMs,
-            periodSec = preset?.dart ?: 0f,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp).size(96.dp)
+        SwipeToThrowZone(
+            armed = throwStartMs != 0L,
+            enabled = !finished && preset != null,
+            onSwipe = { armThrow() },
+            modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).size(120.dp)
         )
     }
     StarRain(trigger = starTrigger, modifier = Modifier.fillMaxSize())
