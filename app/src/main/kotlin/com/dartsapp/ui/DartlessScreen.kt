@@ -284,7 +284,7 @@ fun DartlessScreen(navController: NavHostController) {
             thrown = allThrown.toList(),
             aimed = allAimed.toList(),
             busts = busts,
-            onDismiss = { coachOpen = false },
+            onDismiss = { coachOpen = false; newCheckout() },
             onNext = { coachOpen = false; newCheckout() }
         )
     }
@@ -411,9 +411,6 @@ fun DartlessScreen(navController: NavHostController) {
             }
         }
 
-        if (finished) {
-            Button(onClick = { newCheckout() }, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp)) { Text("Next checkout") }
-        }
     }
 
     if (metronomeMode && streak > 0) {
@@ -505,7 +502,7 @@ internal fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts:
                     Text("•  $p", fontSize = 14.sp, color = OffWhite, modifier = Modifier.padding(top = 3.dp))
                 }
                 Spacer(Modifier.height(14.dp))
-                Text("tap anywhere to close", fontSize = 11.sp, color = Grey, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Text("tap anywhere to continue", fontSize = 11.sp, color = Grey, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
         }
     }
