@@ -25,7 +25,9 @@ import kotlin.math.roundToInt
 /** One step in the turn cycle. */
 enum class Step(val label: String, val doneLabel: String) {
     READY("Ready", ""),
-    APPROACH("Approach oche", "I'm at the oche"),
+    /** Learning only: the zero point. Pressing it starts the clock; it is never timed itself. */
+    START("Opponent done", "Opponent done — start"),
+    APPROACH("Approach oche", "In my stance, darts in hand"),
     DART1("Dart 1", "Thrown"),
     DART2("Dart 2", "Thrown"),
     DART3("Dart 3", "Thrown"),
@@ -37,7 +39,7 @@ enum class Step(val label: String, val doneLabel: String) {
 
 private val sequence = listOf(Step.APPROACH, Step.DART1, Step.DART2, Step.DART3, Step.REMOVE, Step.OPPONENT)
 /** The part of the cycle that is learned from the player. The opponent's time is a constant from the slider. */
-private val learnSequence = listOf(Step.APPROACH, Step.DART1, Step.DART2, Step.DART3, Step.REMOVE)
+private val learnSequence = listOf(Step.START, Step.APPROACH, Step.DART1, Step.DART2, Step.DART3, Step.REMOVE)
 
 /**
  * Timings learned from the player. All three darts share ONE average — the first, second and
@@ -140,7 +142,7 @@ fun MetronomeScreen(navController: NavHostController) {
 
     // Learning mode: a live stopwatch for the current step
     LaunchedEffect(mode, step) {
-        if (mode != Mode.LEARNING) return@LaunchedEffect
+        if (mode != Mode.LEARNING || step == Step.START) return@LaunchedEffect
         while (true) {
             elapsedSec = (System.currentTimeMillis() - stepStartMs) / 1000f
             delay(100)
@@ -150,16 +152,16 @@ fun MetronomeScreen(navController: NavHostController) {
     fun startLearning() {
         mode = Mode.LEARNING
         turn = 1
-        step = Step.APPROACH
-        stepStartMs = System.currentTimeMillis()
+        step = Step.START
         elapsedSec = 0f
-        click(Step.APPROACH)
     }
 
     fun learningStepDone() {
         val now = System.currentTimeMillis()
-        val seconds = (now - stepStartMs) / 1000f
-        learned = learned.record(step, seconds).also { it.save(prefs) }
+        if (step != Step.START) {
+            val seconds = (now - stepStartMs) / 1000f
+            learned = learned.record(step, seconds).also { it.save(prefs) }
+        }
         val idx = learnSequence.indexOf(step)
         val next = if (idx == learnSequence.lastIndex) { turn++; learnSequence.first() } else learnSequence[idx + 1]
         step = next
@@ -198,7 +200,8 @@ fun MetronomeScreen(navController: NavHostController) {
             when (mode) {
                 Mode.IDLE -> if (playingLearned) "Using your learned timing" else "Using the sliders"
                 Mode.PLAYING -> "Turn $turn" + if (playingLearned) "  ·  learned timing" else ""
-                Mode.LEARNING -> "Learning  ·  round $turn  ·  ${formatSec(elapsedSec)} s"
+                Mode.LEARNING -> if (step == Step.START) "Learning  ·  round $turn  ·  press when the opponent has finished"
+                                 else "Learning  ·  round $turn  ·  ${formatSec(elapsedSec)} s"
             },
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -212,7 +215,7 @@ fun MetronomeScreen(navController: NavHostController) {
                 modifier = Modifier.fillMaxWidth(0.85f).padding(vertical = 12.dp).height(88.dp)
             ) { Text(step.doneLabel, fontSize = 26.sp, fontWeight = FontWeight.Bold) }
             Text(
-                "Play a real turn. Press the button the moment each step is finished. The opponent's time comes from the slider.",
+                "Play a real turn. Press the button the moment each step is finished. The clock starts at the opponent's last dart.",
                 fontSize = 13.sp, color = Grey, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
@@ -222,7 +225,7 @@ fun MetronomeScreen(navController: NavHostController) {
 
         // Sequence list
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-            for (s in sequence) {
+            for (s in if (mode == Mode.LEARNING) learnSequence else sequence) {
                 val active = s == step
                 Row(
                     modifier = Modifier
@@ -242,7 +245,10 @@ fun MetronomeScreen(navController: NavHostController) {
                         color = if (active) Gold else Grey,
                         modifier = Modifier.weight(1f)
                     )
-                    Text("${formatSec(durationSec(s))} s", fontSize = 15.sp, color = if (active) Gold else Grey)
+                    Text(
+                        if (s == Step.START) "0 s" else "${formatSec(durationSec(s))} s",
+                        fontSize = 15.sp, color = if (active) Gold else Grey
+                    )
                 }
             }
         }

@@ -102,13 +102,12 @@ fun DartlessScreen(navController: NavHostController) {
                 message = hitText
             }
         }
-        // Visit over: the darts are in the board, you'll have to grab them again.
-        if (dartsInVisit >= 3 || finished) grabbed = false
+        // Both buttons reset after every throw.
+        grabbed = false
     }
 
     val tip = remember(remaining) { if (remaining > 1) CheckoutLogic.tip(remaining) else "" }
     val dartNo = if (dartsInVisit >= 3) 3 else dartsInVisit
-    val canAim = metronomeMode && grabbed && !aimed && !finished
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -146,7 +145,7 @@ fun DartlessScreen(navController: NavHostController) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Metronome mode", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Grab darts, aim, then throw", fontSize = 12.sp, color = Grey)
+                        Text("Grab darts, aim, then throw — before every dart", fontSize = 12.sp, color = Grey)
                     }
                     Switch(
                         checked = metronomeMode,
@@ -168,24 +167,28 @@ fun DartlessScreen(navController: NavHostController) {
 
         // Metronome-mode action buttons pinned to the bottom of the screen
         if (metronomeMode) {
+            // Gold = waiting to be pressed, green = done. Both reset after every throw.
             Button(
-                onClick = { grabbed = true; message = "Aim" },
-                enabled = !grabbed && !finished,
+                onClick = { if (!grabbed) { grabbed = true; message = "Aim" } },
+                enabled = !finished,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Red,
-                    disabledContainerColor = if (grabbed) Green else Charcoal,
-                    disabledContentColor = if (grabbed) OffWhite else Grey
+                    containerColor = if (grabbed) Green else Gold,
+                    contentColor = if (grabbed) OffWhite else Black
                 ),
                 modifier = Modifier.align(Alignment.BottomStart).padding(16.dp).height(64.dp)
             ) { Text("Grab darts", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
 
             Button(
-                onClick = { aimed = true; message = "Throw — tap the board" },
-                enabled = canAim,
+                onClick = {
+                    when {
+                        !grabbed -> message = "Grab your darts first"
+                        !aimed -> { aimed = true; message = "Throw — tap the board" }
+                    }
+                },
+                enabled = !finished,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Red,
-                    disabledContainerColor = if (aimed) Green else Charcoal,
-                    disabledContentColor = if (aimed) OffWhite else Grey
+                    containerColor = if (aimed) Green else Gold,
+                    contentColor = if (aimed) OffWhite else Black
                 ),
                 modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp).height(64.dp).width(120.dp)
             ) { Text("Aim", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
