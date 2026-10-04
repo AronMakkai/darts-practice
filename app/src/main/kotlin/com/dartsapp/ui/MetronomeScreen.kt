@@ -87,6 +87,7 @@ fun MetronomeScreen(navController: NavHostController) {
     var learning by remember { mutableStateOf(Learning()) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var presetMenuOpen by remember { mutableStateOf(false) }
+    var showInfo by remember { mutableStateOf(false) }
 
     val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }
     DisposableEffect(Unit) { onDispose { toneGen.release() } }
@@ -170,6 +171,24 @@ fun MetronomeScreen(navController: NavHostController) {
         TimingPresets.setSelected(context, name)
     }
 
+    if (showInfo) {
+        AlertDialog(
+            onDismissRequest = { showInfo = false },
+            title = { Text("Routine and rhythm") },
+            text = {
+                Text(
+                    "Darts is all about routine and rhythm. Either video yourself playing and set the timing from " +
+                        "that video, or ask a friend to time you while you are playing, and save that.\n\n" +
+                        "Once saved, you can use the metronome when you practice, or use it in Dartless Checkout practice.\n\n" +
+                        "Learn my timing walks you through one turn at a time: press the button the moment each step " +
+                        "is done, and the averages build up round by round. The three darts always share one average.",
+                    fontSize = 15.sp
+                )
+            },
+            confirmButton = { Button(onClick = { showInfo = false }) { Text("Got it") } }
+        )
+    }
+
     if (showSaveDialog) {
         SavePresetDialog(
             defaultName = "Preset ${presets.size + 1}",
@@ -188,7 +207,9 @@ fun MetronomeScreen(navController: NavHostController) {
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        ScreenHeader("Metronome", navController)
+        ScreenHeader("Metronome", navController) {
+            TextButton(onClick = { showInfo = true }) { Text("Info", color = Gold) }
+        }
 
         Spacer(Modifier.height(8.dp))
 
