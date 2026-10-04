@@ -55,7 +55,7 @@ fun ValueCheckerScreen(navController: NavHostController) {
         if (hit.ring == Ring.MISS) return
         val label = hit.score.toString()
         val last = floaters.lastOrNull()
-        if (last != null && last.text == label && nowMs - last.bornMs < 250) return
+        if (last != null && last.text == label && System.currentTimeMillis() - last.bornMs < 120) return
         val cx = boardSize.width / 2f
         val cy = boardSize.height / 2f
         val r = min(boardSize.width, boardSize.height) / 2f / RIM_SCALE
@@ -89,10 +89,12 @@ fun ValueCheckerScreen(navController: NavHostController) {
                 showValues = true,
                 focus = focus,
                 onPointer = { p ->
+                    val newTouch = focus == null && p != null
                     focus = p
                     if (p != null) {
                         val hit = Board.hitTest(p.x, p.y, ValueGeo)
-                        if (hit != selected) spawn(hit, p)
+                        // Pop on every fresh tap, and again whenever the finger slides onto a new sector
+                        if (newTouch || hit != selected) spawn(hit, p)
                         selected = hit
                     }
                 }
