@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.dartsapp.logic.CheckoutLogic
 import com.dartsapp.logic.Sounds
+import com.dartsapp.logic.TimingPresets
+import androidx.compose.ui.platform.LocalContext
 
 private class PlayerState(
     val name: String,
@@ -43,6 +45,12 @@ private class PlayerState(
  */
 @Composable
 fun FiveOhOneScreen(navController: NavHostController) {
+    val context = LocalContext.current
+    val presets = remember { TimingPresets.load(context) }
+    var metronomeOn by remember { mutableStateOf(false) }
+    val presetNames = remember { mutableStateListOf(presets.firstOrNull()?.name, presets.firstOrNull()?.name) }
+    val turnKeys = remember { mutableStateListOf(0, 0) }
+
     var setupOpen by remember { mutableStateOf(true) }
     var startScore by remember { mutableStateOf(501) }
     var legsPerSet by remember { mutableStateOf(3) }
@@ -83,6 +91,8 @@ fun FiveOhOneScreen(navController: NavHostController) {
         if (popHuge) Sounds.playCheckoutJingle()
     }
 
+    fun cueTurn() { if (metronomeOn && !matchOver) turnKeys[current] = turnKeys[current] + 1 }
+
     fun legsNeeded() = legsPerSet / 2 + 1
     fun setsNeeded() = setsToWin
 
@@ -95,6 +105,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
         message = "${players[0].name} to throw"
         setupOpen = false
         version++
+        cueTurn()
     }
 
     fun newLeg() {
@@ -102,6 +113,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
         legStarter = 1 - legStarter
         current = legStarter
         version++
+        cueTurn()
     }
 
     fun submit() {
@@ -146,6 +158,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
                 message = "${p.name} bust — stays on ${p.remaining}"
                 current = 1 - current
                 version++
+                cueTurn()
             }
             else -> {
                 p.scoredMatch += score; p.scoredThisLeg += score
@@ -156,6 +169,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
                 message = "${other.name} to throw"
                 current = 1 - current
                 version++
+                cueTurn()
             }
         }
     }
@@ -186,6 +200,9 @@ fun FiveOhOneScreen(navController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 12.dp)) {
         ScreenHeader(if (startScore == 301) "301" else "501", navController) {
+            TextButton(onClick = { metronomeOn = !metronomeOn; if (metronomeOn) cueTurn() }) {
+                Text("Metro", color = if (metronomeOn) Gold else Grey)
+            }
             TextButton(onClick = { setupOpen = true }) { Text("Match", color = Gold) }
         }
 
@@ -240,6 +257,16 @@ fun FiveOhOneScreen(navController: NavHostController) {
                             maxLines = 1, modifier = Modifier.padding(top = 4.dp)
                         )
                     }
+                }
+                if (metronomeOn) {
+                    MiniMetronome(
+                        presets = presets,
+                        preset = presets.firstOrNull { it.name == presetNames[i] },
+                        onPresetChange = { presetNames[i] = it.name },
+                        turnKey = turnKeys[i],
+                        active = active,
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                    )
                 }
             }
         }

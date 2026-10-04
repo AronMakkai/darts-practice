@@ -13,6 +13,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.dartsapp.logic.CheckoutLogic
+import com.dartsapp.logic.TimingPresets
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Checkout mode: a random checkout is shown; after each visit at the real board the player
@@ -20,6 +22,13 @@ import com.dartsapp.logic.CheckoutLogic
  */
 @Composable
 fun CheckoutScreen(navController: NavHostController) {
+    val context = LocalContext.current
+    val presets = remember { TimingPresets.load(context) }
+    var metronomeOn by remember { mutableStateOf(false) }
+    var presetName by remember { mutableStateOf(TimingPresets.selectedName(context) ?: presets.firstOrNull()?.name) }
+    val preset = presets.firstOrNull { it.name == presetName }
+    var turnKey by remember { mutableStateOf(0) }
+
     var start by remember { mutableStateOf(CheckoutLogic.randomCheckout()) }
     var remaining by remember { mutableStateOf(start) }
     var input by remember { mutableStateOf("") }
@@ -34,12 +43,14 @@ fun CheckoutScreen(navController: NavHostController) {
         message = ""
         finished = false
         history.clear()
+        if (metronomeOn) turnKey++
     }
 
     fun submit() {
         val score = input.toIntOrNull() ?: return
         input = ""
         if (score > 180) { message = "Max score per visit is 180"; return }
+        if (metronomeOn) turnKey++
         val newRem = remaining - score
         history.add(score to remaining)
         when {
@@ -63,7 +74,18 @@ fun CheckoutScreen(navController: NavHostController) {
 
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 12.dp)) {
         ScreenHeader("Checkout", navController) {
+            TextButton(onClick = { metronomeOn = !metronomeOn; if (metronomeOn) turnKey++ }) {
+                Text("Metronome", color = if (metronomeOn) Gold else Grey)
+            }
             TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
+        }
+        if (metronomeOn) {
+            MiniMetronome(
+                presets = presets, preset = preset,
+                onPresetChange = { presetName = it.name; TimingPresets.setSelected(context, it.name) },
+                turnKey = turnKey, active = !finished,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+            )
         }
 
         RemainingDisplay(start, remaining, "", message)

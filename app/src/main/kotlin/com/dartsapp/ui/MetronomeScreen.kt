@@ -71,6 +71,17 @@ private data class Learning(
 
 private enum class Mode { IDLE, PLAYING, LEARNING }
 
+/** Sound for the moment a step is COMPLETED (in stance, released, cleared, opponent done...). */
+internal fun playStepDoneTone(toneGen: ToneGenerator, done: Step) {
+    when (done.kind) {
+        Kind.START, Kind.OPPONENT -> toneGen.startTone(ToneGenerator.TONE_PROP_NACK, 220)
+        Kind.APPROACH -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 200)
+        Kind.DART -> toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 160)
+        Kind.REMOVE -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 200)
+        else -> {}
+    }
+}
+
 /** Seconds a step takes for a preset, or from the manual beat interval when there is no preset. */
 internal fun stepSeconds(kind: Kind, preset: TimingPreset?, interval: Float, opponent: Float): Float = when (kind) {
     Kind.OPPONENT -> opponent
@@ -111,16 +122,7 @@ fun MetronomeScreen(navController: NavHostController) {
     val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }
     DisposableEffect(Unit) { onDispose { toneGen.release() } }
 
-    /** Sound for the moment a move is COMPLETED (dart in hand, aimed, released, cleared...). */
-    fun clickDone(done: Step) {
-        when (done.kind) {
-            Kind.START, Kind.OPPONENT -> toneGen.startTone(ToneGenerator.TONE_PROP_NACK, 220)   // opponent done
-            Kind.APPROACH -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 200)                // in stance
-            Kind.DART -> toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 160)                  // release
-            Kind.REMOVE -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 200)                  // cleared
-            else -> {}
-        }
-    }
+    fun clickDone(done: Step) = playStepDoneTone(toneGen, done)
 
     fun durationSec(s: Step): Float = stepSeconds(s.kind, preset, intervalSec, opponentSec)
 
