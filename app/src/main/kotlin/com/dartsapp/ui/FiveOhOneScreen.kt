@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontFamily
@@ -30,6 +31,7 @@ private class PlayerState(
     var scoredThisLeg: Int = 0,
     var dartsMatch: Int = 0,
     var scoredMatch: Int = 0,
+    var hotStreak: Int = 0,          // consecutive 100+ visits
     val visits: MutableList<Int> = mutableListOf()
 ) {
     val average: Float get() = if (dartsMatch == 0) 0f else scoredMatch * 3f / dartsMatch
@@ -57,8 +59,29 @@ fun FiveOhOneScreen(navController: NavHostController) {
     var version by remember { mutableStateOf(0) }   // bump to recompose after mutating player state
     var burstTrigger by remember { mutableStateOf(0) }
     var burstOrigin by remember { mutableStateOf(Offset.Zero) }
+    var popTrigger by remember { mutableStateOf(0) }
+    var popText by remember { mutableStateOf("") }
+    var popHuge by remember { mutableStateOf(false) }
     val barPos = remember { mutableStateListOf(Offset.Zero, Offset.Zero) }
     val barSize = remember { mutableStateListOf(IntSize.Zero, IntSize.Zero) }
+
+    fun panelCentre(i: Int) = Offset(barPos[i].x + barSize[i].width / 2f, barPos[i].y + barSize[i].height / 2f)
+
+    /** Celebrate a visit: ton-plus gets a pop, 140+ a bigger one, 180 and ton-plus finishes go huge. */
+    fun celebrate(i: Int, score: Int, finished: Boolean) {
+        val text = when {
+            finished && score >= 100 -> "$score OUT!"
+            score == 180 -> "180!"
+            score >= 140 -> "$score"
+            score >= 100 -> "TON ${if (score == 100) "" else (score - 100).toString()}".trim()
+            else -> return
+        }
+        popText = text
+        popHuge = score == 180 || (finished && score >= 100)
+        burstOrigin = panelCentre(i)
+        popTrigger++
+        if (popHuge) Sounds.playCheckoutJingle()
+    }
 
     fun legsNeeded() = legsPerSet / 2 + 1
     fun setsNeeded() = setsToWin
@@ -96,6 +119,8 @@ fun FiveOhOneScreen(navController: NavHostController) {
                 p.scoredMatch += score; p.scoredThisLeg += score
                 p.remaining = 0
                 p.visits.add(score)
+                p.hotStreak = if (score >= 100) p.hotStreak + 1 else 0
+                celebrate(current, score, finished = true)
                 p.legs++
                 var text = "${p.name} takes the leg in ${p.dartsThisLeg} darts!"
                 if (p.legs >= legsNeeded()) {
@@ -106,9 +131,9 @@ fun FiveOhOneScreen(navController: NavHostController) {
                         matchOver = true
                         text = "${p.name} WINS THE MATCH!"
                         val i = current
-                        burstOrigin = Offset(barPos[i].x + barSize[i].width / 2f, barPos[i].y + barSize[i].height / 2f)
+                        burstOrigin = panelCentre(i)
                         burstTrigger++
-                        Sounds.playCheckoutJingle()
+                        if (score < 100) Sounds.playCheckoutJingle()
                     }
                 }
                 message = text
@@ -117,6 +142,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
             }
             newRem < 0 || newRem == 1 -> {
                 p.visits.add(0)
+                p.hotStreak = 0
                 message = "${p.name} bust — stays on ${p.remaining}"
                 current = 1 - current
                 version++
@@ -125,6 +151,8 @@ fun FiveOhOneScreen(navController: NavHostController) {
                 p.scoredMatch += score; p.scoredThisLeg += score
                 p.remaining = newRem
                 p.visits.add(score)
+                p.hotStreak = if (score >= 100) p.hotStreak + 1 else 0
+                celebrate(current, score, finished = false)
                 message = "${other.name} to throw"
                 current = 1 - current
                 version++
@@ -191,12 +219,20 @@ fun FiveOhOneScreen(navController: NavHostController) {
                         color = if (active) Gold else OffWhite, modifier = Modifier.width(110.dp)
                     )
                     Column(modifier = Modifier.weight(1f)) {
-                        PowerBar(
-                            value = p.remaining.toFloat() / startScore,
-                            enabled = false,
-                            onChange = {},
-                            modifier = Modifier.fillMaxWidth().height(22.dp)
-                        )
+                        Box(modifier = Modifier.fillMaxWidth().height(34.dp), contentAlignment = Alignment.BottomCenter) {
+                            if (p.hotStreak >= 3) {
+                                FlameFrame(modifier = Modifier.fillMaxWidth().height(34.dp))
+                            }
+                            PowerBar(
+                                value = p.remaining.toFloat() / startScore,
+                                enabled = false,
+                                onChange = {},
+                                modifier = Modifier.fillMaxWidth().height(22.dp)
+                            )
+                        }
+                        if (p.hotStreak >= 3) {
+                            Text("ON FIRE  ×${p.hotStreak}", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Color(0xFFF08A1E))
+                        }
                         Text(
                             "avg ${"%.1f".format(p.average)}   darts ${p.dartsThisLeg}" +
                                 (if (p.remaining in 2..170 && CheckoutLogic.isFinishable(p.remaining)) "   ${CheckoutLogic.tip(p.remaining)}" else ""),
@@ -236,6 +272,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
         }
     }
     StarBurst(trigger = burstTrigger, origin = burstOrigin, modifier = Modifier.fillMaxSize())
+    BigPop(trigger = popTrigger, text = popText, huge = popHuge, origin = burstOrigin, modifier = Modifier.fillMaxSize())
     }
 }
 

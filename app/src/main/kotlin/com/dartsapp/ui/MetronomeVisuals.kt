@@ -451,3 +451,145 @@ fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier
         }
     }
 }
+
+/** Flat-shaded vector coach: cap, glasses, big moustache. Fits a square. */
+@Composable
+fun CoachHead(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val cx = w / 2f
+        // Neck + shoulders
+        drawRect(DarkRed, Offset(w * 0.2f, h * 0.82f), Size(w * 0.6f, h * 0.18f))
+        drawRect(Color(0xFFD9A066), Offset(cx - w * 0.09f, h * 0.72f), Size(w * 0.18f, h * 0.14f))
+        // Head: flat polygon (octagon-ish)
+        val head = Path().apply {
+            moveTo(cx - w * 0.22f, h * 0.30f); lineTo(cx + w * 0.22f, h * 0.30f)
+            lineTo(cx + w * 0.27f, h * 0.45f); lineTo(cx + w * 0.22f, h * 0.70f)
+            lineTo(cx + w * 0.08f, h * 0.78f); lineTo(cx - w * 0.08f, h * 0.78f)
+            lineTo(cx - w * 0.22f, h * 0.70f); lineTo(cx - w * 0.27f, h * 0.45f); close()
+        }
+        drawPath(head, Color(0xFFE8B07A))
+        // Shadow side of the face
+        val shade = Path().apply {
+            moveTo(cx + w * 0.05f, h * 0.30f); lineTo(cx + w * 0.22f, h * 0.30f)
+            lineTo(cx + w * 0.27f, h * 0.45f); lineTo(cx + w * 0.22f, h * 0.70f)
+            lineTo(cx + w * 0.08f, h * 0.78f); lineTo(cx + w * 0.05f, h * 0.78f); close()
+        }
+        drawPath(shade, Color(0xFFC98D5C))
+        // Cap
+        val cap = Path().apply {
+            moveTo(cx - w * 0.30f, h * 0.32f); lineTo(cx - w * 0.22f, h * 0.14f)
+            lineTo(cx + w * 0.22f, h * 0.14f); lineTo(cx + w * 0.30f, h * 0.32f); close()
+        }
+        drawPath(cap, Red)
+        drawRect(Color(0xFF8E0E24), Offset(cx - w * 0.36f, h * 0.30f), Size(w * 0.72f, h * 0.05f))   // peak
+        drawRect(Gold, Offset(cx - w * 0.04f, h * 0.18f), Size(w * 0.08f, h * 0.08f))                // badge
+        // Glasses
+        val gs = Stroke(width = h * 0.025f)
+        drawRect(Black, Offset(cx - w * 0.2f, h * 0.42f), Size(w * 0.15f, h * 0.1f), style = gs)
+        drawRect(Black, Offset(cx + w * 0.05f, h * 0.42f), Size(w * 0.15f, h * 0.1f), style = gs)
+        drawLine(Black, Offset(cx - w * 0.05f, h * 0.46f), Offset(cx + w * 0.05f, h * 0.46f), strokeWidth = h * 0.025f)
+        drawRect(OffWhite.copy(alpha = 0.35f), Offset(cx - w * 0.19f, h * 0.43f), Size(w * 0.06f, h * 0.03f))
+        drawRect(OffWhite.copy(alpha = 0.35f), Offset(cx + w * 0.06f, h * 0.43f), Size(w * 0.06f, h * 0.03f))
+        // Nose
+        drawLine(Color(0xFFB5784A), Offset(cx, h * 0.5f), Offset(cx + w * 0.04f, h * 0.6f), strokeWidth = h * 0.02f)
+        // Moustache: two flat wedges
+        val tash = Path().apply {
+            moveTo(cx - w * 0.17f, h * 0.66f); lineTo(cx, h * 0.62f); lineTo(cx + w * 0.17f, h * 0.66f)
+            lineTo(cx + w * 0.12f, h * 0.70f); lineTo(cx, h * 0.67f); lineTo(cx - w * 0.12f, h * 0.70f); close()
+        }
+        drawPath(tash, Color(0xFF3A2A1E))
+        // Mouth line
+        drawLine(Color(0xFF7A3E2A), Offset(cx - w * 0.06f, h * 0.735f), Offset(cx + w * 0.06f, h * 0.735f), strokeWidth = h * 0.015f)
+    }
+}
+
+/**
+ * Big pop-up word for a great score ("180!", "TON 40", "170 OUT!"): slams in gold with a black outline
+ * and a star burst behind it, scaled by [huge].
+ */
+@Composable
+fun BigPop(trigger: Int, text: String, huge: Boolean, origin: Offset, modifier: Modifier = Modifier) {
+    var progress by remember { mutableStateOf(-1f) }
+    LaunchedEffect(trigger) {
+        if (trigger == 0) { progress = -1f; return@LaunchedEffect }
+        val start = withFrameNanos { it }
+        while (true) {
+            val t = (withFrameNanos { it } - start) / 1_000_000_000f
+            progress = t
+            if (t > (if (huge) 2.2f else 1.3f)) { progress = -1f; break }
+        }
+    }
+    StarBurst(trigger = trigger, origin = origin, modifier = modifier)
+    if (progress < 0f) return
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val t = progress
+        val total = if (huge) 2.2f else 1.3f
+        val fade = if (t > total - 0.4f) ((total - t) / 0.4f).coerceIn(0f, 1f) else 1f
+        val k = (t / 0.22f).coerceIn(0f, 1f)
+        val scale = (1.9f - 0.9f * k) + (if (k >= 1f) 0f else 0.1f * sin(k * PI.toFloat()))
+        val paint = android.graphics.Paint().apply {
+            isAntiAlias = true
+            textAlign = android.graphics.Paint.Align.CENTER
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
+            textSize = w * (if (huge) 0.26f else 0.14f) * scale
+            isFakeBoldText = true
+        }
+        val cx = if (huge) w / 2f else origin.x.coerceIn(w * 0.3f, w * 0.7f)
+        val cy = if (huge) h * 0.42f else origin.y
+        drawContext.canvas.nativeCanvas.apply {
+            save()
+            rotate(if (huge) -6f else -3f, cx, cy)
+            val baseline = cy + paint.textSize * 0.36f
+            paint.style = android.graphics.Paint.Style.FILL
+            paint.color = android.graphics.Color.argb((255 * fade).toInt(), 0x7A, 0x0A, 0x1C)
+            drawText(text, cx + paint.textSize * 0.07f, baseline + paint.textSize * 0.07f, paint)
+            paint.style = android.graphics.Paint.Style.STROKE
+            paint.strokeWidth = paint.textSize * 0.1f
+            paint.strokeJoin = android.graphics.Paint.Join.ROUND
+            paint.color = android.graphics.Color.argb((255 * fade).toInt(), 0, 0, 0)
+            drawText(text, cx, baseline, paint)
+            paint.style = android.graphics.Paint.Style.FILL
+            paint.color = android.graphics.Color.argb((255 * fade).toInt(), 0xFF, 0xD6, 0x0A)
+            drawText(text, cx, baseline, paint)
+            restore()
+        }
+    }
+}
+
+/**
+ * Flat-shaded flames licking around a rectangle — "on fire" indicator. Draw it behind the thing
+ * that is on fire; it extends a little beyond its own bounds, so give it padding.
+ */
+@Composable
+fun FlameFrame(modifier: Modifier = Modifier) {
+    var t by remember { mutableStateOf(0f) }
+    LaunchedEffect(Unit) {
+        val start = withFrameNanos { it }
+        while (true) t = (withFrameNanos { it } - start) / 1_000_000_000f
+    }
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val n = 14
+        for (layer in 0 until 3) {
+            val color = when (layer) { 0 -> Red; 1 -> Color(0xFFF08A1E); else -> Gold }
+            val height = h * (0.55f - layer * 0.14f)
+            val path = Path()
+            path.moveTo(0f, h)
+            for (i in 0..n) {
+                val x = w * i / n
+                val flick = sin(t * (6f + layer * 2f) + i * 1.7f + layer) * 0.5f + 0.5f
+                val tip = h - height * (0.45f + 0.55f * flick)
+                path.lineTo(x - w / n * 0.5f, h - height * 0.25f)
+                path.lineTo(x, tip)
+            }
+            path.lineTo(w, h)
+            path.close()
+            drawPath(path, color.copy(alpha = 0.9f - layer * 0.15f))
+        }
+    }
+}

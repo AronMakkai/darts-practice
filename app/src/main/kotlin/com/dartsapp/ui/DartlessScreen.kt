@@ -24,6 +24,7 @@ import androidx.navigation.NavHostController
 import com.dartsapp.data.Board
 import com.dartsapp.data.BoardGeometry
 import com.dartsapp.data.Hit
+import com.dartsapp.data.Ring
 import com.dartsapp.logic.AccuracyModel
 import com.dartsapp.logic.CheckoutLogic
 import com.dartsapp.logic.Sounds
@@ -97,6 +98,10 @@ fun DartlessScreen(navController: NavHostController) {
     var finished by remember { mutableStateOf(false) }
     val marks = remember { mutableStateListOf<Offset>() }
     val thrown = remember { mutableStateListOf<Hit>() }
+    val allThrown = remember { mutableStateListOf<Hit>() }     // every dart of this checkout, for the coach
+    val allAimed = remember { mutableStateListOf<Hit>() }
+    var busts by remember { mutableStateOf(0) }
+    var coachOpen by remember { mutableStateOf(false) }
     val model = remember { AccuracyModel() }
 
     // Metronome mode
@@ -156,6 +161,10 @@ fun DartlessScreen(navController: NavHostController) {
         timingNote = ""
         marks.clear()
         thrown.clear()
+        allThrown.clear()
+        allAimed.clear()
+        busts = 0
+        coachOpen = false
         throwStartMs = 0L
         lastTapMs = 0L
         pauseSec = -1f
@@ -199,6 +208,8 @@ fun DartlessScreen(navController: NavHostController) {
         val hit = Board.hitTest(lx, ly, BoardGeo)
         marks.add(Offset(lx, ly))
         thrown.add(hit)
+        allThrown.add(hit)
+        allAimed.add(target)
         dartsInVisit++
         dartsTotal++
 
@@ -208,6 +219,7 @@ fun DartlessScreen(navController: NavHostController) {
             newRem == 0 && hit.isDoubleOut -> {
                 remaining = 0
                 finished = true
+                coachOpen = true
                 message = "$hitText — Checked out in $dartsTotal darts!"
                 // Perfect rhythm: metronome mode on for the whole checkout, every dart judged,
                 // none early/late, no hesitation between throws.
@@ -231,6 +243,7 @@ fun DartlessScreen(navController: NavHostController) {
             newRem < 0 || newRem == 1 || newRem == 0 -> {
                 remaining = visitStart
                 dartsInVisit = 3
+                busts++
                 message = "$hitText — BUST! Back to $visitStart"
                 val cx = boardSize.width / 2f
                 val cy = boardSize.height / 2f
@@ -253,6 +266,17 @@ fun DartlessScreen(navController: NavHostController) {
 
     val tip = remember(remaining) { if (remaining > 1) CheckoutLogic.tip(remaining) else "" }
     val dartNo = if (dartsInVisit >= 3) 3 else dartsInVisit
+
+    if (coachOpen) {
+        CoachDialog(
+            start = start,
+            thrown = allThrown.toList(),
+            aimed = allAimed.toList(),
+            busts = busts,
+            onDismiss = { coachOpen = false },
+            onNext = { coachOpen = false; newCheckout() }
+        )
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
@@ -414,4 +438,75 @@ fun DartlessScreen(navController: NavHostController) {
     StarBurst(trigger = starTrigger, origin = burstOrigin, modifier = Modifier.fillMaxSize())
     BustOverlay(trigger = bustTrigger, origin = bustOrigin, modifier = Modifier.fillMaxSize())
     }
+}
+
+
+/** Post-checkout coach: how you did it, how the book does it, and why. */
+@Composable
+private fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: Int, onDismiss: () -> Unit, onNext: () -> Unit) {
+    val suggestion = remember(start) { CheckoutLogic.suggest(start) }
+    val optimal = suggestion?.best
+    val pointers = remember(start, thrown.size) { coachPointers(start, thrown, aimed, busts, suggestion) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CoachHead(modifier = Modifier.size(64.dp))
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("COACH", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, color = Gold, fontSize = 14.sp)
+                    Text(
+                        "Checkout $start in ${thrown.size} dart${if (thrown.size == 1) "" else "s"}" +
+                            (optimal?.let { "  ·  book: ${it.size}" } ?: ""),
+                        fontSize = 15.sp, fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text("You threw", fontSize = 12.sp, color = Grey)
+                Text(thrown.joinToString("  ") { it.label }, fontSize = 16.sp, color = OffWhite, fontFamily = FontFamily.Monospace)
+                if (optimal != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Text("The book", fontSize = 12.sp, color = Grey)
+                    Text(CheckoutLogic.routeLabel(optimal), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Gold, fontFamily = FontFamily.Monospace)
+                    Text(suggestion.bestWhy, fontSize = 13.sp, color = PaleGold, modifier = Modifier.padding(top = 4.dp))
+                }
+                Spacer(Modifier.height(10.dp))
+                Text("Pointers", fontSize = 12.sp, color = Grey)
+                for (p in pointers) {
+                    Text("•  $p", fontSize = 14.sp, color = OffWhite, modifier = Modifier.padding(top = 3.dp))
+                }
+            }
+        },
+        confirmButton = { Button(onClick = onNext) { Text("Next checkout") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Close", color = Grey) } }
+    )
+}
+
+private fun coachPointers(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: Int, s: CheckoutLogic.Suggestion?): List<String> {
+    val out = mutableListOf<String>()
+    val optimal = s?.best ?: return listOf("No three-dart finish exists from $start — getting it done at all is the job.")
+    val extra = thrown.size - optimal.size
+    if (extra <= 0 && busts == 0) {
+        out.add("Textbook. ${optimal.size} dart${if (optimal.size == 1) "" else "s"}, no wasted throws — nothing to add.")
+    } else {
+        if (extra > 0) out.add("$extra dart${if (extra == 1) "" else "s"} more than the book route.")
+    }
+    if (busts > 0) out.add("You bust $busts time${if (busts == 1) "" else "s"}. When a treble would bust, take the single — it keeps you on a finish instead of resetting the visit.")
+    val firstAim = aimed.firstOrNull()
+    if (firstAim != null && firstAim != optimal.first()) {
+        out.add("You opened on ${firstAim.label}; the book opens on ${optimal.first().label} so that one dart leaves ${start - optimal.first().score}.")
+    }
+    val finisher = thrown.lastOrNull()
+    if (finisher != null && finisher.isDoubleOut) {
+        val n = finisher.number
+        if (finisher.ring == Ring.DOUBLE && n % 2 == 1) out.add("You finished on D$n, an odd double. Where you can, set up an even double (D16, D20, D8): a single there still leaves a double.")
+        if (finisher != optimal.last() && s.alt != null && finisher == s.alt.last()) out.add("You took the alternative finish on ${finisher.label} — perfectly good, just a touch less forgiving than ${optimal.last().label}.")
+    }
+    val misses = thrown.zip(aimed).count { (hit, aim) -> hit != aim }
+    if (misses > 0 && thrown.size > 1) out.add("$misses of ${thrown.size} darts landed off the target you aimed at. The rhythm sets the accuracy — settle before you throw.")
+    if (out.isEmpty()) out.add("Good darts.")
+    return out
 }
