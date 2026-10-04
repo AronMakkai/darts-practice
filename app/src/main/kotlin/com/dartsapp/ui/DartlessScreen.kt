@@ -108,7 +108,7 @@ fun DartlessScreen(navController: NavHostController) {
         }
     }
 
-    fun idleMessage() = if (metronomeMode) "Throw dart 1 to start the pendulum, then throw as it passes upright" else "Tap the board to throw"
+    fun idleMessage() = if (metronomeMode) "Tap the board once to start the beat" else "Tap the board to throw"
 
     fun newCheckout() {
         start = CheckoutLogic.randomCheckout()
@@ -138,20 +138,22 @@ fun DartlessScreen(navController: NavHostController) {
             thrown.clear()
         }
 
-        // Metronome mode: darts 2 and 3 are judged on how close they are to the nearest beat.
-        // You may let a beat pass and throw on the next swing — only the distance to a beat counts.
+        // Metronome mode: the first tap of a visit only starts the beat — it is not a throw.
+        // Every dart after that is judged on how close it is to the nearest beat. You may let a
+        // beat pass and throw on the next swing; only the distance to a beat counts.
         if (metronomeMode && preset != null) {
-            if (dartsInVisit == 0 || beatAnchorMs == 0L) {
+            if (beatAnchorMs == 0L) {
                 beatAnchorMs = now
-                timingNote = "Dart 1 sets the beat — throw as the pendulum passes upright"
-            } else {
-                val dist = beatDistance((now - beatAnchorMs) / 1000f, preset.dart)
-                accuracy = beatAccuracy(dist, preset.dart)
-                val onBeat = dist <= beatWindow(preset.dart)
-                judgedThrows++
-                if (!onBeat) allOnBeat = false
-                timingNote = (if (onBeat) "On the beat" else "${formatSec(dist)} s off the beat") + "  →  accuracy ${(accuracy * 100).toInt()}%"
+                message = "Beat started — throw as the pendulum passes upright"
+                timingNote = ""
+                return
             }
+            val dist = beatDistance((now - beatAnchorMs) / 1000f, preset.dart)
+            accuracy = beatAccuracy(dist, preset.dart)
+            val onBeat = dist <= beatWindow(preset.dart)
+            judgedThrows++
+            if (!onBeat) allOnBeat = false
+            timingNote = (if (onBeat) "On the beat" else "${formatSec(dist)} s off the beat") + "  →  accuracy ${(accuracy * 100).toInt()}%"
         }
 
         val target = Board.hitTest(aim.x, aim.y, BoardGeo)
@@ -188,6 +190,7 @@ fun DartlessScreen(navController: NavHostController) {
         if (dartsInVisit >= 3 || finished) {
             lastThrowMs = 0L
             beatAnchorMs = 0L
+            if (metronomeMode && !finished) message += "  ·  Tap once to start the beat for the next visit"
         }
     }
 
