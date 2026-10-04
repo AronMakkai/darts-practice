@@ -136,7 +136,7 @@ fun StickFigure(step: Step, modifier: Modifier = Modifier) {
 
         // Opponent (only while the opponent throws)
         if (step.kind == Kind.OPPONENT) {
-            drawFigure(Offset(w * 0.50f, floorY), h, THROW, Red, stroke, thin, withDart = true)
+            drawFigure(Offset(w * 0.50f, floorY), h, AIM, Red, stroke, thin, withDart = true)
         }
 
         // The player
