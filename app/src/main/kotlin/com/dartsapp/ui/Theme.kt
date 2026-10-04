@@ -12,6 +12,7 @@ val Red = Color(0xFFC8102E)
 val DarkRed = Color(0xFF7A0A1C)
 val Gold = Color(0xFFD4AF37)
 val PaleGold = Color(0xFFF1DC9A)
+val BrightGold = Color(0xFFFFE27A)
 val OffWhite = Color(0xFFF2F2F2)
 val Grey = Color(0xFFB0B0B0)
 
