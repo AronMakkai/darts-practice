@@ -3,7 +3,8 @@ package com.dartsapp.ui
 import android.media.AudioManager
 import android.media.ToneGenerator
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CutCornerShape
@@ -458,22 +459,23 @@ internal fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts:
     val optimal = suggestion?.best
     val pointers = remember(start, thrown.size) { coachPointers(start, thrown, aimed, busts, suggestion) }
     Dialog(onDismissRequest = onDismiss) {
-        // Tap anywhere or swipe down to close
+        // Tap anywhere or swipe down to close. The whole card is one big click target with no ripple.
         var dragY by remember { mutableStateOf(0f) }
+        val interaction = remember { MutableInteractionSource() }
         Card(
             colors = CardDefaults.cardColors(containerColor = NearBlack),
             border = BorderStroke(2.dp, Gold),
             shape = CutCornerShape(topStart = 16.dp, bottomEnd = 16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .pointerInput(Unit) { detectTapGestures { onDismiss() } }
                 .pointerInput(Unit) {
                     detectVerticalDragGestures(
                         onDragStart = { dragY = 0f },
                         onVerticalDrag = { change, dy -> change.consume(); dragY += dy },
-                        onDragEnd = { if (dragY > 90f) onDismiss() }
+                        onDragEnd = { if (dragY > 60f) onDismiss() }
                     )
                 }
+                .clickable(interactionSource = interaction, indication = null) { onDismiss() }
         ) {
             Column(modifier = Modifier.padding(18.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -503,10 +505,7 @@ internal fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts:
                     Text("•  $p", fontSize = 14.sp, color = OffWhite, modifier = Modifier.padding(top = 3.dp))
                 }
                 Spacer(Modifier.height(14.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("tap or swipe down to close", fontSize = 11.sp, color = Grey)
-                    Button(onClick = onNext) { Text(nextLabel) }
-                }
+                Text("tap anywhere to close", fontSize = 11.sp, color = Grey, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
         }
     }

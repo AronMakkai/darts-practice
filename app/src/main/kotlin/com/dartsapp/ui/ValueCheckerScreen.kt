@@ -72,7 +72,7 @@ fun ValueCheckerScreen(navController: NavHostController) {
                 remaining = 0
                 finished = true
                 coachOpen = true
-                message = "Game shot! 501 in $dartsTotal darts"
+                message = "Game shot! 501 in $dartsTotal darts  ·  New to play again"
                 burstTrigger++
                 Sounds.playCheckoutJingle()
             }
@@ -98,8 +98,7 @@ fun ValueCheckerScreen(navController: NavHostController) {
             aimed = checkoutThrown.toList(),
             busts = checkoutBusts,
             onDismiss = { coachOpen = false },
-            onNext = { reset() },
-            nextLabel = "Play again"
+            onNext = { coachOpen = false }
         )
     }
 
