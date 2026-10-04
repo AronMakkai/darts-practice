@@ -32,7 +32,7 @@ enum class Step(val label: String, val doneLabel: String) {
     DART1("Dart 1", "Thrown"),
     DART2("Dart 2", "Thrown"),
     DART3("Dart 3", "Thrown"),
-    REMOVE("Remove darts", "Darts removed"),
+    REMOVE("Board and oche cleared", "Board and oche cleared"),
     OPPONENT("Opponent throws", "");
 
     val isDart: Boolean get() = this == DART1 || this == DART2 || this == DART3

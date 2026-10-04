@@ -11,6 +11,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -160,7 +161,60 @@ fun DartlessScreen(navController: NavHostController) {
                 TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
             }
 
-            RemainingDisplay(start, remaining, tip, message)
+            // Metronome toggle (left) · remaining (centre) · preset picker (right)
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Metronome", fontSize = 12.sp, color = Grey)
+                    Switch(
+                        checked = metronomeMode,
+                        onCheckedChange = {
+                            metronomeMode = it
+                            grabbed = false
+                            aimed = false
+                            lastThrowMs = 0L
+                            timingNote = ""
+                            if (!finished) message = idleMessage()
+                        },
+                        colors = SwitchDefaults.colors(checkedThumbColor = Gold, checkedTrackColor = DarkRed)
+                    )
+                }
+                Column(modifier = Modifier.weight(1.4f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Checkout $start", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(remaining.toString(), fontSize = 64.sp, fontWeight = FontWeight.Bold, color = Gold)
+                }
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Preset", fontSize = 12.sp, color = Grey)
+                        OutlinedButton(
+                            onClick = { presetMenuOpen = true },
+                            enabled = metronomeMode,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                preset?.name ?: "Choose",
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                color = if (metronomeMode) (if (preset != null) OffWhite else Gold) else Grey
+                            )
+                        }
+                    }
+                    DropdownMenu(expanded = presetMenuOpen, onDismissRequest = { presetMenuOpen = false }) {
+                        if (presets.isEmpty()) {
+                            DropdownMenuItem(text = { Text("No presets — learn one in Metronome") }, onClick = { presetMenuOpen = false })
+                        }
+                        for (p in presets) {
+                            DropdownMenuItem(
+                                text = { Text(p.name) },
+                                onClick = { presetName = p.name; TimingPresets.setSelected(context, p.name); presetMenuOpen = false }
+                            )
+                        }
+                    }
+                }
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                if (tip.isNotEmpty()) Text(tip, fontSize = 18.sp, color = PaleGold, textAlign = TextAlign.Center)
+                if (message.isNotEmpty()) Text(message, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp), textAlign = TextAlign.Center)
+            }
 
             Text(
                 "Dart $dartNo/3   Visit: " + thrown.joinToString(" ") { it.label }.ifEmpty { "—" },
@@ -196,45 +250,10 @@ fun DartlessScreen(navController: NavHostController) {
                     )
                 )
 
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Metronome mode", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Grab darts, aim, throw — your rhythm sets the accuracy", fontSize = 12.sp, color = Grey)
-                    }
-                    Switch(
-                        checked = metronomeMode,
-                        onCheckedChange = {
-                            metronomeMode = it
-                            grabbed = false
-                            aimed = false
-                            lastThrowMs = 0L
-                            timingNote = ""
-                            if (!finished) message = idleMessage()
-                        },
-                        colors = SwitchDefaults.colors(checkedThumbColor = Gold, checkedTrackColor = DarkRed)
-                    )
-                }
-
                 if (metronomeMode) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedButton(onClick = { presetMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
-                            Text(preset?.name ?: "Choose a timing preset", color = if (preset != null) OffWhite else Gold)
-                        }
-                        DropdownMenu(expanded = presetMenuOpen, onDismissRequest = { presetMenuOpen = false }) {
-                            if (presets.isEmpty()) {
-                                DropdownMenuItem(text = { Text("No presets — learn one in Metronome") }, onClick = { presetMenuOpen = false })
-                            }
-                            for (p in presets) {
-                                DropdownMenuItem(
-                                    text = { Text(p.name) },
-                                    onClick = { presetName = p.name; TimingPresets.setSelected(context, p.name); presetMenuOpen = false }
-                                )
-                            }
-                        }
-                    }
                     Text(
-                        preset?.let { "Target: ${formatSec(it.dart)} s per dart (from Grab darts to the throw for dart 1, then dart to dart)" }
-                            ?: "Learn a preset in the Metronome screen first.",
+                        preset?.let { "Target: ${formatSec(it.dart)} s per dart (Grab darts to throw for dart 1, then dart to dart)" }
+                            ?: "Pick a timing preset (top right) — learn one in the Metronome screen.",
                         fontSize = 12.sp, color = Grey, modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -248,36 +267,44 @@ fun DartlessScreen(navController: NavHostController) {
         // Metronome-mode action buttons pinned to the bottom of the screen.
         // Gold = waiting to be pressed, green = done. Both reset after every throw.
         if (metronomeMode) {
-            Button(
-                onClick = {
-                    if (!grabbed) {
-                        grabbed = true
-                        grabbedAtMs = System.currentTimeMillis()
-                        message = "Aim"
-                    }
-                },
-                enabled = !finished,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (grabbed) Green else Gold,
-                    contentColor = if (grabbed) OffWhite else Black
-                ),
-                modifier = Modifier.align(Alignment.BottomStart).padding(16.dp).height(64.dp)
-            ) { Text("Grab darts", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+            Row(
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = {
+                        if (!grabbed) {
+                            grabbed = true
+                            grabbedAtMs = System.currentTimeMillis()
+                            message = "Aim"
+                        }
+                    },
+                    enabled = !finished,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (grabbed) Green else Gold,
+                        contentColor = if (grabbed) OffWhite else Black
+                    ),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp).height(64.dp)
+                ) { Text("Grab darts", fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
 
-            Button(
-                onClick = {
-                    when {
-                        !grabbed -> message = "Grab your darts first"
-                        !aimed -> { aimed = true; message = "Throw — tap the board" }
-                    }
-                },
-                enabled = !finished,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (aimed) Green else Gold,
-                    contentColor = if (aimed) OffWhite else Black
-                ),
-                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp).height(64.dp).width(120.dp)
-            ) { Text("Aim", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+                Button(
+                    onClick = {
+                        when {
+                            !grabbed -> message = "Grab your darts first"
+                            !aimed -> { aimed = true; message = "Throw — tap the board" }
+                        }
+                    },
+                    enabled = !finished,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (aimed) Green else Gold,
+                        contentColor = if (aimed) OffWhite else Black
+                    ),
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp).height(64.dp)
+                ) { Text("Aim", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+
+                Spacer(Modifier.weight(1f))
+            }
         }
     }
 }
