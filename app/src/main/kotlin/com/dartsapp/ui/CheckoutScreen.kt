@@ -1,6 +1,8 @@
 package com.dartsapp.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,14 +56,17 @@ fun CheckoutScreen(navController: NavHostController) {
         message = ""
     }
 
-    val tip = remember(remaining) { if (remaining > 1) CheckoutLogic.tip(remaining) else "" }
+    var showSuggestion by remember { mutableStateOf(false) }
+    val suggestion = remember(remaining) { if (remaining > 1) CheckoutLogic.suggest(remaining) else null }
+    // Hide the suggestion again whenever the total changes.
+    LaunchedEffect(remaining) { showSuggestion = false }
 
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 12.dp)) {
         ScreenHeader("Checkout", navController) {
             TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
         }
 
-        RemainingDisplay(start, remaining, tip, message)
+        RemainingDisplay(start, remaining, "", message)
 
         if (history.isNotEmpty()) {
             Text(
@@ -72,7 +77,26 @@ fun CheckoutScreen(navController: NavHostController) {
             )
         }
 
-        Spacer(Modifier.weight(1f))
+        // Suggestion: hidden until asked for. Lives in the flexible space above the number pad.
+        Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+            if (!finished && remaining > 1) {
+                if (!showSuggestion) {
+                    OutlinedButton(
+                        onClick = { showSuggestion = true },
+                        modifier = Modifier.padding(top = 12.dp)
+                    ) { Text("Show checkout suggestion", color = Gold) }
+                } else if (suggestion != null) {
+                    SuggestionCard(suggestion, onHide = { showSuggestion = false })
+                } else {
+                    Text(
+                        CheckoutLogic.tip(remaining),
+                        color = PaleGold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)
+                    )
+                }
+            }
+        }
 
         // Score entry
         Text(
@@ -113,6 +137,27 @@ fun NumberPad(enabled: Boolean, onDigit: (String) -> Unit, onBackspace: () -> Un
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SuggestionCard(s: CheckoutLogic.Suggestion, onHide: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Charcoal)
+    ) {
+        Column(modifier = Modifier.padding(14.dp).verticalScroll(rememberScrollState())) {
+            Text("Suggested", fontSize = 12.sp, color = Grey)
+            Text(CheckoutLogic.routeLabel(s.best), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Gold)
+            Text(s.bestWhy, fontSize = 14.sp, color = OffWhite, modifier = Modifier.padding(top = 4.dp))
+            if (s.alt != null) {
+                Spacer(Modifier.height(10.dp))
+                Text("Alternative", fontSize = 12.sp, color = Grey)
+                Text(CheckoutLogic.routeLabel(s.alt), fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = PaleGold)
+                Text(s.altWhy, fontSize = 14.sp, color = Grey, modifier = Modifier.padding(top = 4.dp))
+            }
+            TextButton(onClick = onHide, modifier = Modifier.align(Alignment.End)) { Text("Hide", color = Gold) }
         }
     }
 }
