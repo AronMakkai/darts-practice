@@ -194,8 +194,12 @@ fun DartlessScreen(navController: NavHostController) {
             val rhythm = if (pauseSec >= 0f) pauseFactor(pauseSec, preset.dart, difficulty) else 1f
             accuracy = (throwAcc * rhythm).coerceIn(0.2f, 1f)
             val onPace = off <= paceWindow(preset.dart, difficulty) && rhythm >= 0.999f
+            // Star criteria are more forgiving than the accuracy curve: roughly on the beat
+            // (twice the window) and no long think between throws (2.5x the free pause).
+            val starPace = off <= minOf(paceWindow(preset.dart, difficulty) * 2f, preset.dart / 2f)
+            val starRhythm = pauseSec < 0f || pauseSec <= pauseAllowance(preset.dart, difficulty) * 2.5f
             judgedThrows++
-            if (!onPace) allOnBeat = false
+            if (!(starPace && starRhythm)) allOnBeat = false
             val throwNote = if (off <= paceWindow(preset.dart, difficulty)) "on pace" else if (elapsed < preset.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late"
             val pauseNote = if (pauseSec >= 0f && rhythm < 0.999f) "  ·  hesitated ${formatSec(pauseSec)} s" else ""
             timingNote = "Throw $throwNote$pauseNote  →  accuracy ${(accuracy * 100).toInt()}%"
@@ -221,14 +225,14 @@ fun DartlessScreen(navController: NavHostController) {
                 finished = true
                 coachOpen = true
                 message = "$hitText — Checked out in $dartsTotal darts!"
-                // Perfect rhythm: metronome mode on for the whole checkout, every dart judged,
-                // none early/late, no hesitation between throws.
-                val perfect = metronomeMode && allOnBeat && judgedThrows == dartsTotal
+                // Star: a clean checkout (no bust, done inside one visit) in metronome mode, with every
+                // dart roughly on the beat and no long pause between throws.
+                val perfect = metronomeMode && allOnBeat && judgedThrows == dartsTotal && busts == 0 && dartsTotal <= 3
                 if (perfect) {
                     streak++
                     if (streak > best) best = streak
                     saveStreak()
-                    message += "  Perfect rhythm!  ×$streak"
+                    message += "  Clean checkout!  ×$streak"
                     val cx = boardSize.width / 2f
                     val cy = boardSize.height / 2f
                     val r = minOf(boardSize.width, boardSize.height) / 2f / RIM_SCALE
