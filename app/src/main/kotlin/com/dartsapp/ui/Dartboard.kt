@@ -92,7 +92,7 @@ fun Dartboard(
 }
 
 /** Board radius × this = full canvas radius (leaves room for the numbers ring). */
-private const val RIM_SCALE = 1.2f
+internal const val RIM_SCALE = 1.2f
 
 private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: List<Offset>, focus: Offset?) {
     val cx = size.width / 2f
