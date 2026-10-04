@@ -294,7 +294,6 @@ fun DartlessScreen(navController: NavHostController) {
                 )
             )
         }
-        }
 
         if (finished) {
             Button(onClick = { newCheckout() }, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp)) { Text("Next checkout") }
