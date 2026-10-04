@@ -1,136 +1,171 @@
 package com.dartsapp.ui
 
-import android.graphics.Paint
-import android.graphics.Typeface
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.dartsapp.data.Board
 import com.dartsapp.data.BoardGeometry
 import com.dartsapp.data.Hit
-import com.dartsapp.data.Ring
-import kotlin.math.min
+import com.dartsapp.logic.CheckoutLogic
+import com.dartsapp.logic.Sounds
 
-private val ValueGeo = BoardGeometry.WIDE
-
-/** A value that floats up from the finger and exits at the top of the screen. */
-private class Floater(val text: String, val startX: Float, val startY: Float, val bornMs: Long)
+private val FastGeo = BoardGeometry.WIDE
 
 /**
- * Value checker: the board with every double and treble value written on it. Touch or slide a
- * finger: values near it magnify, and the value under the finger floats up out of the way so you
- * can see what you are touching.
+ * Fast 501: a solo leg of 501 played by poking the board. Every double and treble value is written
+ * on the board, three darts a visit, double out. The power bar counts down from 501, and the
+ * checkout coach reviews the finish when you get there.
  */
 @Composable
 fun ValueCheckerScreen(navController: NavHostController) {
-    var selected by remember { mutableStateOf<Hit?>(null) }
-    var focus by remember { mutableStateOf<Offset?>(null) }
-    var boardPos by remember { mutableStateOf(Offset.Zero) }
-    var boardSize by remember { mutableStateOf(IntSize.Zero) }
-    val floaters = remember { mutableStateListOf<Floater>() }
-    var nowMs by remember { mutableStateOf(0L) }
+    val startScore = 501
+    var remaining by remember { mutableStateOf(startScore) }
+    var visitStart by remember { mutableStateOf(startScore) }
+    var dartsInVisit by remember { mutableStateOf(0) }
+    var dartsTotal by remember { mutableStateOf(0) }
+    var scored by remember { mutableStateOf(0) }
+    var message by remember { mutableStateOf("Poke the board — three darts a visit, double to finish") }
+    var finished by remember { mutableStateOf(false) }
+    var coachOpen by remember { mutableStateOf(false) }
+    val thrown = remember { mutableStateListOf<Hit>() }          // this visit
+    val checkoutThrown = remember { mutableStateListOf<Hit>() }  // darts since we came within 170
+    var checkoutStart by remember { mutableStateOf(0) }
+    var checkoutBusts by remember { mutableStateOf(0) }
+    var burstTrigger by remember { mutableStateOf(0) }
+    var starOrigin by remember { mutableStateOf(Offset.Zero) }
 
-    // Frame clock for the floating numbers
-    LaunchedEffect(floaters.size) {
-        while (floaters.isNotEmpty()) {
-            withFrameNanos { }
-            nowMs = System.currentTimeMillis()
-            floaters.removeAll { nowMs - it.bornMs > FLOAT_MS }
-        }
+    fun reset() {
+        remaining = startScore; visitStart = startScore
+        dartsInVisit = 0; dartsTotal = 0; scored = 0
+        finished = false; coachOpen = false
+        thrown.clear(); checkoutThrown.clear()
+        checkoutStart = 0; checkoutBusts = 0
+        message = "Poke the board — three darts a visit, double to finish"
     }
 
-    fun spawn(hit: Hit, p: Offset) {
-        if (hit.ring == Ring.MISS) return
-        val label = hit.score.toString()
-        val last = floaters.lastOrNull()
-        if (last != null && last.text == label && System.currentTimeMillis() - last.bornMs < 120) return
-        val cx = boardSize.width / 2f
-        val cy = boardSize.height / 2f
-        val r = min(boardSize.width, boardSize.height) / 2f / RIM_SCALE
-        floaters.add(Floater(label, boardPos.x + cx + p.x * r, boardPos.y + cy + p.y * r, System.currentTimeMillis()))
-        nowMs = System.currentTimeMillis()
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-            ScreenHeader("Value Checker", navController)
-
-            val s = selected
-            Text(
-                when {
-                    s == null -> "Touch or slide over the board"
-                    s.ring == Ring.MISS -> "Miss"
-                    else -> "${s.label}  =  ${s.score}"
-                },
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color = Gold,
-                modifier = Modifier.padding(vertical = 12.dp)
-            )
-
-            Dartboard(
-                modifier = Modifier.padding(8.dp).onGloballyPositioned {
-                    boardPos = it.positionInParent()
-                    boardSize = it.size
-                },
-                geometry = ValueGeo,
-                showValues = true,
-                focus = focus,
-                onPointer = { p ->
-                    val newTouch = focus == null && p != null
-                    focus = p
-                    if (p != null) {
-                        val hit = Board.hitTest(p.x, p.y, ValueGeo)
-                        // Pop on every fresh tap, and again whenever the finger slides onto a new sector
-                        if (newTouch || hit != selected) spawn(hit, p)
-                        selected = hit
-                    }
-                }
-            )
-
-            Text(
-                "Inner numbers = trebles, outer numbers = doubles. Slide your finger to magnify.",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-
-        // Floating numbers overlay — rise from the finger and exit at the top of the screen
-        if (floaters.isNotEmpty()) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val paint = Paint().apply {
-                    textAlign = Paint.Align.CENTER
-                    isAntiAlias = true
-                    typeface = Typeface.DEFAULT_BOLD
-                    setShadowLayer(12f, 0f, 0f, android.graphics.Color.BLACK)
-                }
-                for (f in floaters) {
-                    val t = ((nowMs - f.bornMs) / FLOAT_MS.toFloat()).coerceIn(0f, 1f)
-                    val eased = 1f - (1f - t) * (1f - t)             // ease-out: fast away from the finger
-                    val y = f.startY - eased * (f.startY + 80f)       // ends above the top edge
-                    val scale = 1f + 0.6f * minOf(1f, t * 3f)         // pops up to size quickly
-                    val alpha = if (t < 0.8f) 1f else (1f - (t - 0.8f) / 0.2f)
-                    paint.textSize = size.height * 0.07f * scale
-                    paint.color = android.graphics.Color.argb((255 * alpha).toInt().coerceIn(0, 255), 0xD4, 0xAF, 0x37)
-                    val liftOffFinger = minOf(1f, t * 4f) * size.height * 0.08f
-                    drawContext.canvas.nativeCanvas.drawText(f.text, f.startX, y - liftOffFinger + paint.textSize * 0.35f, paint)
-                }
+    fun poke(p: Offset) {
+        if (finished) return
+        if (dartsInVisit >= 3) { dartsInVisit = 0; visitStart = remaining; thrown.clear() }
+        val hit = Board.hitTest(p.x, p.y, FastGeo)
+        // Start tracking the checkout phase the first time we throw from 170 or less
+        if (checkoutStart == 0 && remaining <= 170) checkoutStart = remaining
+        if (checkoutStart != 0) checkoutThrown.add(hit)
+        thrown.add(hit)
+        dartsInVisit++
+        dartsTotal++
+        val newRem = remaining - hit.score
+        when {
+            newRem == 0 && hit.isDoubleOut -> {
+                scored += hit.score
+                remaining = 0
+                finished = true
+                coachOpen = true
+                message = "Game shot! 501 in $dartsTotal darts"
+                burstTrigger++
+                Sounds.playCheckoutJingle()
+            }
+            newRem < 0 || newRem == 1 || newRem == 0 -> {
+                remaining = visitStart
+                dartsInVisit = 3
+                if (checkoutStart != 0) checkoutBusts++
+                message = "${hit.label} — BUST, back to $visitStart"
+                Sounds.playBust()
+            }
+            else -> {
+                scored += hit.score
+                remaining = newRem
+                message = "${hit.label} (${hit.score})" + if (dartsInVisit == 3) "  ·  visit ${thrown.sumOf { it.score }}" else ""
             }
         }
     }
-}
 
-private const val FLOAT_MS = 1400L
+    if (coachOpen) {
+        CoachDialog(
+            start = if (checkoutStart != 0) checkoutStart else startScore,
+            thrown = checkoutThrown.toList(),
+            aimed = checkoutThrown.toList(),
+            busts = checkoutBusts,
+            onDismiss = { coachOpen = false },
+            onNext = { reset() },
+            nextLabel = "Play again"
+        )
+    }
+
+    val avg = if (dartsTotal == 0) 0f else scored * 3f / dartsTotal
+    val inHand = if (finished) 0 else if (dartsInVisit >= 3) 0 else 3 - dartsInVisit
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            ScreenHeader("Fast 501", navController) {
+                TextButton(onClick = { reset() }) { Text("New", color = Gold) }
+            }
+
+            // Score + power bar
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    remaining.toString(), fontSize = 48.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace,
+                    color = Gold, modifier = Modifier.width(120.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    PowerBar(
+                        value = remaining.toFloat() / startScore,
+                        enabled = false, onChange = {},
+                        modifier = Modifier.fillMaxWidth().height(24.dp)
+                    )
+                    Text(
+                        "avg ${"%.1f".format(avg)}   darts $dartsTotal" +
+                            (if (remaining in 2..170 && CheckoutLogic.isFinishable(remaining)) "   ${CheckoutLogic.tip(remaining)}" else ""),
+                        fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = PaleGold, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+
+            // Fixed-height status block so the board never moves
+            Column(modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(message, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(24.dp))
+                Text(
+                    "Dart ${if (dartsInVisit >= 3) 3 else dartsInVisit}/3   Visit: " + thrown.joinToString(" ") { it.label }.ifEmpty { "—" },
+                    fontSize = 13.sp, color = Grey, maxLines = 1, modifier = Modifier.height(20.dp)
+                )
+            }
+
+            Dartboard(
+                modifier = Modifier.padding(8.dp).onGloballyPositioned {
+                    val p = it.positionInRoot()
+                    starOrigin = Offset(p.x + it.size.width / 2f, p.y + it.size.height / 2f)
+                },
+                geometry = FastGeo,
+                showValues = true,
+                onTap = { poke(it) }
+            )
+
+            Text(
+                "Inner numbers = trebles, outer numbers = doubles",
+                fontSize = 12.sp, color = Grey, textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+            )
+        }
+
+        DartsInHand(
+            inHand = inHand,
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 10.dp).size(width = 132.dp, height = 90.dp)
+        )
+        StarBurst(trigger = burstTrigger, origin = starOrigin, modifier = Modifier.fillMaxSize())
+    }
+}

@@ -38,7 +38,7 @@ fun MainMenuScreen(navController: NavHostController) {
             RetroButton("501  ·  2 PLAYER") { navController.navigate("x01") }
             RetroButton("CHECKOUT") { navController.navigate("checkout") }
             RetroButton("DARTLESS CHECKOUT") { navController.navigate("dartless") }
-            RetroButton("VALUE CHECKER") { navController.navigate("valuechecker") }
+            RetroButton("FAST 501  ·  SOLO") { navController.navigate("valuechecker") }
             RetroButton("METRONOME") { navController.navigate("metronome") }
             RetroButton("SETTINGS") { navController.navigate("settings") }
             Spacer(Modifier.weight(1f))

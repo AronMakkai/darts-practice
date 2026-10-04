@@ -453,7 +453,7 @@ fun DartlessScreen(navController: NavHostController) {
 
 /** Post-checkout coach: how you did it, how the book does it, and why. */
 @Composable
-private fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: Int, onDismiss: () -> Unit, onNext: () -> Unit) {
+internal fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: Int, onDismiss: () -> Unit, onNext: () -> Unit, nextLabel: String = "Next checkout") {
     val suggestion = remember(start) { CheckoutLogic.suggest(start) }
     val optimal = suggestion?.best
     val pointers = remember(start, thrown.size) { coachPointers(start, thrown, aimed, busts, suggestion) }
@@ -505,7 +505,7 @@ private fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: 
                 Spacer(Modifier.height(14.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("tap or swipe down to close", fontSize = 11.sp, color = Grey)
-                    Button(onClick = onNext) { Text("Next checkout") }
+                    Button(onClick = onNext) { Text(nextLabel) }
                 }
             }
         }
