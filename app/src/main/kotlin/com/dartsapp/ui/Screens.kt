@@ -39,6 +39,7 @@ fun MainMenuScreen(navController: NavHostController) {
             RetroButton("DARTLESS CHECKOUT") { navController.navigate("dartless") }
             RetroButton("VALUE CHECKER") { navController.navigate("valuechecker") }
             RetroButton("METRONOME") { navController.navigate("metronome") }
+            RetroButton("SETTINGS") { navController.navigate("settings") }
             Spacer(Modifier.weight(1f))
         }
     }

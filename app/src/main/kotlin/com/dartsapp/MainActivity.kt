@@ -17,6 +17,7 @@ import com.dartsapp.ui.CheckoutScreen
 import com.dartsapp.ui.DartlessScreen
 import com.dartsapp.ui.ValueCheckerScreen
 import com.dartsapp.ui.MetronomeScreen
+import com.dartsapp.ui.SettingsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,5 +41,6 @@ fun DartsApp() {
         composable("dartless") { DartlessScreen(navController) }
         composable("valuechecker") { ValueCheckerScreen(navController) }
         composable("metronome") { MetronomeScreen(navController) }
+        composable("settings") { SettingsScreen(navController) }
     }
 }

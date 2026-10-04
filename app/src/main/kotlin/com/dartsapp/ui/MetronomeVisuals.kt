@@ -315,3 +315,73 @@ fun BustOverlay(trigger: Int, origin: Offset, modifier: Modifier = Modifier) {
         }
     }
 }
+
+/**
+ * Three flat-shaded vector darts, 80s style, pointing up-right. [inHand] of them are drawn solid;
+ * the rest (already thrown) are faint outlines, so you always know which dart you are on.
+ */
+@Composable
+fun DartsInHand(inHand: Int, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val n = 3
+        val slot = w / n
+        for (i in 0 until n) {
+            val solid = i < inHand
+            val cx = slot * i + slot / 2f
+            drawVectorDart(Offset(cx, h * 0.5f), h * 0.9f, solid)
+        }
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawVectorDart(centre: Offset, length: Float, solid: Boolean) {
+    // Dart axis runs from tail (bottom-left) to point (top-right) at 55 degrees
+    val a = Math.toRadians(-55.0)
+    val dir = Offset(cos(a).toFloat(), sin(a).toFloat())
+    val perp = Offset(-dir.y, dir.x)
+    fun at(d: Float, side: Float) = Offset(centre.x + dir.x * d + perp.x * side, centre.y + dir.y * d + perp.y * side)
+    val alpha = if (solid) 1f else 0.28f
+    val stroke = Stroke(width = length * 0.03f)
+
+    // Point
+    drawLine(OffWhite.copy(alpha = alpha), at(length * 0.2f, 0f), at(length * 0.5f, 0f), strokeWidth = length * 0.035f, cap = StrokeCap.Round)
+    // Barrel: tapered polygon
+    val barrel = Path().apply {
+        moveTo(at(-length * 0.05f, -length * 0.05f).x, at(-length * 0.05f, -length * 0.05f).y)
+        lineTo(at(length * 0.2f, -length * 0.035f).x, at(length * 0.2f, -length * 0.035f).y)
+        lineTo(at(length * 0.2f, length * 0.035f).x, at(length * 0.2f, length * 0.035f).y)
+        lineTo(at(-length * 0.05f, length * 0.05f).x, at(-length * 0.05f, length * 0.05f).y)
+        close()
+    }
+    if (solid) drawPath(barrel, Gold) else drawPath(barrel, Gold.copy(alpha = alpha), style = stroke)
+    // Grip rings
+    for (k in 0 until 3) {
+        val d = length * (0.0f + k * 0.06f)
+        drawLine(Black.copy(alpha = alpha), at(d, -length * 0.045f), at(d, length * 0.045f), strokeWidth = length * 0.015f)
+    }
+    // Shaft
+    drawLine(Red.copy(alpha = alpha), at(-length * 0.05f, 0f), at(-length * 0.28f, 0f), strokeWidth = length * 0.03f, cap = StrokeCap.Round)
+    // Flights: two flat triangles
+    val flight1 = Path().apply {
+        moveTo(at(-length * 0.26f, 0f).x, at(-length * 0.26f, 0f).y)
+        lineTo(at(-length * 0.5f, -length * 0.16f).x, at(-length * 0.5f, -length * 0.16f).y)
+        lineTo(at(-length * 0.48f, 0f).x, at(-length * 0.48f, 0f).y)
+        close()
+    }
+    val flight2 = Path().apply {
+        moveTo(at(-length * 0.26f, 0f).x, at(-length * 0.26f, 0f).y)
+        lineTo(at(-length * 0.5f, length * 0.16f).x, at(-length * 0.5f, length * 0.16f).y)
+        lineTo(at(-length * 0.48f, 0f).x, at(-length * 0.48f, 0f).y)
+        close()
+    }
+    if (solid) {
+        drawPath(flight1, Red)
+        drawPath(flight2, Color(0xFF8E0E24))
+        drawPath(flight1, Black, style = Stroke(width = length * 0.012f))
+        drawPath(flight2, Black, style = Stroke(width = length * 0.012f))
+    } else {
+        drawPath(flight1, Red.copy(alpha = alpha), style = stroke)
+        drawPath(flight2, Red.copy(alpha = alpha), style = stroke)
+    }
+}

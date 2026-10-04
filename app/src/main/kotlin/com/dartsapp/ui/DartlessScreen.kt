@@ -26,6 +26,8 @@ import com.dartsapp.data.Hit
 import com.dartsapp.logic.AccuracyModel
 import com.dartsapp.logic.CheckoutLogic
 import com.dartsapp.logic.Sounds
+import com.dartsapp.logic.Settings
+import com.dartsapp.logic.Difficulty
 import com.dartsapp.logic.TimingPreset
 import com.dartsapp.logic.TimingPresets
 import kotlinx.coroutines.delay
@@ -33,32 +35,33 @@ import kotlinx.coroutines.delay
 private val BoardGeo = BoardGeometry.PRACTICE
 
 /** Window (seconds) around the ideal moment that counts as "on pace". */
-internal fun paceWindow(period: Float): Float = minOf(maxOf(0.2f * period, 0.3f), period / 4f)
+internal fun paceWindow(period: Float, d: Difficulty = Difficulty.NORMAL): Float =
+    minOf(maxOf(0.2f * period, 0.3f), period / 4f) * d.windowScale
 
 /**
  * Accuracy of the throw itself: swipe (pick up) to tap (throw) compared with the preset's dart
  * time. Inside the window = 100 %. Early falls off gently (20 % at half a period early); late
  * plummets — holding the dart and dithering costs you fast (20 % at a quarter period late).
  */
-internal fun throwAccuracy(elapsed: Float, period: Float): Float {
-    val tol = paceWindow(period)
+internal fun throwAccuracy(elapsed: Float, period: Float, d: Difficulty = Difficulty.NORMAL): Float {
+    val tol = paceWindow(period, d)
     val off = kotlin.math.abs(elapsed - period)
     if (off <= tol) return 1f
     val excess = off - tol
-    return if (elapsed < period) (1f - 0.8f * excess / (period / 2f - tol)).coerceIn(0.2f, 1f)
-    else (1f - 0.8f * excess / (period / 4f)).coerceIn(0.2f, 1f)
+    return if (elapsed < period) (1f - 0.8f * excess / (period / 2f - tol).coerceAtLeast(0.05f)).coerceIn(0.2f, 1f)
+    else (1f - 0.8f * excess / (period / 4f * d.lateScale)).coerceIn(0.2f, 1f)
 }
 
 /** Free pause allowed between a throw and the next pick-up before it counts as losing the rhythm. */
-internal fun pauseAllowance(period: Float): Float = maxOf(0.25f * period, 0.4f)
+internal fun pauseAllowance(period: Float, d: Difficulty = Difficulty.NORMAL): Float = maxOf(0.25f * period, 0.4f) * d.pauseScale
 
 /**
  * Rhythm factor from the pause between the previous tap and this swipe. Swipe-tap-swipe-tap with
  * no hesitation = 1.0. Stopping to think breaks the pace: the factor eases down to 0.4 over one
  * dart time of hesitation.
  */
-internal fun pauseFactor(pauseSec: Float, period: Float): Float {
-    val excess = (pauseSec - pauseAllowance(period)).coerceAtLeast(0f)
+internal fun pauseFactor(pauseSec: Float, period: Float, d: Difficulty = Difficulty.NORMAL): Float {
+    val excess = (pauseSec - pauseAllowance(period, d)).coerceAtLeast(0f)
     return (1f - 0.6f * excess / period).coerceIn(0.4f, 1f)
 }
 
@@ -75,6 +78,7 @@ internal fun pauseFactor(pauseSec: Float, period: Float): Float {
 fun DartlessScreen(navController: NavHostController) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("dartless", android.content.Context.MODE_PRIVATE) }
+    val difficulty: Difficulty = remember { Settings.difficulty(context) }
 
     // Perfect-rhythm streak (gold bars) and the all-time best
     var streak by remember { mutableStateOf(prefs.getInt("streak", 0)) }
@@ -141,7 +145,7 @@ fun DartlessScreen(navController: NavHostController) {
 
     fun newCheckout() {
         if (!finished && dartsTotal > 0 && streak > 0) { streak = 0; saveStreak() }
-        start = if (metronomeMode) CheckoutLogic.randomCheckoutForStreak(streak) else CheckoutLogic.randomCheckout()
+        start = if (metronomeMode) CheckoutLogic.randomCheckoutForStreak(streak, difficulty.checkoutShift) else CheckoutLogic.randomCheckout()
         remaining = start
         visitStart = start
         dartsInVisit = 0
@@ -176,13 +180,13 @@ fun DartlessScreen(navController: NavHostController) {
             if (throwStartMs == 0L) { message = "Swipe up from the bottom-left corner first"; return }
             val elapsed = (now - throwStartMs) / 1000f
             val off = kotlin.math.abs(elapsed - preset.dart)
-            val throwAcc = throwAccuracy(elapsed, preset.dart)
-            val rhythm = if (pauseSec >= 0f) pauseFactor(pauseSec, preset.dart) else 1f
+            val throwAcc = throwAccuracy(elapsed, preset.dart, difficulty)
+            val rhythm = if (pauseSec >= 0f) pauseFactor(pauseSec, preset.dart, difficulty) else 1f
             accuracy = (throwAcc * rhythm).coerceIn(0.2f, 1f)
-            val onPace = off <= paceWindow(preset.dart) && rhythm >= 0.999f
+            val onPace = off <= paceWindow(preset.dart, difficulty) && rhythm >= 0.999f
             judgedThrows++
             if (!onPace) allOnBeat = false
-            val throwNote = if (off <= paceWindow(preset.dart)) "on pace" else if (elapsed < preset.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late"
+            val throwNote = if (off <= paceWindow(preset.dart, difficulty)) "on pace" else if (elapsed < preset.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late"
             val pauseNote = if (pauseSec >= 0f && rhythm < 0.999f) "  ·  hesitated ${formatSec(pauseSec)} s" else ""
             timingNote = "Throw $throwNote$pauseNote  →  accuracy ${(accuracy * 100).toInt()}%"
             throwStartMs = 0L
@@ -190,7 +194,7 @@ fun DartlessScreen(navController: NavHostController) {
         }
 
         val target = Board.hitTest(aim.x, aim.y, BoardGeo)
-        val (lx, ly) = model.land(aim.x, aim.y, accuracy)
+        val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, BoardGeo)
         marks.add(Offset(lx, ly))
         thrown.add(hit)
@@ -251,7 +255,7 @@ fun DartlessScreen(navController: NavHostController) {
 
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = if (metronomeMode) 130.dp else 16.dp)
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = if (metronomeMode) 130.dp else 100.dp)
     ) {
         ScreenHeader("Dartless Checkout", navController) {
             TextButton(onClick = { showTip = !showTip }, enabled = !metronomeMode) { Text("Tip", color = if (showTip) Gold else Grey) }
@@ -377,12 +381,22 @@ fun DartlessScreen(navController: NavHostController) {
             modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp).width(44.dp).fillMaxHeight(0.62f)
         )
     }
+    val inHand = if (finished) 0 else if (dartsInVisit >= 3) 0 else 3 - dartsInVisit
     if (metronomeMode) {
         SwipeToThrowZone(
             armed = throwStartMs != 0L,
             enabled = !finished && preset != null,
             onSwipe = { armThrow() },
             modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).size(120.dp)
+        )
+        DartsInHand(
+            inHand = inHand,
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp, bottom = 22.dp).size(width = 132.dp, height = 90.dp)
+        )
+    } else {
+        DartsInHand(
+            inHand = inHand,
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 10.dp).size(width = 132.dp, height = 90.dp)
         )
     }
     StarBurst(trigger = starTrigger, origin = burstOrigin, modifier = Modifier.fillMaxSize())

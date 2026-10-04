@@ -12,11 +12,11 @@ import kotlin.random.Random
  */
 class AccuracyModel(private val random: java.util.Random = java.util.Random()) {
     /** Returns the actual landing point (normalised board coords) for a tap at [x],[y]. */
-    fun land(x: Float, y: Float, accuracy: Float): Pair<Float, Float> {
+    fun land(x: Float, y: Float, accuracy: Float, scatterScale: Float = 1f): Pair<Float, Float> {
         val a = accuracy.coerceIn(0f, 1f)
         if (a >= 0.999f) return x to y
-        // Max spread of ~35 % of the board radius at 0 % accuracy.
-        val sigma = (1f - a) * 0.35f
+        // Max spread of ~35 % of the board radius at 0 % accuracy (scaled by difficulty).
+        val sigma = (1f - a) * 0.35f * scatterScale
         val dx = (random.nextGaussian() * sigma).toFloat()
         val dy = (random.nextGaussian() * sigma).toFloat()
         return (x + dx) to (y + dy)
@@ -33,12 +33,17 @@ object CheckoutLogic {
      * Checkout range that gets harder as the perfect-rhythm streak grows:
      * 0–2: 2–60 · 3–5: 40–100 · 6–9: 80–140 · 10–19: 100–170 · 20+: 121–170 (big finishes only).
      */
-    fun randomCheckoutForStreak(streak: Int): Int = when {
-        streak < 3 -> randomCheckout(2, 60)
-        streak < 6 -> randomCheckout(40, 100)
-        streak < 10 -> randomCheckout(80, 140)
-        streak < 20 -> randomCheckout(100, 170)
-        else -> randomCheckout(121, 170)
+    fun randomCheckoutForStreak(streak: Int, shift: Int = 0): Int {
+        val (lo, hi) = when {
+            streak < 3 -> 2 to 60
+            streak < 6 -> 40 to 100
+            streak < 10 -> 80 to 140
+            streak < 20 -> 100 to 170
+            else -> 121 to 170
+        }
+        val min = (lo + shift).coerceIn(2, 160)
+        val max = (hi + shift).coerceIn(min + 5, 170)
+        return randomCheckout(min, max)
     }
 
     fun randomCheckout(min: Int = 2, max: Int = 170): Int {
