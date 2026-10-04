@@ -51,9 +51,9 @@ internal fun timingAccuracy(measured: Float, target: Float): Float {
  * Dartless checkout: tap the board where you would aim. The accuracy slider adds random
  * scatter to where the dart actually lands, so at low accuracy T20 might become S1 or S5.
  *
- * Metronome mode: pick a timing preset learned in the Metronome screen. Before every dart press
- * "Grab darts" then "Aim", then tap the board. The closer your rhythm is to the preset's dart
- * time, the more accurate the throw — the accuracy slider sets itself.
+ * Metronome mode: pick a timing preset learned in the Metronome screen. Every dart is Grab darts
+ * -> Aim -> tap the board, and each of those moves is timed against the preset. The closer your
+ * rhythm is to the preset, the more accurate the throw — the accuracy slider sets itself.
  */
 @Composable
 fun DartlessScreen(navController: NavHostController) {
@@ -83,27 +83,35 @@ fun DartlessScreen(navController: NavHostController) {
     var presetName by remember { mutableStateOf(TimingPresets.selectedName(context) ?: presets.firstOrNull()?.name) }
     val preset: TimingPreset? = presets.firstOrNull { it.name == presetName }
     var presetMenuOpen by remember { mutableStateOf(false) }
-    var pulse by remember { mutableStateOf(false) }
+    var aimedAtMs by remember { mutableStateOf(0L) }
+    var pulseKind by remember { mutableStateOf(Kind.NONE) }   // which move the beat is on right now
 
     val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 80) }
     DisposableEffect(Unit) { onDispose { toneGen.release() } }
 
-    // Metronome beat: ticks at the preset's dart interval, anchored to the last "Grab darts" press,
-    // so the beats land where the throws should. Audible click + the buttons flash brighter.
-    val beatSec = if (metronomeMode && !finished && beatAnchorMs > 0L) preset?.dart else null
-    LaunchedEffect(beatSec, beatAnchorMs) {
-        if (beatSec == null) { pulse = false; return@LaunchedEffect }
-        val periodMs = (beatSec.coerceAtLeast(0.3f) * 1000).toLong()
-        while (true) {
-            toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 60)
-            pulse = true
+    // Metronome beat: follows the three moves of each dart — grab, aim, throw — using the preset's
+    // times. Anchored to the first "Grab darts" press of a visit (that press IS the first grab beat),
+    // so the clicks land where your moves should. Each move has its own tone; the matching button flashes.
+    val beatPreset = if (metronomeMode && !finished && beatAnchorMs > 0L) preset else null
+    LaunchedEffect(beatPreset, beatAnchorMs) {
+        if (beatPreset == null) { pulseKind = Kind.NONE; return@LaunchedEffect }
+        suspend fun beat(kind: Kind, tone: Int, waitSec: Float) {
+            delay((waitSec.coerceAtLeast(0.25f) * 1000).toLong() - 120)
+            toneGen.startTone(tone, 70)
+            pulseKind = kind
             delay(120)
-            pulse = false
-            delay(periodMs - 120)
+            pulseKind = Kind.NONE
+        }
+        // Anchor = grab done. Then aim, throw, grab, aim, throw, ...
+        pulseKind = Kind.GRAB; delay(120); pulseKind = Kind.NONE
+        while (true) {
+            beat(Kind.AIM, ToneGenerator.TONE_PROP_BEEP, beatPreset.aim)
+            beat(Kind.THROW, ToneGenerator.TONE_PROP_BEEP2, beatPreset.throwTime)
+            beat(Kind.GRAB, ToneGenerator.TONE_PROP_ACK, beatPreset.grab)
         }
     }
 
-    fun idleMessage() = if (metronomeMode) "Press Grab darts to start the beat" else "Tap the board to throw"
+    fun idleMessage() = if (metronomeMode) "Grab darts → Aim → tap the board. The beat starts on your first grab." else "Tap the board to throw"
 
     fun newCheckout() {
         start = CheckoutLogic.randomCheckout()
@@ -138,12 +146,24 @@ fun DartlessScreen(navController: NavHostController) {
             thrown.clear()
         }
 
-        // Metronome mode: accuracy comes from your rhythm, not the slider.
+        // Metronome mode: accuracy comes from your rhythm, not the slider. Each move is judged
+        // against the preset: grab (previous throw -> grab press), aim (grab -> aim press),
+        // throw (aim press -> this tap). The first dart of a visit has no grab reference.
         if (metronomeMode && preset != null) {
-            val firstDart = dartsInVisit == 0 || lastThrowMs == 0L
-            val measured = (now - (if (firstDart) grabbedAtMs else lastThrowMs)) / 1000f
-            accuracy = timingAccuracy(measured, preset.dart)
-            timingNote = "Timing ${formatSec(measured)} s vs ${formatSec(preset.dart)} s  →  accuracy ${(accuracy * 100).toInt()}%"
+            val aimSec = (aimedAtMs - grabbedAtMs) / 1000f
+            val throwSec = (now - aimedAtMs) / 1000f
+            val parts = mutableListOf(
+                timingAccuracy(aimSec, preset.aim),
+                timingAccuracy(throwSec, preset.throwTime)
+            )
+            var note = "aim ${formatSec(aimSec)}/${formatSec(preset.aim)}  throw ${formatSec(throwSec)}/${formatSec(preset.throwTime)}"
+            if (lastThrowMs != 0L && dartsInVisit > 0) {
+                val grabSec = (grabbedAtMs - lastThrowMs) / 1000f
+                parts.add(timingAccuracy(grabSec, preset.grab))
+                note = "grab ${formatSec(grabSec)}/${formatSec(preset.grab)}  $note"
+            }
+            accuracy = parts.average().toFloat()
+            timingNote = "$note  →  ${(accuracy * 100).toInt()}%"
         }
 
         val target = Board.hitTest(aim.x, aim.y, BoardGeo)
@@ -258,9 +278,12 @@ fun DartlessScreen(navController: NavHostController) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp)
             )
-            if (metronomeMode && timingNote.isNotEmpty()) {
+            if (metronomeMode) {
                 Text(
-                    timingNote, fontSize = 13.sp, color = PaleGold,
+                    if (pulseKind == Kind.THROW) "▲  THROW  ▲" else timingNote.ifEmpty { " " },
+                    fontSize = if (pulseKind == Kind.THROW) 16.sp else 13.sp,
+                    fontWeight = if (pulseKind == Kind.THROW) FontWeight.Bold else FontWeight.Normal,
+                    color = if (pulseKind == Kind.THROW) BrightGold else PaleGold,
                     modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 2.dp)
                 )
             }
@@ -288,7 +311,7 @@ fun DartlessScreen(navController: NavHostController) {
 
                 if (metronomeMode) {
                     Text(
-                        preset?.let { "Target: ${formatSec(it.dart)} s per dart. The beat starts when you press Grab darts; throw on the clicks." }
+                        preset?.let { "Per dart: grab ${formatSec(it.grab)} s → aim ${formatSec(it.aim)} s → throw ${formatSec(it.throwTime)} s. Follow the clicks: low = grab, mid = aim, high = throw." }
                             ?: "Pick a timing preset (top right) — learn one in the Metronome screen.",
                         fontSize = 12.sp, color = Grey, modifier = Modifier.padding(top = 4.dp)
                     )
@@ -304,12 +327,12 @@ fun DartlessScreen(navController: NavHostController) {
         // Gold = waiting to be pressed, green = done. Both reset after every throw.
         if (metronomeMode) {
             val grabColor by animateColorAsState(
-                targetValue = if (grabbed) (if (pulse) BrightGreen else Green) else (if (pulse) BrightGold else Gold),
-                animationSpec = tween(if (pulse) 40 else 220), label = "grab"
+                targetValue = if (grabbed) (if (pulseKind == Kind.GRAB) BrightGreen else Green) else (if (pulseKind == Kind.GRAB) BrightGold else Gold),
+                animationSpec = tween(if (pulseKind == Kind.GRAB) 40 else 220), label = "grab"
             )
             val aimColor by animateColorAsState(
-                targetValue = if (aimed) (if (pulse) BrightGreen else Green) else (if (pulse) BrightGold else Gold),
-                animationSpec = tween(if (pulse) 40 else 220), label = "aim"
+                targetValue = if (aimed) (if (pulseKind == Kind.AIM) BrightGreen else Green) else (if (pulseKind == Kind.AIM) BrightGold else Gold),
+                animationSpec = tween(if (pulseKind == Kind.AIM) 40 else 220), label = "aim"
             )
             Row(
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 16.dp),
@@ -337,7 +360,7 @@ fun DartlessScreen(navController: NavHostController) {
                     onClick = {
                         when {
                             !grabbed -> message = "Grab your darts first"
-                            !aimed -> { aimed = true; message = "Throw — tap the board" }
+                            !aimed -> { aimed = true; aimedAtMs = System.currentTimeMillis(); message = "Throw — tap the board" }
                         }
                     },
                     enabled = !finished,

@@ -4,24 +4,31 @@ import android.content.Context
 
 /**
  * A named timing profile learned in the Metronome screen.
- * All three darts share one [dart] time; the opponent's time is never part of a preset.
+ *
+ * Every dart is Grab -> Aim -> Throw. The three darts are pooled, so there is one grab time,
+ * one aim time and one throw time shared by all darts. The opponent's time is never part of a preset.
  */
 data class TimingPreset(
     val name: String,
     val approach: Float,
-    val dart: Float,
+    val grab: Float,
+    val aim: Float,
+    val throwTime: Float,
     val remove: Float,
     val rounds: Int
 ) {
+    /** Full length of one dart: grab + aim + throw. */
+    val dart: Float get() = grab + aim + throwTime
+
     fun summary(): String =
-        "approach %.1f s  ·  dart %.1f s  ·  remove %.1f s  ·  %d round%s"
-            .format(approach, dart, remove, rounds, if (rounds == 1) "" else "s")
+        "approach %.1f s  ·  grab %.1f s  ·  aim %.1f s  ·  throw %.1f s  ·  clear %.1f s  ·  %d round%s"
+            .format(approach, grab, aim, throwTime, remove, rounds, if (rounds == 1) "" else "s")
 }
 
 /** Simple persistent store for timing presets (SharedPreferences, one line per preset). */
 object TimingPresets {
     private const val PREFS = "timing_presets"
-    private const val KEY_LIST = "presets"
+    private const val KEY_LIST = "presets_v2"
     private const val KEY_SELECTED = "selected"
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -31,9 +38,9 @@ object TimingPresets {
         if (raw.isBlank()) return emptyList()
         return raw.split('\n').mapNotNull { line ->
             val f = line.split('|')
-            if (f.size < 5) return@mapNotNull null
+            if (f.size < 7) return@mapNotNull null
             try {
-                TimingPreset(f[0], f[1].toFloat(), f[2].toFloat(), f[3].toFloat(), f[4].toInt())
+                TimingPreset(f[0], f[1].toFloat(), f[2].toFloat(), f[3].toFloat(), f[4].toFloat(), f[5].toFloat(), f[6].toInt())
             } catch (e: NumberFormatException) {
                 null
             }
@@ -42,7 +49,10 @@ object TimingPresets {
 
     private fun save(ctx: Context, list: List<TimingPreset>) {
         val raw = list.joinToString("\n") { p ->
-            listOf(p.name, p.approach.toString(), p.dart.toString(), p.remove.toString(), p.rounds.toString()).joinToString("|")
+            listOf(
+                p.name, p.approach.toString(), p.grab.toString(), p.aim.toString(),
+                p.throwTime.toString(), p.remove.toString(), p.rounds.toString()
+            ).joinToString("|")
         }
         prefs(ctx).edit().putString(KEY_LIST, raw).apply()
     }
