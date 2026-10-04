@@ -31,14 +31,30 @@ private val BoardGeo = BoardGeometry.PRACTICE
 internal fun paceWindow(period: Float): Float = minOf(maxOf(0.2f * period, 0.3f), period / 4f)
 
 /**
- * Accuracy from how far the tap was from the ideal moment (the ring back at the centre, [period]
- * seconds after the swipe). Inside the window = 100 %; falls linearly to 20 % at half a period off.
+ * Accuracy of the throw itself: swipe (pick up) to tap (throw) compared with the preset's dart
+ * time. Inside the window = 100 %. Early falls off gently (20 % at half a period early); late
+ * plummets — holding the dart and dithering costs you fast (20 % at a quarter period late).
  */
-internal fun paceAccuracy(offSec: Float, period: Float): Float {
+internal fun throwAccuracy(elapsed: Float, period: Float): Float {
     val tol = paceWindow(period)
-    if (offSec <= tol) return 1f
-    val worst = period / 2f
-    return (1f - 0.8f * (offSec - tol) / (worst - tol)).coerceIn(0.2f, 1f)
+    val off = kotlin.math.abs(elapsed - period)
+    if (off <= tol) return 1f
+    val excess = off - tol
+    return if (elapsed < period) (1f - 0.8f * excess / (period / 2f - tol)).coerceIn(0.2f, 1f)
+    else (1f - 0.8f * excess / (period / 4f)).coerceIn(0.2f, 1f)
+}
+
+/** Free pause allowed between a throw and the next pick-up before it counts as losing the rhythm. */
+internal fun pauseAllowance(period: Float): Float = maxOf(0.25f * period, 0.4f)
+
+/**
+ * Rhythm factor from the pause between the previous tap and this swipe. Swipe-tap-swipe-tap with
+ * no hesitation = 1.0. Stopping to think breaks the pace: the factor eases down to 0.4 over one
+ * dart time of hesitation.
+ */
+internal fun pauseFactor(pauseSec: Float, period: Float): Float {
+    val excess = (pauseSec - pauseAllowance(period)).coerceAtLeast(0f)
+    return (1f - 0.6f * excess / period).coerceIn(0.4f, 1f)
 }
 
 /**
@@ -70,6 +86,8 @@ fun DartlessScreen(navController: NavHostController) {
     // Metronome mode
     var metronomeMode by remember { mutableStateOf(false) }
     var throwStartMs by remember { mutableStateOf(0L) }   // 0 = no throw armed
+    var lastTapMs by remember { mutableStateOf(0L) }      // previous throw in this visit, 0 = none
+    var pauseSec by remember { mutableStateOf(-1f) }      // tap -> swipe pause for the armed throw, -1 = n/a
     var allOnBeat by remember { mutableStateOf(true) }     // no judged throw off the beat so far this checkout
     var judgedThrows by remember { mutableStateOf(0) }
     var starTrigger by remember { mutableStateOf(0) }
@@ -96,7 +114,9 @@ fun DartlessScreen(navController: NavHostController) {
 
     fun armThrow() {
         if (finished || !metronomeMode || preset == null) return
-        throwStartMs = System.currentTimeMillis()
+        val now = System.currentTimeMillis()
+        pauseSec = if (lastTapMs != 0L) (now - lastTapMs) / 1000f else -1f
+        throwStartMs = now
         message = "Tap your target when the ring is back at the centre"
     }
 
@@ -114,6 +134,8 @@ fun DartlessScreen(navController: NavHostController) {
         marks.clear()
         thrown.clear()
         throwStartMs = 0L
+        lastTapMs = 0L
+        pauseSec = -1f
         allOnBeat = true
         judgedThrows = 0
     }
@@ -129,19 +151,24 @@ fun DartlessScreen(navController: NavHostController) {
             thrown.clear()
         }
 
-        // Metronome mode: a throw must be armed by the swipe. The tap is judged by how far it is from
-        // the ideal moment — the ring back at the centre, one dart time after the swipe.
+        // Metronome mode: a throw must be armed by the swipe. Two things are judged:
+        //  - the throw: swipe -> tap against the preset's dart time (late is punished hard)
+        //  - the rhythm: the pause between the previous tap and this swipe (hesitating costs)
         if (metronomeMode && preset != null) {
             if (throwStartMs == 0L) { message = "Swipe up from the bottom-left corner first"; return }
             val elapsed = (now - throwStartMs) / 1000f
             val off = kotlin.math.abs(elapsed - preset.dart)
-            accuracy = paceAccuracy(off, preset.dart)
-            val onPace = off <= paceWindow(preset.dart)
+            val throwAcc = throwAccuracy(elapsed, preset.dart)
+            val rhythm = if (pauseSec >= 0f) pauseFactor(pauseSec, preset.dart) else 1f
+            accuracy = (throwAcc * rhythm).coerceIn(0.2f, 1f)
+            val onPace = off <= paceWindow(preset.dart) && rhythm >= 0.999f
             judgedThrows++
             if (!onPace) allOnBeat = false
-            timingNote = (if (onPace) "On pace" else if (elapsed < preset.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late") +
-                "  →  accuracy ${(accuracy * 100).toInt()}%"
+            val throwNote = if (off <= paceWindow(preset.dart)) "on pace" else if (elapsed < preset.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late"
+            val pauseNote = if (pauseSec >= 0f && rhythm < 0.999f) "  ·  hesitated ${formatSec(pauseSec)} s" else ""
+            timingNote = "Throw $throwNote$pauseNote  →  accuracy ${(accuracy * 100).toInt()}%"
             throwStartMs = 0L
+            lastTapMs = now
         }
 
         val target = Board.hitTest(aim.x, aim.y, BoardGeo)
@@ -174,6 +201,7 @@ fun DartlessScreen(navController: NavHostController) {
                 message = hitText
             }
         }
+        if (dartsInVisit >= 3 || finished) lastTapMs = 0L
         if (metronomeMode && !finished && dartsInVisit < 3) message += "  ·  Swipe for the next dart"
     }
 
@@ -197,6 +225,8 @@ fun DartlessScreen(navController: NavHostController) {
                     onCheckedChange = {
                         metronomeMode = it
                         throwStartMs = 0L
+                        lastTapMs = 0L
+                        pauseSec = -1f
                         timingNote = ""
                         if (!finished) message = idleMessage()
                     },
