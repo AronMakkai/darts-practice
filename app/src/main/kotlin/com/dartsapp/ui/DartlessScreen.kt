@@ -422,6 +422,7 @@ fun DartlessScreen(navController: NavHostController) {
                     periodSec = preset?.dart ?: 0f,
                     accuracy = accuracy,
                     opacity = aimTransparency.opacity,
+                    heat = streak / 10f,      // orange at 0, yellow around 5 clean checkouts, white at 10+
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f)
                 )
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))

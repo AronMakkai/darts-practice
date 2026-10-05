@@ -38,7 +38,8 @@ fun ThrowRing(
     periodSec: Float,
     modifier: Modifier = Modifier,
     accuracy: Float = 1f,     // current accuracy: 1 = razor sharp ring, low = blurred ring
-    opacity: Float = 1f       // from the Aim transparency setting
+    opacity: Float = 1f,      // from the Aim transparency setting
+    heat: Float = 0f          // hot streak 0..1: the trail goes orange -> yellow -> white
 ) {
     var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(startMs) {
@@ -53,8 +54,13 @@ fun ThrowRing(
     val t = (nowMs - startMs) / 1000f
     val inCycle = t <= periodSec
     // 0 -> 1 -> 0 over one period, then a gentle pulse around the centre
-    val scale = if (inCycle) sin(PI.toFloat() * t / periodSec) else 0.06f + 0.03f * sin((t - periodSec) * 8f)
+    fun scaleAt(tt: Float): Float = if (tt < 0f) 0f else if (tt <= periodSec) sin(PI.toFloat() * tt / periodSec) else 0.06f + 0.03f * sin((tt - periodSec) * 8f)
+    val scale = scaleAt(t)
     val nearCentre = !inCycle || (t > periodSec * 0.85f)
+    // Trail colour by heat: orange (cold) -> yellow -> white (on fire)
+    val h = heat.coerceIn(0f, 1f)
+    val orange = Color(0xFFFF7A1A)
+    val trailColor = if (h < 0.5f) lerpColor(orange, Color(0xFFFFE23A), h * 2f) else lerpColor(Color(0xFFFFE23A), OffWhite, (h - 0.5f) * 2f)
     // Blur: a poor accuracy smears the ring into several soft, offset copies; a perfect one is a single crisp line.
     val blur = (1f - accuracy.coerceIn(0f, 1f)).coerceIn(0f, 1f)
     val layers = 1 + (blur * 7f).toInt()
@@ -65,9 +71,24 @@ fun ThrowRing(
         val cy = size.height / 2f
         val boardR = minOf(size.width, size.height) / 2f / RIM_SCALE
         val r = boardR * scale.coerceIn(0.02f, 1f)
-        val color = if (nearCentre) BrightGold else Gold
+        val color = lerpColor(if (nearCentre) BrightGold else Gold, OffWhite, h * 0.7f)
         val stroke = boardR * 0.05f
         val spread = boardR * 0.14f * blur
+        // Trailing gradient: ghost rings where the ring was a moment ago, fading and thinning with age
+        if (inCycle) {
+            val steps = 10
+            val tail = periodSec * 0.16f
+            for (i in steps downTo 1) {
+                val age = tail * i / steps
+                val rr = boardR * scaleAt(t - age).coerceIn(0.02f, 1f)
+                val k = 1f - i / (steps + 1f)                   // 0 (oldest) .. 1 (newest)
+                val a = 0.5f * k * k * op
+                val w = stroke * (0.4f + 0.9f * k)
+                drawCircle(trailColor.copy(alpha = a), rr, Offset(cx, cy), style = Stroke(width = w))
+            }
+            // Hot glow filling the gap between the trail and the ring
+            drawCircle(trailColor.copy(alpha = 0.10f * op * (0.5f + 0.5f * h)), r, Offset(cx, cy), style = Stroke(width = stroke * 3f))
+        }
         drawCircle(color.copy(alpha = 0.18f * op), r, Offset(cx, cy))
         if (layers == 1) {
             drawCircle(color.copy(alpha = 0.75f * op), r, Offset(cx, cy), style = Stroke(width = stroke))
@@ -83,6 +104,16 @@ fun ThrowRing(
         // Centre dot marks the ideal moment
         drawCircle(color.copy(alpha = (if (nearCentre) 0.9f else 0.35f) * op), boardR * 0.025f, Offset(cx, cy))
     }
+}
+
+private fun lerpColor(a: Color, b: Color, f: Float): Color {
+    val k = f.coerceIn(0f, 1f)
+    return Color(
+        red = a.red + (b.red - a.red) * k,
+        green = a.green + (b.green - a.green) * k,
+        blue = a.blue + (b.blue - a.blue) * k,
+        alpha = a.alpha + (b.alpha - a.alpha) * k
+    )
 }
 
 /**
