@@ -61,7 +61,7 @@ fun SettingsScreen(navController: NavHostController) {
             }
         }
 
-        Text("Difficulty applies to Dartless Checkout: the pace window, how far a miss scatters, and how big the checkouts get.",
+        Text("Difficulty applies to Checkout Game: the pace window, how far a miss scatters, and how big the checkouts get.",
             fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
 
         Spacer(Modifier.height(16.dp))
@@ -85,7 +85,7 @@ fun SettingsScreen(navController: NavHostController) {
                 }
             }
         }
-        Text(aimOpacity.blurb + ". The aiming ring in Dartless Checkout and 501 vs bot.",
+        Text(aimOpacity.blurb + ". The aiming ring in Checkout Game and 501 vs bot.",
             fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
 
         Spacer(Modifier.height(16.dp))
@@ -94,11 +94,13 @@ fun SettingsScreen(navController: NavHostController) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { Sounds.tick() }, modifier = Modifier.weight(1f)) { Text("Tick", color = OffWhite) }
             OutlinedButton(onClick = { Sounds.beep() }, modifier = Modifier.weight(1f)) { Text("Beep", color = OffWhite) }
-            OutlinedButton(onClick = { Sounds.playCheckoutJingle() }, modifier = Modifier.weight(1f)) { Text("Jingle", color = OffWhite) }
+            OutlinedButton(onClick = { Sounds.cheer(big = true) }, modifier = Modifier.weight(1f)) { Text("Roar", color = OffWhite) }
         }
         var music by remember { mutableStateOf(Settings.musicOn(context)) }
         var announcer by remember { mutableStateOf(Settings.announcerOn(context)) }
+        var crowd by remember { mutableStateOf(Settings.crowdOn(context)) }
         ToggleRow("Menu music", music) { music = it; Settings.setMusicOn(context, it); if (it) Music.startMenu() else Music.stopAll() }
+        ToggleRow("Crowd chatter", crowd) { crowd = it; Settings.setCrowdOn(context, it) }
         ToggleRow("Announcer", announcer) { announcer = it; Settings.setAnnouncerOn(context, it); Announcer.setEnabled(it); if (it) Announcer.gameOn() }
         Text("Sounds play on the media volume — if these are silent, turn the media volume up (not the ring volume).",
             fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))

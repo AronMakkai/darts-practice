@@ -47,7 +47,7 @@ private val pages = listOf(
     )
 )
 
-/** Step-by-step tutorial for Dartless Checkout, with live illustrations. */
+/** Step-by-step tutorial for Checkout Game, with live illustrations. */
 @Composable
 fun DartlessTutorial(onClose: () -> Unit) {
     var page by remember { mutableStateOf(0) }

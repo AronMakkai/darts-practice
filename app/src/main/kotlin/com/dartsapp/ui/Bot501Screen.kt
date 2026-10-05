@@ -82,7 +82,7 @@ private fun targetPoint(hit: Hit): Offset {
 }
 
 /**
- * 501 against the machine. You throw the Dartless way — swipe to pick up, tap the target on the
+ * 501 against the machine. You throw the Checkout Game way — swipe to pick up, tap the target on the
  * beat — and the bot throws with an accuracy set by the difficulty. Legs and sets as in 2-player.
  */
 @Composable
@@ -220,6 +220,19 @@ fun Bot501Screen(navController: NavHostController) {
         version++
     }
 
+    // Cue tones for an armed throw, exactly as in Checkout Game: a tick when the ring reaches the
+    // edge, a beep when it is back at the centre (the ideal moment).
+    LaunchedEffect(throwStartMs) {
+        val period = preset?.dart ?: return@LaunchedEffect
+        if (throwStartMs == 0L) return@LaunchedEffect
+        Sounds.tick()
+        val half = (period * 500).toLong()
+        delay(half)
+        Sounds.tick()
+        delay(half)
+        Sounds.beep()
+    }
+
     fun armThrow() {
         if (matchOver || current != 0 || preset == null) return
         val now = System.currentTimeMillis()
@@ -234,7 +247,7 @@ fun Bot501Screen(navController: NavHostController) {
         if (throwStartMs == 0L) { message = "Swipe up from the arrow first"; return }
         val now = System.currentTimeMillis()
         if (dartsInVisit >= 3) { dartsInVisit = 0; marks.clear(); thrown.clear(); visitStart = sides[0].remaining }
-        // Pace -> accuracy (same rules as Dartless Checkout)
+        // Pace -> accuracy (same rules as Checkout Game)
         val elapsed = (now - throwStartMs) / 1000f
         val throwAcc = throwAccuracy(elapsed, p.dart, difficulty)
         val rhythm = if (pauseSec >= 0f) pauseFactor(pauseSec, p.dart, difficulty) else 1f
@@ -365,7 +378,7 @@ fun Bot501Screen(navController: NavHostController) {
                     OptionRow("Legs per set", listOf(1, 3, 5, 7), legsPerSet, { "$it" }) { legsPerSet = it }
                     OptionRow("Sets to win", listOf(1, 2, 3, 5), setsToWin, { "$it" }) { setsToWin = it }
                     Text(
-                        "Opponent skill is scaled by the difficulty in Settings (${difficulty.label}). You throw with the swipe-and-tap rhythm from Dartless Checkout.",
+                        "Opponent skill is scaled by the difficulty in Settings (${difficulty.label}). You throw with the swipe-and-tap rhythm from Checkout Game.",
                         fontSize = 12.sp, color = Grey, modifier = Modifier.padding(top = 8.dp)
                     )
                 }
@@ -382,7 +395,7 @@ fun Bot501Screen(navController: NavHostController) {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(bottom = 120.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(bottom = 130.dp)) {
             ScreenHeader(if (startScore == 301) "301 · 1 Player" else "501 · 1 Player", navController) {
                 IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
                 TextButton(onClick = { setupOpen = true }) { Text("Match", color = Gold) }
@@ -441,9 +454,12 @@ fun Bot501Screen(navController: NavHostController) {
                 )
             }
 
-            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 2.dp).onGloballyPositioned {
-                boardPos = it.positionInRoot(); boardSize = it.size
-            }) {
+            Box(
+                modifier = Modifier.fillMaxWidth().weight(1f, fill = false).padding(8.dp).onGloballyPositioned {
+                    boardPos = it.positionInRoot(); boardSize = it.size
+                },
+                contentAlignment = Alignment.Center
+            ) {
                 Dartboard(geometry = Geo, marks = marks, onTap = { userThrow(it) })
                 ThrowRing(
                     startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f,
@@ -458,9 +474,9 @@ fun Bot501Screen(navController: NavHostController) {
             armed = throwStartMs != 0L,
             enabled = current == 0 && !matchOver && preset != null,
             onSwipe = { armThrow() },
-            modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).size(110.dp)
+            modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).size(120.dp)
         )
-        DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.BottomStart).padding(start = 122.dp, bottom = 20.dp).size(width = 120.dp, height = 80.dp))
+        DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp, bottom = 22.dp).size(width = 132.dp, height = 90.dp))
         if (matchOver) {
             Button(onClick = { setupOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("New match") }
         }

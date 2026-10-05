@@ -69,9 +69,161 @@ object CheckoutLogic {
         for (n in listOf(12, 10, 4, 2, 14, 6, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1)) add(Hit(n, Ring.DOUBLE))
     }
 
-    /** All finishing routes for [remaining] (1–3 darts), best first. */
+    /**
+     * The checkout book (William Hill's published table), 170 down to 41, best route first with the
+     * table's alternatives. Below 41 a single plus a double is obvious and is computed instead.
+     * Tokens: T/D/S + number, BULL (50), OB (outer bull, 25).
+     */
+    private val book: Map<Int, List<String>> = mapOf(
+        170 to listOf("T20 T20 BULL"),
+        167 to listOf("T20 T19 BULL"),
+        164 to listOf("T20 T18 BULL"),
+        161 to listOf("T20 T17 BULL"),
+        160 to listOf("T20 T20 D20"),
+        158 to listOf("T20 T20 D19"),
+        157 to listOf("T20 T19 D20"),
+        156 to listOf("T20 T20 D18"),
+        155 to listOf("T20 T19 D19"),
+        154 to listOf("T20 T18 D20"),
+        153 to listOf("T20 T19 D18"),
+        152 to listOf("T20 T20 D16"),
+        151 to listOf("T20 T17 D20", "T19 T18 D20"),
+        150 to listOf("T20 T18 D18", "T19 T19 D18"),
+        149 to listOf("T20 T19 D16"),
+        148 to listOf("T20 T20 D14", "T20 T16 D20"),
+        147 to listOf("T20 T17 D18", "T19 T18 D18"),
+        146 to listOf("T20 T18 D16", "T19 T19 D16"),
+        145 to listOf("T20 T15 D20"),
+        144 to listOf("T20 T20 D12"),
+        143 to listOf("T20 T17 D16"),
+        142 to listOf("T20 T14 D20"),
+        141 to listOf("T20 T19 D12"),
+        140 to listOf("T20 T20 D10", "T20 D20 D20"),
+        139 to listOf("T19 T14 D20", "T20 T19 D11"),
+        138 to listOf("T20 T18 D12"),
+        137 to listOf("T20 T19 D10", "T19 D20 D20"),
+        136 to listOf("T20 T20 D8"),
+        135 to listOf("BULL T15 D20", "OB T20 BULL"),
+        134 to listOf("T20 T14 D16", "T18 D20 D20"),
+        133 to listOf("T20 T19 D8", "T19 D18 D20"),
+        132 to listOf("BULL BULL D16", "OB T19 BULL"),
+        131 to listOf("T20 T13 D16", "T17 D20 D20"),
+        130 to listOf("T20 T20 D5", "S20 T20 BULL"),
+        129 to listOf("T19 T16 D12", "S19 T20 BULL"),
+        128 to listOf("T18 T14 D16", "S18 T20 BULL"),
+        127 to listOf("T20 T17 D8", "S20 T19 BULL"),
+        126 to listOf("T19 T19 D6", "S19 T19 BULL"),
+        125 to listOf("BULL T17 D12", "OB T20 D20"),
+        124 to listOf("T20 S14 BULL", "S20 T18 BULL"),
+        123 to listOf("T19 S16 BULL", "S19 T18 BULL"),
+        122 to listOf("T18 T18 D7", "S18 T18 BULL"),
+        121 to listOf("T20 S11 BULL", "S20 T17 BULL"),
+        120 to listOf("T20 S20 D20", "S20 T20 D20"),
+        119 to listOf("T19 S12 BULL", "S19 T20 D20"),
+        118 to listOf("T20 S18 D20", "S20 T20 D19"),
+        117 to listOf("T20 S17 D20", "S20 T19 D20"),
+        116 to listOf("T19 S19 D20", "S19 T19 D20"),
+        115 to listOf("T19 S18 D20", "S19 T20 D18"),
+        114 to listOf("T20 S14 D20", "S20 T18 D20"),
+        113 to listOf("T19 S16 D20", "S19 T18 D20"),
+        112 to listOf("T20 S12 D20", "S20 T20 D16"),
+        111 to listOf("T20 S11 D20", "S20 T17 D20"),
+        110 to listOf("T20 S10 D20", "S20 T18 D18"),
+        109 to listOf("T19 S12 D20", "S19 T18 D18"),
+        108 to listOf("T19 S19 D16", "S19 T19 D16"),
+        107 to listOf("T20 S15 D16", "S20 T17 D18"),
+        106 to listOf("T20 S6 D20", "S20 T18 D16"),
+        105 to listOf("T20 S5 D20", "S20 T15 D20"),
+        104 to listOf("T18 S10 D20", "S18 T18 D16"),
+        103 to listOf("T20 S11 D16", "S20 T17 D16"),
+        102 to listOf("T20 S10 D16"),
+        101 to listOf("T20 S9 D16", "S20 T19 D12"),
+        100 to listOf("T20 D20", "S20 T20 D10"),
+        99 to listOf("T19 S10 D16", "S19 T20 D10"),
+        98 to listOf("T20 D19", "S20 T18 D12"),
+        97 to listOf("T19 D20", "S19 T18 D12"),
+        96 to listOf("T20 D18", "S20 T20 D8"),
+        95 to listOf("T19 D19", "BULL S5 D20", "OB S20 BULL"),
+        94 to listOf("T18 D20", "S18 D18 D20"),
+        93 to listOf("T19 D18", "S19 T14 D16"),
+        92 to listOf("T20 D16", "S20 D18 D18"),
+        91 to listOf("T17 D20", "S17 T14 D16"),
+        90 to listOf("T20 D15", "T18 D18", "S20 S20 BULL"),
+        89 to listOf("T19 D16", "S19 T20 D5"),
+        88 to listOf("T20 D14", "T16 D20", "S20 T18 D7"),
+        87 to listOf("T17 D18", "S17 T20 D5"),
+        86 to listOf("T18 D16", "S18 T18 D7"),
+        85 to listOf("T15 D20", "T19 D14", "S15 T20 D5"),
+        84 to listOf("T20 D12", "T16 D18", "S20 T14 D11"),
+        83 to listOf("T17 D16", "S17 T16 D9"),
+        82 to listOf("BULL D16", "T14 D20", "OB S17 D20"),
+        81 to listOf("T19 D12", "T15 D18", "S19 T12 D13"),
+        80 to listOf("T20 D10", "T16 D16", "S20 S20 D20"),
+        79 to listOf("T19 D11", "T13 D20", "S19 S20 D20"),
+        78 to listOf("T18 D12", "S18 S20 D20"),
+        77 to listOf("T19 D10", "S19 S18 D20"),
+        76 to listOf("T20 D8", "S20 S16 D20"),
+        75 to listOf("T17 D12", "OB BULL", "S17 S18 D20"),
+        74 to listOf("T14 D16", "T18 D10", "S14 S20 D20"),
+        73 to listOf("T19 D8", "T11 D20", "S19 S14 D20"),
+        72 to listOf("T16 D12", "T12 D18", "S16 S16 D20"),
+        71 to listOf("T13 D16", "T17 D10", "S13 S18 D20"),
+        70 to listOf("T10 D20", "T18 D8", "S10 S20 D20"),
+        69 to listOf("T19 D6", "T15 D12", "S19 S10 D20"),
+        68 to listOf("T20 D4", "S20 S16 D16"),
+        67 to listOf("T17 D8", "S17 S10 D20"),
+        66 to listOf("T10 D18", "S10 S16 D20"),
+        65 to listOf("OB D20", "T19 D4"),
+        64 to listOf("T16 D8", "T8 D20", "S16 S16 D16"),
+        63 to listOf("T9 D18", "T13 D12"),
+        62 to listOf("T10 D16", "S10 S12 D20"),
+        61 to listOf("OB D18", "T7 D20"),
+        60 to listOf("S20 D20"),
+        59 to listOf("S19 D20"),
+        58 to listOf("S18 D20"),
+        57 to listOf("S17 D20"),
+        56 to listOf("S16 D20"),
+        55 to listOf("S15 D20"),
+        54 to listOf("S14 D20"),
+        53 to listOf("S13 D20"),
+        52 to listOf("S12 D20", "S20 D16"),
+        51 to listOf("S11 D20", "S19 D16"),
+        50 to listOf("S10 D20", "S18 D16"),
+        49 to listOf("S9 D20", "S17 D16"),
+        48 to listOf("S8 D20", "S16 D16"),
+        47 to listOf("S7 D20", "S15 D16"),
+        46 to listOf("S6 D20", "S14 D16"),
+        45 to listOf("S5 D20", "S13 D16"),
+        44 to listOf("S4 D20", "S12 D16"),
+        43 to listOf("S3 D20", "S11 D16"),
+        42 to listOf("S2 D20", "S10 D16"),
+        41 to listOf("S1 D20", "S9 D16"),
+    )
+
+    /** Parses a book token into a [Hit]. */
+    fun parseToken(tok: String): Hit = when {
+        tok == "BULL" || tok == "Bull" -> Hit(25, Ring.BULL)
+        tok == "OB" || tok == "25" -> Hit(25, Ring.OUTER_BULL)
+        tok.startsWith("T") -> Hit(tok.drop(1).toIntOrNull() ?: 20, Ring.TREBLE)
+        tok.startsWith("D") -> Hit(tok.drop(1).toIntOrNull() ?: 20, Ring.DOUBLE)
+        tok.startsWith("S") -> Hit(tok.drop(1).toIntOrNull() ?: 20, Ring.SINGLE)
+        else -> Hit(tok.toIntOrNull() ?: 20, Ring.SINGLE)
+    }
+
+    private fun parseRoute(route: String): List<Hit> = route.split(' ').filter { it.isNotBlank() }.map { parseToken(it) }
+
+    /** Routes from the book for [remaining], best first; empty if the book has no entry. */
+    fun bookRoutes(remaining: Int): List<List<Hit>> = book[remaining]?.map { parseRoute(it) } ?: emptyList()
+
+    /** All finishing routes for [remaining] (1–3 darts): book routes first, then computed ones. */
     fun allFinishes(remaining: Int): List<List<Hit>> {
         if (remaining < 2 || remaining > 170) return emptyList()
+        val fromBook = bookRoutes(remaining)
+        val computed = computedFinishes(remaining)
+        return fromBook + computed.filter { c -> fromBook.none { it == c } }
+    }
+
+    private fun computedFinishes(remaining: Int): List<List<Hit>> {
         val routes = mutableListOf<List<Hit>>()
         for (f in finishers) if (f.score == remaining) routes.add(listOf(f))
         for (a in setupDarts) for (f in finishers) if (a.score + f.score == remaining) routes.add(listOf(a, f))
@@ -97,9 +249,14 @@ object CheckoutLogic {
     fun suggest(remaining: Int): Suggestion? {
         val routes = allFinishes(remaining)
         val best = routes.firstOrNull() ?: return null
-        val alt = routes.firstOrNull { it.last() != best.last() }
+        val fromBook = bookRoutes(remaining)
+        // Prefer the book's own alternative; otherwise a computed route on a different double
+        val alt = fromBook.getOrNull(1)
+            ?: routes.firstOrNull { it.last() != best.last() }
             ?: routes.firstOrNull { it != best && it.first() != best.first() }
-        return Suggestion(best, explain(best, remaining, true), alt, alt?.let { explain(it, remaining, false) } ?: "")
+        val bestWhy = (if (fromBook.isNotEmpty()) "The book route. " else "") + explain(best, remaining, true)
+        val altWhy = alt?.let { (if (fromBook.size > 1) "The book's second option. " else "") + explain(it, remaining, false) } ?: ""
+        return Suggestion(best, bestWhy, alt, altWhy)
     }
 
     fun routeLabel(route: List<Hit>): String = route.joinToString("  ") { it.label }

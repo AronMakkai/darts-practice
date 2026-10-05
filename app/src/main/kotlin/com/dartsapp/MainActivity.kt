@@ -52,7 +52,7 @@ fun DartsApp() {
     val context = LocalContext.current
     LaunchedEffect(Unit) { Announcer.init(context) }
 
-    // Background audio follows the screen: synth track on the menus, silence in the game modes.
+    // Background audio follows the screen: synth track on the menus, a quiet chatting crowd in the game modes.
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -60,6 +60,7 @@ fun DartsApp() {
         if (!foreground) { Music.stopAll(); return }
         when (r) {
             "menu", "game", "irl", "settings" -> if (Settings.musicOn(context)) Music.startMenu() else Music.stopAll()
+            "dartless", "bot501", "x01", "valuechecker" -> if (Settings.crowdOn(context)) Music.startCrowd() else Music.stopAll()
             else -> Music.stopAll()
         }
     }
@@ -89,7 +90,7 @@ fun DartsApp() {
             SubMenuScreen(
                 navController, "GAME",
                 listOf(
-                    "DARTLESS CHECKOUT" to "dartless",
+                    "CHECKOUT GAME" to "dartless",
                     "501  ·  1 PLAYER" to "bot501",
                     "FAST 501  ·  SOLO" to "valuechecker"
                 )

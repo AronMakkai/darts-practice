@@ -303,7 +303,7 @@ fun DartlessScreen(navController: NavHostController) {
         // No scrolling: the board must stay put under a swipe. The board box takes whatever height is left.
         modifier = Modifier.fillMaxSize().padding(bottom = if (metronomeMode) 130.dp else 100.dp)
     ) {
-        ScreenHeader("Dartless Checkout", navController) {
+        ScreenHeader("Checkout Game", navController) {
             TextButton(onClick = { showTutorial = true }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("?", color = Gold, fontWeight = FontWeight.Bold) }
             TextButton(onClick = { showTip = !showTip }, enabled = !metronomeMode) { Text("Tip", color = if (showTip) Gold else Grey) }
             TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }

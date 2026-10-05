@@ -197,7 +197,7 @@ fun MetronomeScreen(navController: NavHostController) {
                 Text(
                     "Darts is all about routine and rhythm. Either video yourself playing and set the timing from " +
                         "that video, or ask a friend to time you while you are playing, and save that.\n\n" +
-                        "Once saved, you can use the metronome when you practice, or use it in Dartless Checkout practice.\n\n" +
+                        "Once saved, you can use the metronome when you practice, or use it in the Checkout Game.\n\n" +
                         "Learn my timing walks you through a full turn: press the button the moment each step is done " +
                         "(in your stance, each dart thrown, board cleared), and the averages build up round by round. " +
                         "The three darts always share one time.",

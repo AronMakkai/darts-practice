@@ -3,7 +3,7 @@ package com.dartsapp.logic
 import android.content.Context
 
 /**
- * Difficulty for Dartless Checkout. Scales the timing windows, the hesitation allowance and the
+ * Difficulty for Checkout Game. Scales the timing windows, the hesitation allowance and the
  * scatter of a missed throw, and shifts the checkout ranges.
  */
 enum class Difficulty(
@@ -43,6 +43,8 @@ object Settings {
 
     fun musicOn(ctx: Context) = flag(ctx, "music", true)
     fun setMusicOn(ctx: Context, v: Boolean) = setFlag(ctx, "music", v)
+    fun crowdOn(ctx: Context) = flag(ctx, "crowd", true)
+    fun setCrowdOn(ctx: Context, v: Boolean) = setFlag(ctx, "crowd", v)
     fun announcerOn(ctx: Context) = flag(ctx, "announcer", true)
     fun setAnnouncerOn(ctx: Context, v: Boolean) = setFlag(ctx, "announcer", v)
 

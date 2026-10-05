@@ -11,18 +11,23 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Looping background audio, synthesised once and cached: an 80s synth-pop track for the menus,
- * generated on a background thread the first time it is asked for and then looped with a static AudioTrack.
+ * Looping background audio, synthesised once and cached: an 80s synth-pop track for the menus and a
+ * soft room of people chatting for the game screens. Generated on a background thread the first time
+ * they are asked for and then looped with a static AudioTrack.
  */
 object Music {
     private const val RATE = 22050
 
     private var menuTrack: AudioTrack? = null
     private var menuPcm: ShortArray? = null
+    private var crowdTrack: AudioTrack? = null
+    private var crowdPcm: ShortArray? = null
     @Volatile private var menuWanted = false
+    @Volatile private var crowdWanted = false
 
-    fun startMenu() { menuWanted = true; thread(name = "music") { syncTracks() } }
-    fun stopAll() { menuWanted = false; thread(name = "music") { syncTracks() } }
+    fun startMenu() { menuWanted = true; crowdWanted = false; thread(name = "music") { syncTracks() } }
+    fun startCrowd() { crowdWanted = true; menuWanted = false; thread(name = "music") { syncTracks() } }
+    fun stopAll() { menuWanted = false; crowdWanted = false; thread(name = "music") { syncTracks() } }
 
     @Synchronized
     private fun syncTracks() {
@@ -32,6 +37,12 @@ object Music {
                 if (menuWanted) menuTrack = loop(pcm, 0.55f)
             }
         } else { menuTrack?.let { safeStop(it) }; menuTrack = null }
+        if (crowdWanted) {
+            if (crowdTrack == null) {
+                val pcm = crowdPcm ?: renderCrowd().also { crowdPcm = it }
+                if (crowdWanted) crowdTrack = loop(pcm, 0.5f)
+            }
+        } else { crowdTrack?.let { safeStop(it) }; crowdTrack = null }
     }
 
     private fun safeStop(t: AudioTrack) { try { t.stop() } catch (e: Exception) {}; try { t.release() } catch (e: Exception) {} }
@@ -180,6 +191,67 @@ object Music {
             for (h in intArrayOf(1, 3, 5)) v += (sin(2 * PI * f * vib * h * t) / h).toFloat()
             val env = minOf(1f, i / (RATE * 0.01f)) * (if (p > 0.8f) (1f - p) / 0.2f else 1f)
             buf[idx] += v * env * amp
+        }
+    }
+
+    // ---- crowd --------------------------------------------------------------------------------
+
+    /**
+     * 10 s of a big room talking quietly: forty overlapping voices, each a stream of soft vowel-like
+     * syllables at its own pitch and pace, mixed low and heavily low-passed so no single voice stands
+     * out — a warm wash of conversation rather than hiss.
+     */
+    private fun renderCrowd(): ShortArray {
+        val len = 10f
+        val n = (RATE * len).toInt()
+        val buf = FloatArray(n)
+        val rnd = Random(23)
+        for (voice in 0 until 40) {
+            val base = 95f + rnd.nextFloat() * 150f               // deep to light voices
+            val pace = 0.1f + rnd.nextFloat() * 0.12f               // syllable length
+            val formant = 400f + rnd.nextFloat() * 1000f
+            val distance = 0.3f + rnd.nextFloat() * 0.7f            // far voices are quieter and duller
+            var t = rnd.nextFloat() * 0.6f
+            while (t < len) {
+                // a phrase of a few syllables, then a gap while "someone else talks"
+                val syllables = 2 + rnd.nextInt(6)
+                for (k in 0 until syllables) {
+                    val f = base * (0.9f + rnd.nextFloat() * 0.25f)
+                    val dur = pace * (0.7f + rnd.nextFloat() * 0.6f)
+                    syllable(buf, t, f, formant, dur, 0.012f * distance * distance, 1f - distance * 0.5f)
+                    t += dur * 1.05f
+                }
+                t += 0.4f + rnd.nextFloat() * 1.6f
+            }
+        }
+        // Room tone: very low, slow-moving filtered noise under the voices
+        var lp = 0f; var lp2 = 0f
+        for (i in 0 until n) {
+            val white = rnd.nextFloat() * 2f - 1f
+            lp += 0.05f * (white - lp); lp2 += 0.02f * (lp - lp2)
+            buf[i] += lp2 * 0.5f
+        }
+        // Gentle low-pass over the whole mix so it sits in the background
+        var y = 0f
+        for (i in 0 until n) { y += 0.22f * (buf[i] - y); buf[i] = y }
+        // Seamless loop: cross-fade the tail into the head, then drop the tail
+        val x = (0.6f * RATE).toInt()
+        for (i in 0 until x) { val k = i.toFloat() / x; buf[i] = buf[i] * k + buf[n - x + i] * (1f - k) }
+        return toPcm(buf.copyOf(n - x))
+    }
+
+    /** One soft spoken syllable: pitched buzz with a formant, bell-shaped envelope. */
+    private fun syllable(buf: FloatArray, t0: Float, f: Float, formant: Float, durSec: Float, amp: Float, bright: Float) {
+        val start = (t0 * RATE).toInt(); val dur = (durSec * RATE).toInt()
+        var phase = 0.0
+        for (i in 0 until dur) {
+            val idx = start + i; if (idx >= buf.size) break
+            val p = i.toFloat() / dur
+            val glide = f * (1f + 0.06f * (0.5f - p))
+            phase += 2 * PI * glide / RATE
+            val env = sin(PI * p).toFloat()
+            val v = sin(phase) + 0.5 * sin(2 * phase) * bright + 0.25 * sin(3 * phase) * bright + 0.3 * sin(2 * PI * formant * i / RATE) * sin(phase)
+            buf[idx] += (v * env * amp).toFloat()
         }
     }
 
