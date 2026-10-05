@@ -70,6 +70,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
     var popTrigger by remember { mutableStateOf(0) }
     var popText by remember { mutableStateOf("") }
     var popHuge by remember { mutableStateOf(false) }
+    var coachOpen by remember { mutableStateOf(false) }
     val barPos = remember { mutableStateListOf(Offset.Zero, Offset.Zero) }
     val barSize = remember { mutableStateListOf(IntSize.Zero, IntSize.Zero) }
 
@@ -187,6 +188,10 @@ fun FiveOhOneScreen(navController: NavHostController) {
         version++
     }
 
+    if (coachOpen) {
+        CoachTipDialog(remaining = players[current].remaining, playerName = players[current].name, onDismiss = { coachOpen = false })
+    }
+
     if (setupOpen) {
         MatchSetupDialog(
             name1 = name1, name2 = name2, startScore = startScore, legsPerSet = legsPerSet, setsToWin = setsToWin,
@@ -200,6 +205,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 12.dp)) {
         ScreenHeader(if (startScore == 301) "301" else "501", navController) {
+            IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
             TextButton(onClick = { metronomeOn = !metronomeOn; if (metronomeOn) cueTurn() }) {
                 Text("Metro", color = if (metronomeOn) Gold else Grey)
             }

@@ -111,6 +111,7 @@ fun Bot501Screen(navController: NavHostController) {
     var popOrigin by remember { mutableStateOf(Offset.Zero) }
     var bustTrigger by remember { mutableStateOf(0) }
     var bustOrigin by remember { mutableStateOf(Offset.Zero) }
+    var coachOpen by remember { mutableStateOf(false) }
     var boardPos by remember { mutableStateOf(Offset.Zero) }
     var boardSize by remember { mutableStateOf(IntSize.Zero) }
     val panelPos = remember { mutableStateListOf(Offset.Zero, Offset.Zero) }
@@ -307,6 +308,10 @@ fun Bot501Screen(navController: NavHostController) {
         }
     }
 
+    if (coachOpen) {
+        CoachTipDialog(remaining = sides[0].remaining, playerName = "You", onDismiss = { coachOpen = false })
+    }
+
     if (setupOpen) {
         AlertDialog(
             onDismissRequest = { if (sides[0].darts == 0 && sides[1].darts == 0) navController.popBackStack() else setupOpen = false },
@@ -336,6 +341,7 @@ fun Bot501Screen(navController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().padding(bottom = 120.dp)) {
             ScreenHeader(if (startScore == 301) "301 · 1 Player" else "501 · 1 Player", navController) {
+                IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
                 TextButton(onClick = { setupOpen = true }) { Text("Match", color = Gold) }
             }
             if (version < 0) Text("")

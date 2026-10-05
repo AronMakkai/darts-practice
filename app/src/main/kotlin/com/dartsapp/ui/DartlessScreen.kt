@@ -543,3 +543,59 @@ private fun coachPointers(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts
     if (out.isEmpty()) out.add("Good darts.")
     return out
 }
+
+
+/** The coach, mid-leg: what to throw from [remaining] and why. Tap anywhere to close. */
+@Composable
+internal fun CoachTipDialog(remaining: Int, playerName: String, onDismiss: () -> Unit) {
+    val suggestion = remember(remaining) { if (remaining in 2..170) CheckoutLogic.suggest(remaining) else null }
+    val setup: String = remember(remaining) {
+        when {
+            remaining > 170 -> {
+                val afterTon = remaining - 100
+                "Too far out for a finish. Score — T20 is the bed. " +
+                    (if (afterTon in 2..170 && CheckoutLogic.isFinishable(afterTon)) "A ton leaves $afterTon, which is a finish. " else "") +
+                    "Aim to leave 32, 40 or 16 — doubles with a comfortable halving chain."
+            }
+            suggestion == null -> CheckoutLogic.tip(remaining) + ". " +
+                "This number has no three-dart finish: take the single that leaves an even double."
+            else -> ""
+        }
+    }
+    Dialog(onDismissRequest = onDismiss) {
+        val interaction = remember { MutableInteractionSource() }
+        Card(
+            colors = CardDefaults.cardColors(containerColor = NearBlack),
+            border = BorderStroke(2.dp, Gold),
+            shape = CutCornerShape(topStart = 16.dp, bottomEnd = 16.dp),
+            modifier = Modifier.fillMaxWidth().clickable(interactionSource = interaction, indication = null) { onDismiss() }
+        ) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CoachHead(modifier = Modifier.size(72.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text("COACH", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, color = Gold, fontSize = 14.sp)
+                        Text("$playerName on $remaining", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = OffWhite)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                if (suggestion != null) {
+                    Text("Throw", fontSize = 12.sp, color = Grey)
+                    Text(CheckoutLogic.routeLabel(suggestion.best), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Gold, fontFamily = FontFamily.Monospace)
+                    Text(suggestion.bestWhy, fontSize = 14.sp, color = OffWhite, modifier = Modifier.padding(top = 4.dp))
+                    if (suggestion.alt != null) {
+                        Spacer(Modifier.height(10.dp))
+                        Text("Or", fontSize = 12.sp, color = Grey)
+                        Text(CheckoutLogic.routeLabel(suggestion.alt), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = PaleGold, fontFamily = FontFamily.Monospace)
+                        Text(suggestion.altWhy, fontSize = 13.sp, color = Grey, modifier = Modifier.padding(top = 4.dp))
+                    }
+                } else {
+                    Text(setup, fontSize = 14.sp, color = OffWhite)
+                }
+                Spacer(Modifier.height(12.dp))
+                Text("tap anywhere to close", fontSize = 11.sp, color = Grey, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
