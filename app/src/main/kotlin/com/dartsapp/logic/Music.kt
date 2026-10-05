@@ -11,23 +11,18 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Looping background audio, synthesised once and cached: an 80s synth-pop track for the menus and
- * a pub-crowd murmur for the game screens. Both are generated on a background thread the first time
- * they are asked for and then looped with a static AudioTrack.
+ * Looping background audio, synthesised once and cached: an 80s synth-pop track for the menus,
+ * generated on a background thread the first time it is asked for and then looped with a static AudioTrack.
  */
 object Music {
     private const val RATE = 22050
 
     private var menuTrack: AudioTrack? = null
-    private var crowdTrack: AudioTrack? = null
     private var menuPcm: ShortArray? = null
-    private var crowdPcm: ShortArray? = null
     @Volatile private var menuWanted = false
-    @Volatile private var crowdWanted = false
 
-    fun startMenu() { menuWanted = true; crowdWanted = false; thread(name = "music") { syncTracks() } }
-    fun startCrowd() { crowdWanted = true; menuWanted = false; thread(name = "music") { syncTracks() } }
-    fun stopAll() { menuWanted = false; crowdWanted = false; thread(name = "music") { syncTracks() } }
+    fun startMenu() { menuWanted = true; thread(name = "music") { syncTracks() } }
+    fun stopAll() { menuWanted = false; thread(name = "music") { syncTracks() } }
 
     @Synchronized
     private fun syncTracks() {
@@ -37,12 +32,6 @@ object Music {
                 if (menuWanted) menuTrack = loop(pcm, 0.55f)
             }
         } else { menuTrack?.let { safeStop(it) }; menuTrack = null }
-        if (crowdWanted) {
-            if (crowdTrack == null) {
-                val pcm = crowdPcm ?: renderCrowd().also { crowdPcm = it }
-                if (crowdWanted) crowdTrack = loop(pcm, 0.45f)
-            }
-        } else { crowdTrack?.let { safeStop(it) }; crowdTrack = null }
     }
 
     private fun safeStop(t: AudioTrack) { try { t.stop() } catch (e: Exception) {}; try { t.release() } catch (e: Exception) {} }
@@ -191,66 +180,6 @@ object Music {
             for (h in intArrayOf(1, 3, 5)) v += (sin(2 * PI * f * vib * h * t) / h).toFloat()
             val env = minOf(1f, i / (RATE * 0.01f)) * (if (p > 0.8f) (1f - p) / 0.2f else 1f)
             buf[idx] += v * env * amp
-        }
-    }
-
-    // ---- crowd --------------------------------------------------------------------------------
-
-    /** 8 s of pub murmur: low-passed noise with slow swells, chatter blips and the odd glass clink. */
-    private fun renderCrowd(): ShortArray {
-        val n = RATE * 8
-        val buf = FloatArray(n)
-        val rnd = Random(11)
-        var lp = 0f; var lp2 = 0f
-        for (i in 0 until n) {
-            val t = i.toFloat() / RATE
-            val white = rnd.nextFloat() * 2f - 1f
-            lp += 0.08f * (white - lp)
-            lp2 += 0.03f * (lp - lp2)
-            // Several slow swells so it never sounds like a steady hiss
-            val swell = 0.6f + 0.2f * sin(2 * PI * 0.125 * t).toFloat() + 0.12f * sin(2 * PI * 0.37 * t + 1f).toFloat() + 0.08f * sin(2 * PI * 0.9 * t).toFloat()
-            buf[i] = lp2 * 2.2f * swell
-        }
-        // Chatter: short vowel-like tones, random pitch and timing, two "voices" at a time
-        var t = 0.1f
-        while (t < 7.6f) {
-            val f = 110f + rnd.nextFloat() * 160f
-            val len = 0.08f + rnd.nextFloat() * 0.18f
-            vowel(buf, t, f, len, 0.05f + rnd.nextFloat() * 0.04f, rnd)
-            t += len + rnd.nextFloat() * 0.12f
-        }
-        // Glass clinks
-        for (k in 0 until 4) {
-            val at = 0.5f + rnd.nextFloat() * 6.8f
-            val f = 2800f + rnd.nextFloat() * 1800f
-            val start = (at * RATE).toInt(); val dur = (0.25f * RATE).toInt()
-            for (i in 0 until dur) {
-                val idx = start + i; if (idx >= buf.size) break
-                val tt = i.toFloat() / RATE
-                buf[idx] += (sin(2 * PI * f * tt) * exp(-tt * 18f) * 0.05f).toFloat()
-            }
-        }
-        // Seamless loop: cross-fade the last 0.4 s into the first 0.4 s, then drop the tail so the
-        // final sample flows straight into the (now tail-shaped) first one.
-        val x = (0.4f * RATE).toInt()
-        for (i in 0 until x) {
-            val k = i.toFloat() / x
-            buf[i] = buf[i] * k + buf[n - x + i] * (1f - k)
-        }
-        return toPcm(buf.copyOf(n - x))
-    }
-
-    private fun vowel(buf: FloatArray, t0: Float, f: Float, durSec: Float, amp: Float, rnd: Random) {
-        val start = (t0 * RATE).toInt(); val dur = (durSec * RATE).toInt()
-        val formant = 500f + rnd.nextFloat() * 900f
-        for (i in 0 until dur) {
-            val idx = start + i; if (idx >= buf.size) break
-            val t = i.toFloat() / RATE
-            val p = i.toFloat() / dur
-            val env = sin(PI * p).toFloat()
-            val glide = f * (1f + 0.08f * (p - 0.5f))
-            val v = sin(2 * PI * glide * t) * 0.5 + sin(2 * PI * glide * 2 * t) * 0.3 + sin(2 * PI * formant * t) * 0.2 * sin(2 * PI * glide * t)
-            buf[idx] += (v * env * amp).toFloat()
         }
     }
 

@@ -43,8 +43,6 @@ object Settings {
 
     fun musicOn(ctx: Context) = flag(ctx, "music", true)
     fun setMusicOn(ctx: Context, v: Boolean) = setFlag(ctx, "music", v)
-    fun crowdOn(ctx: Context) = flag(ctx, "crowd", true)
-    fun setCrowdOn(ctx: Context, v: Boolean) = setFlag(ctx, "crowd", v)
     fun announcerOn(ctx: Context) = flag(ctx, "announcer", true)
     fun setAnnouncerOn(ctx: Context, v: Boolean) = setFlag(ctx, "announcer", v)
 
