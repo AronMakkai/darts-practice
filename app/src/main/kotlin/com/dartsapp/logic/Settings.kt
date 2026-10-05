@@ -19,23 +19,23 @@ enum class Difficulty(
     HARD("Hard", 0.7f, 0.7f, 0.6f, 1.25f, 30)
 }
 
-/** How see-through the aiming ring is. [opacity] scales the ring's alpha. */
-enum class AimTransparency(val label: String, val opacity: Float, val blurb: String) {
-    LO("Lo", 1.0f, "Solid ring, easy to follow"),
-    MID("Mid", 0.65f, "Half-transparent"),
-    HI("Hi", 0.35f, "Faint ring, the board stays clear")
+/** How strongly the aiming ring is drawn. [opacity] scales the ring's alpha: High = bold, Low = faint. */
+enum class AimOpacity(val label: String, val opacity: Float, val blurb: String) {
+    LO("Lo", 0.35f, "Faint ring, the board stays clear"),
+    MID("Mid", 0.65f, "Half-strength ring"),
+    HI("Hi", 1.0f, "Bold ring, lots of aiming room")
 }
 
 object Settings {
     private const val PREFS = "settings"
 
-    fun aimTransparency(ctx: Context): AimTransparency {
-        val name = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("aimTransparency", null)
-        return AimTransparency.values().firstOrNull { it.name == name } ?: AimTransparency.MID
+    fun aimOpacity(ctx: Context): AimOpacity {
+        val name = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("aimOpacity", null)
+        return AimOpacity.values().firstOrNull { it.name == name } ?: AimOpacity.HI
     }
 
-    fun setAimTransparency(ctx: Context, t: AimTransparency) {
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("aimTransparency", t.name).apply()
+    fun setAimOpacity(ctx: Context, t: AimOpacity) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("aimOpacity", t.name).apply()
     }
 
     fun difficulty(ctx: Context): Difficulty {

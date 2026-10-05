@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.dartsapp.logic.AimTransparency
+import com.dartsapp.logic.AimOpacity
 import com.dartsapp.logic.Difficulty
 import com.dartsapp.logic.Settings
 
@@ -23,7 +23,7 @@ import com.dartsapp.logic.Settings
 fun SettingsScreen(navController: NavHostController) {
     val context = LocalContext.current
     var difficulty by remember { mutableStateOf(Settings.difficulty(context)) }
-    var aimTransparency by remember { mutableStateOf(Settings.aimTransparency(context)) }
+    var aimOpacity by remember { mutableStateOf(Settings.aimOpacity(context)) }
     val dartlessPrefs = remember { context.getSharedPreferences("dartless", android.content.Context.MODE_PRIVATE) }
     var best by remember { mutableStateOf(dartlessPrefs.getInt("best", 0)) }
 
@@ -62,13 +62,13 @@ fun SettingsScreen(navController: NavHostController) {
             fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
 
         Spacer(Modifier.height(16.dp))
-        Text("AIM TRANSPARENCY", fontSize = 14.sp, fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, color = Grey,
+        Text("AIM OPACITY", fontSize = 14.sp, fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, color = Grey,
             modifier = Modifier.padding(start = 28.dp, bottom = 6.dp))
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (t in AimTransparency.values()) {
-                val selected = t == aimTransparency
+            for (t in AimOpacity.values()) {
+                val selected = t == aimOpacity
                 OutlinedButton(
-                    onClick = { aimTransparency = t; Settings.setAimTransparency(context, t) },
+                    onClick = { aimOpacity = t; Settings.setAimOpacity(context, t) },
                     shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
                     border = BorderStroke(2.dp, if (selected) Gold else Charcoal),
                     colors = ButtonDefaults.outlinedButtonColors(
@@ -82,7 +82,7 @@ fun SettingsScreen(navController: NavHostController) {
                 }
             }
         }
-        Text(aimTransparency.blurb + ". The aiming ring in Dartless Checkout and 501 vs bot.",
+        Text(aimOpacity.blurb + ". The aiming ring in Dartless Checkout and 501 vs bot.",
             fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
 
         Spacer(Modifier.height(16.dp))

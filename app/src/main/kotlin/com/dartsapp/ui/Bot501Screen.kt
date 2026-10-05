@@ -85,7 +85,7 @@ private fun targetPoint(hit: Hit): Offset {
 fun Bot501Screen(navController: NavHostController) {
     val context = LocalContext.current
     val difficulty = remember { Settings.difficulty(context) }
-    val aimTransparency = remember { Settings.aimTransparency(context) }
+    val aimOpacity = remember { Settings.aimOpacity(context) }
     var perfectTrigger by remember { mutableStateOf(0) }
     var hotThrows by remember { mutableStateOf(0) }      // consecutive on-pace throws -> ring heat
     val botAccuracy = when (difficulty) { Difficulty.EASY -> 0.55f; Difficulty.NORMAL -> 0.72f; Difficulty.HARD -> 0.88f }
@@ -420,7 +420,7 @@ fun Bot501Screen(navController: NavHostController) {
                 Dartboard(geometry = Geo, marks = marks, onTap = { userThrow(it) })
                 ThrowRing(
                     startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f,
-                    accuracy = accuracy, opacity = aimTransparency.opacity, heat = hotThrows / 9f,
+                    accuracy = accuracy, opacity = aimOpacity.opacity, heat = hotThrows / 9f,
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f)
                 )
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))

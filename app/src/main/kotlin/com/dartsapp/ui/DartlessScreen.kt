@@ -123,7 +123,7 @@ fun DartlessScreen(navController: NavHostController) {
     var judgedThrows by remember { mutableStateOf(0) }
     var starTrigger by remember { mutableStateOf(0) }
     var perfectTrigger by remember { mutableStateOf(0) }
-    val aimTransparency = remember { Settings.aimTransparency(context) }
+    val aimOpacity = remember { Settings.aimOpacity(context) }
     var burstOrigin by remember { mutableStateOf(Offset.Zero) }      // screen px of the winning dart
     var bustTrigger by remember { mutableStateOf(0) }
     var bustOrigin by remember { mutableStateOf(Offset.Zero) }
@@ -421,7 +421,7 @@ fun DartlessScreen(navController: NavHostController) {
                     startMs = if (finished) 0L else throwStartMs,
                     periodSec = preset?.dart ?: 0f,
                     accuracy = accuracy,
-                    opacity = aimTransparency.opacity,
+                    opacity = aimOpacity.opacity,
                     heat = streak / 10f,      // orange at 0, yellow around 5 clean checkouts, white at 10+
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f)
                 )
