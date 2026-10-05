@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
 import kotlin.math.PI
 import kotlin.math.cos
@@ -64,12 +65,19 @@ fun ThrowRing(startMs: Long, periodSec: Float, modifier: Modifier = Modifier) {
 
 /**
  * The swipe zone in the bottom-left corner. A diagonal swipe up-and-right arms a throw.
- * Draws a translucent arrow; brighter while a throw is armed.
+ * A chunky chevron arrow with a gold-to-red gradient, a dark outline, a pulsing glow and a trail
+ * of fading chevrons behind it that animate upward to suggest the swipe; brighter while armed.
  */
 @Composable
 fun SwipeToThrowZone(armed: Boolean, enabled: Boolean, onSwipe: () -> Unit, modifier: Modifier = Modifier) {
     var dragX by remember { mutableStateOf(0f) }
     var dragY by remember { mutableStateOf(0f) }
+    var t by remember { mutableStateOf(0f) }
+    LaunchedEffect(enabled) {
+        if (!enabled) return@LaunchedEffect
+        val start = withFrameNanos { it }
+        while (true) t = (withFrameNanos { it } - start) / 1_000_000_000f
+    }
     Canvas(
         modifier = modifier.pointerInput(enabled) {
             if (!enabled) return@pointerInput
@@ -83,14 +91,60 @@ fun SwipeToThrowZone(armed: Boolean, enabled: Boolean, onSwipe: () -> Unit, modi
     ) {
         val w = size.width
         val h = size.height
-        val color = (if (armed) BrightGold else Gold).copy(alpha = if (enabled) (if (armed) 0.9f else 0.45f) else 0.15f)
-        val stroke = h * 0.06f
-        val from = Offset(w * 0.2f, h * 0.8f)
-        val to = Offset(w * 0.8f, h * 0.2f)
-        drawLine(color, from, to, strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color, to, Offset(to.x - w * 0.3f, to.y), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color, to, Offset(to.x, to.y + h * 0.3f), strokeWidth = stroke, cap = StrokeCap.Round)
+        val alpha = if (!enabled) 0.18f else if (armed) 1f else 0.85f
+        val pulse = 0.5f + 0.5f * sin(t * (if (armed) 9f else 3f))
+
+        // Rotate everything 45 degrees so "up" on the arrow points up-and-right
+        rotate(degrees = 45f, pivot = Offset(w / 2f, h / 2f)) {
+            val cx = w / 2f
+            // Trail chevrons: three fading copies sliding upward
+            for (i in 0 until 3) {
+                val phase = ((t * 0.8f + i * 0.33f) % 1f)
+                val y = h * (0.85f - 0.55f * phase)
+                val a = (1f - phase) * 0.35f * alpha
+                chevron(Offset(cx, y), w * 0.42f, h * 0.16f, Gold.copy(alpha = a), null, h * 0.03f)
+            }
+            // Main arrow: shaft + head
+            val shaftTop = h * 0.36f
+            val shaftBottom = h * 0.8f
+            val shaftW = w * 0.14f
+            val grad = androidx.compose.ui.graphics.Brush.verticalGradient(
+                colors = listOf(BrightGold, Gold, Red, DarkRed),
+                startY = h * 0.1f, endY = shaftBottom
+            )
+            val body = Path().apply {
+                moveTo(cx, h * 0.1f)                               // tip
+                lineTo(cx + w * 0.34f, h * 0.44f)                  // right wing
+                lineTo(cx + w * 0.16f, h * 0.44f)
+                lineTo(cx + shaftW / 2f, shaftTop + h * 0.08f)
+                lineTo(cx + shaftW / 2f, shaftBottom)
+                lineTo(cx - shaftW / 2f, shaftBottom)
+                lineTo(cx - shaftW / 2f, shaftTop + h * 0.08f)
+                lineTo(cx - w * 0.16f, h * 0.44f)
+                lineTo(cx - w * 0.34f, h * 0.44f)
+                close()
+            }
+            // Glow
+            drawPath(body, (if (armed) BrightGold else Gold).copy(alpha = (0.12f + 0.18f * pulse) * alpha), style = Stroke(width = h * 0.12f))
+            // Outline + gradient fill + bevel highlight
+            drawPath(body, Black.copy(alpha = alpha), style = Stroke(width = h * 0.06f))
+            drawPath(body, grad, alpha = alpha)
+            val highlight = Path().apply {
+                moveTo(cx, h * 0.13f); lineTo(cx - w * 0.3f, h * 0.43f); lineTo(cx - w * 0.17f, h * 0.43f); lineTo(cx, h * 0.26f); close()
+            }
+            drawPath(highlight, OffWhite.copy(alpha = 0.35f * alpha))
+        }
     }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.chevron(c: Offset, width: Float, height: Float, color: Color, stroke: Color?, thickness: Float) {
+    val p = Path().apply {
+        moveTo(c.x - width / 2f, c.y + height / 2f)
+        lineTo(c.x, c.y - height / 2f)
+        lineTo(c.x + width / 2f, c.y + height / 2f)
+    }
+    drawPath(p, color, style = Stroke(width = thickness, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+    if (stroke != null) drawPath(p, stroke, style = Stroke(width = thickness * 0.4f))
 }
 
 private class Spark(val angle: Float, val speed: Float, val size: Float, val spin: Float, val color: Color, val life: Float)
