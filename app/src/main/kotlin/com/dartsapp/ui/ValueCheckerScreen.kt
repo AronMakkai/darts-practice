@@ -20,6 +20,7 @@ import com.dartsapp.data.BoardGeometry
 import com.dartsapp.data.Hit
 import com.dartsapp.logic.CheckoutLogic
 import com.dartsapp.logic.Sounds
+import com.dartsapp.logic.Announcer
 
 private val FastGeo = BoardGeometry.WIDE
 
@@ -62,6 +63,7 @@ fun ValueCheckerScreen(navController: NavHostController) {
         // Start tracking the checkout phase the first time we throw from 170 or less
         if (checkoutStart == 0 && remaining <= 170) checkoutStart = remaining
         if (checkoutStart != 0) checkoutThrown.add(hit)
+        Sounds.thud()
         thrown.add(hit)
         dartsInVisit++
         dartsTotal++
@@ -75,18 +77,21 @@ fun ValueCheckerScreen(navController: NavHostController) {
                 message = "Game shot! 501 in $dartsTotal darts  ·  New to play again"
                 burstTrigger++
                 Sounds.playCheckoutJingle()
+                Sounds.cheer(big = true)
+                Announcer.gameShot()
             }
             newRem < 0 || newRem == 1 || newRem == 0 -> {
                 remaining = visitStart
                 dartsInVisit = 3
                 if (checkoutStart != 0) checkoutBusts++
                 message = "${hit.label} — BUST, back to $visitStart"
-                Sounds.playBust()
+                Sounds.playBust(); Sounds.groan()
             }
             else -> {
                 scored += hit.score
                 remaining = newRem
                 message = "${hit.label} (${hit.score})" + if (dartsInVisit == 3) "  ·  visit ${thrown.sumOf { it.score }}" else ""
+                if (dartsInVisit == 3) { val v = thrown.sumOf { it.score }; Announcer.score(v); if (v >= 100) Sounds.cheer(big = v == 180) }
             }
         }
     }

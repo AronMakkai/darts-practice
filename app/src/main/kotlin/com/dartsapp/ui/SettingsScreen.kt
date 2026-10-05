@@ -19,6 +19,8 @@ import com.dartsapp.logic.AimOpacity
 import com.dartsapp.logic.Difficulty
 import com.dartsapp.logic.Settings
 import com.dartsapp.logic.Sounds
+import com.dartsapp.logic.Music
+import com.dartsapp.logic.Announcer
 
 @Composable
 fun SettingsScreen(navController: NavHostController) {
@@ -94,6 +96,12 @@ fun SettingsScreen(navController: NavHostController) {
             OutlinedButton(onClick = { Sounds.beep() }, modifier = Modifier.weight(1f)) { Text("Beep", color = OffWhite) }
             OutlinedButton(onClick = { Sounds.playCheckoutJingle() }, modifier = Modifier.weight(1f)) { Text("Jingle", color = OffWhite) }
         }
+        var music by remember { mutableStateOf(Settings.musicOn(context)) }
+        var crowd by remember { mutableStateOf(Settings.crowdOn(context)) }
+        var announcer by remember { mutableStateOf(Settings.announcerOn(context)) }
+        ToggleRow("Menu music", music) { music = it; Settings.setMusicOn(context, it); if (it) Music.startMenu() else Music.stopAll() }
+        ToggleRow("Crowd ambience", crowd) { crowd = it; Settings.setCrowdOn(context, it) }
+        ToggleRow("Announcer", announcer) { announcer = it; Settings.setAnnouncerOn(context, it); Announcer.setEnabled(it); if (it) Announcer.gameOn() }
         Text("Sounds play on the media volume — if these are silent, turn the media volume up (not the ring volume).",
             fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
 
@@ -106,5 +114,13 @@ fun SettingsScreen(navController: NavHostController) {
                 Text("Reset", color = Grey)
             }
         }
+    }
+}
+
+@Composable
+private fun ToggleRow(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, fontSize = 15.sp, color = OffWhite, modifier = Modifier.weight(1f))
+        Switch(checked = on, onCheckedChange = onChange, colors = SwitchDefaults.colors(checkedThumbColor = Gold, checkedTrackColor = DarkRed))
     }
 }

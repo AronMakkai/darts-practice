@@ -38,6 +38,16 @@ object Settings {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("aimOpacity", t.name).apply()
     }
 
+    private fun flag(ctx: Context, key: String, def: Boolean) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(key, def)
+    private fun setFlag(ctx: Context, key: String, v: Boolean) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(key, v).apply() }
+
+    fun musicOn(ctx: Context) = flag(ctx, "music", true)
+    fun setMusicOn(ctx: Context, v: Boolean) = setFlag(ctx, "music", v)
+    fun crowdOn(ctx: Context) = flag(ctx, "crowd", true)
+    fun setCrowdOn(ctx: Context, v: Boolean) = setFlag(ctx, "crowd", v)
+    fun announcerOn(ctx: Context) = flag(ctx, "announcer", true)
+    fun setAnnouncerOn(ctx: Context, v: Boolean) = setFlag(ctx, "announcer", v)
+
     fun opponentIndex(ctx: Context): Int = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("opponent", 0)
     fun setOpponentIndex(ctx: Context, i: Int) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("opponent", i).apply() }
 

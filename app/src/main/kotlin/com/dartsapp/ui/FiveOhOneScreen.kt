@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.dartsapp.logic.CheckoutLogic
 import com.dartsapp.logic.Sounds
+import com.dartsapp.logic.Announcer
 import com.dartsapp.logic.TimingPresets
 import androidx.compose.ui.platform.LocalContext
 
@@ -90,6 +91,8 @@ fun FiveOhOneScreen(navController: NavHostController) {
         burstOrigin = panelCentre(i)
         popTrigger++
         if (popHuge) Sounds.playCheckoutJingle()
+        Sounds.cheer(big = popHuge)
+        if (finished) Announcer.checkout(score) else Announcer.score(score)
     }
 
     fun cueTurn() { if (metronomeOn && !matchOver) turnKeys[current] = turnKeys[current] + 1 }
@@ -107,6 +110,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
         setupOpen = false
         version++
         cueTurn()
+        Announcer.gameOn()
     }
 
     fun newLeg() {
@@ -134,6 +138,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
                 p.visits.add(score)
                 p.hotStreak = if (score >= 100) p.hotStreak + 1 else 0
                 celebrate(current, score, finished = true)
+                if (score < 100) { Announcer.gameShot(); Sounds.cheer(big = true) }
                 p.legs++
                 var text = "${p.name} takes the leg in ${p.dartsThisLeg} darts!"
                 if (p.legs >= legsNeeded()) {
@@ -157,6 +162,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
                 p.visits.add(0)
                 p.hotStreak = 0
                 message = "${p.name} bust — stays on ${p.remaining}"
+                Sounds.groan()
                 current = 1 - current
                 version++
                 cueTurn()

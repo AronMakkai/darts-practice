@@ -32,6 +32,7 @@ import com.dartsapp.logic.CheckoutLogic
 import com.dartsapp.logic.Difficulty
 import com.dartsapp.logic.Settings
 import com.dartsapp.logic.Sounds
+import com.dartsapp.logic.Announcer
 import com.dartsapp.logic.TimingPreset
 import com.dartsapp.logic.TimingPresets
 import kotlinx.coroutines.delay
@@ -156,6 +157,8 @@ fun Bot501Screen(navController: NavHostController) {
         }
         popText = text; popHuge = score == 180 || (finished && score >= 100); popOrigin = panelCentre(i); popTrigger++
         if (popHuge) Sounds.playCheckoutJingle()
+        Sounds.cheer(big = popHuge)
+        if (finished) Announcer.checkout(score) else Announcer.score(score)
     }
 
     fun legsNeeded() = legsPerSet / 2 + 1
@@ -182,6 +185,7 @@ fun Bot501Screen(navController: NavHostController) {
         resetVisit()
         message = "Game on — swipe up from the arrow to pick up a dart"
         setupOpen = false
+        Announcer.gameOn()
         version++
     }
 
@@ -191,6 +195,7 @@ fun Bot501Screen(navController: NavHostController) {
         val o = sides[1 - i]
         s.legs++
         celebrate(i, visitScore, finished = true)
+        if (visitScore < 100) { Announcer.gameShot(); Sounds.cheer(big = true) }
         var text = "${s.name} takes the leg in $dartsThisLeg darts"
         if (s.legs >= legsNeeded()) {
             s.sets++; s.legs = 0; o.legs = 0
@@ -243,7 +248,7 @@ fun Bot501Screen(navController: NavHostController) {
 
         val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, Geo)
-        marks.add(Offset(lx, ly)); thrown.add(hit)
+        Sounds.thud(); marks.add(Offset(lx, ly)); thrown.add(hit)
         dartsInVisit++
         val me = sides[0]
         me.darts++
@@ -260,7 +265,7 @@ fun Bot501Screen(navController: NavHostController) {
                 me.scored -= thrown.dropLast(1).sumOf { it.score }
                 message = "${hit.label} — BUST, back to $visitStart"
                 bustOrigin = boardPoint(lx, ly); bustTrigger++
-                Sounds.playBust()
+                Sounds.playBust(); Sounds.groan()
                 endUserVisit()
             }
             else -> {
@@ -293,7 +298,7 @@ fun Bot501Screen(navController: NavHostController) {
             val tp = targetPoint(aim)
             val (lx, ly) = model.land(tp.x, tp.y, botAccuracy, 1f)
             val hit = Board.hitTest(lx, ly, Geo)
-            marks.add(Offset(lx, ly)); thrown.add(hit)
+            Sounds.thud(); marks.add(Offset(lx, ly)); thrown.add(hit)
             bot.darts++
             val newRem = bot.remaining - hit.score
             when {

@@ -31,6 +31,7 @@ import com.dartsapp.data.Ring
 import com.dartsapp.logic.AccuracyModel
 import com.dartsapp.logic.CheckoutLogic
 import com.dartsapp.logic.Sounds
+import com.dartsapp.logic.Announcer
 import com.dartsapp.logic.Settings
 import com.dartsapp.logic.Difficulty
 import com.dartsapp.logic.TimingPreset
@@ -218,6 +219,7 @@ fun DartlessScreen(navController: NavHostController) {
         val target = Board.hitTest(aim.x, aim.y, BoardGeo)
         val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, BoardGeo)
+        Sounds.thud()
         marks.add(Offset(lx, ly))
         thrown.add(hit)
         allThrown.add(hit)
@@ -233,6 +235,8 @@ fun DartlessScreen(navController: NavHostController) {
                 finished = true
                 coachOpen = true
                 message = "$hitText — Checked out in $dartsTotal darts!"
+                Sounds.cheer(big = dartsTotal <= 3)
+                Announcer.gameShot()
                 // Star: a clean checkout (no bust, done inside one visit) in metronome mode, with every
                 // dart roughly on the beat and no long pause between throws.
                 val perfect = metronomeMode && allOnBeat && judgedThrows == dartsTotal && busts == 0 && dartsTotal <= 3
@@ -267,7 +271,7 @@ fun DartlessScreen(navController: NavHostController) {
                 throwStartMs = 0L
                 lastTapMs = 0L
                 pauseSec = -1f
-                Sounds.playBust()
+                Sounds.playBust(); Sounds.groan()
             }
             else -> {
                 remaining = newRem

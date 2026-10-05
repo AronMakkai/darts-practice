@@ -43,6 +43,87 @@ object Sounds {
         thread(name = "tone") { playPcm(pcm) }
     }
 
+    private var thudPcm: ShortArray? = null
+
+    /** A dart hitting the sisal: a short knock with a soft noise burst. */
+    fun thud() {
+        val pcm = thudPcm ?: run {
+            val n = (RATE * 0.09f).toInt()
+            val buf = FloatArray(n)
+            val rnd = java.util.Random(5)
+            var lp = 0f
+            for (i in 0 until n) {
+                val t = i.toFloat() / RATE
+                val white = rnd.nextFloat() * 2f - 1f
+                lp += 0.25f * (white - lp)
+                val knock = sin(2 * PI * (140f - 60f * t / 0.09f) * t).toFloat() * exp(-t * 45f)
+                buf[i] = (knock * 0.9f + lp * 0.5f * exp(-t * 70f)) * minOf(1f, i / (RATE * 0.001f))
+            }
+            toPcm(buf).also { thudPcm = it }
+        }
+        thread(name = "thud") { playPcm(pcm) }
+    }
+
+    /** Crowd reaction: a swell of voices and applause. [big] for a 180 or a finish. */
+    fun cheer(big: Boolean) {
+        thread(name = "cheer") {
+            val len = if (big) 2.2f else 1.2f
+            val n = (RATE * len).toInt()
+            val buf = FloatArray(n)
+            val rnd = java.util.Random(if (big) 9 else 4)
+            var lp = 0f
+            for (i in 0 until n) {
+                val t = i.toFloat() / RATE
+                val p = t / len
+                val white = rnd.nextFloat() * 2f - 1f
+                lp += 0.12f * (white - lp)
+                // applause: fast attack, long tail, with clap-like crackle
+                val env = minOf(p / 0.12f, 1f) * (1f - p) * (1f - p)
+                val crackle = if (rnd.nextFloat() < 0.02f) (rnd.nextFloat() * 2f - 1f) * 0.6f else 0f
+                buf[i] = (lp * 1.6f + crackle) * env * (if (big) 0.9f else 0.6f)
+            }
+            // "Yeah!" voices: a handful of rising-then-falling sweeps
+            val voices = if (big) 7 else 3
+            for (v in 0 until voices) {
+                val f0 = 180f + rnd.nextFloat() * 160f
+                val start = (rnd.nextFloat() * 0.15f * RATE).toInt()
+                val dur = ((0.5f + rnd.nextFloat() * 0.4f) * RATE).toInt()
+                var phase = 0.0
+                for (i in 0 until dur) {
+                    val idx = start + i; if (idx >= n) break
+                    val p = i.toFloat() / dur
+                    val f = f0 * (1f + 0.35f * sin(PI * p).toFloat())
+                    phase += 2 * PI * f / RATE
+                    val env = sin(PI * p).toFloat()
+                    buf[idx] += ((sin(phase) + 0.4 * sin(2 * phase) + 0.2 * sin(3 * phase)) * env * 0.07f).toFloat()
+                }
+            }
+            play(buf)
+        }
+    }
+
+    /** Crowd groan for a bust: a falling "ooh". */
+    fun groan() {
+        thread(name = "groan") {
+            val len = 0.9f
+            val n = (RATE * len).toInt()
+            val buf = FloatArray(n)
+            val rnd = java.util.Random(2)
+            for (v in 0 until 5) {
+                val f0 = 200f + rnd.nextFloat() * 120f
+                var phase = 0.0
+                for (i in 0 until n) {
+                    val p = i.toFloat() / n
+                    val f = f0 * (1.15f - 0.35f * p)
+                    phase += 2 * PI * f / RATE
+                    val env = sin(PI * p).toFloat()
+                    buf[i] += ((sin(phase) + 0.5 * sin(2 * phase)) * env * 0.09f).toFloat()
+                }
+            }
+            play(buf)
+        }
+    }
+
     /** A little "pop" followed by a cascade of coin dings and a final sparkle chord. */
     fun playCheckoutJingle() {
         thread(name = "jingle") {
