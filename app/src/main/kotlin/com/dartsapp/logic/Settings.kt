@@ -19,8 +19,24 @@ enum class Difficulty(
     HARD("Hard", 0.7f, 0.7f, 0.6f, 1.25f, 30)
 }
 
+/** How see-through the aiming ring is. [opacity] scales the ring's alpha. */
+enum class AimTransparency(val label: String, val opacity: Float, val blurb: String) {
+    LO("Lo", 1.0f, "Solid ring, easy to follow"),
+    MID("Mid", 0.65f, "Half-transparent"),
+    HI("Hi", 0.35f, "Faint ring, the board stays clear")
+}
+
 object Settings {
     private const val PREFS = "settings"
+
+    fun aimTransparency(ctx: Context): AimTransparency {
+        val name = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("aimTransparency", null)
+        return AimTransparency.values().firstOrNull { it.name == name } ?: AimTransparency.MID
+    }
+
+    fun setAimTransparency(ctx: Context, t: AimTransparency) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("aimTransparency", t.name).apply()
+    }
 
     fun difficulty(ctx: Context): Difficulty {
         val name = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("difficulty", null)

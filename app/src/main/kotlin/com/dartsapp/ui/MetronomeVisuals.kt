@@ -33,7 +33,13 @@ import kotlin.random.Random
  * until the throw is made. [startMs] = 0 means no throw is armed and nothing is drawn.
  */
 @Composable
-fun ThrowRing(startMs: Long, periodSec: Float, modifier: Modifier = Modifier) {
+fun ThrowRing(
+    startMs: Long,
+    periodSec: Float,
+    modifier: Modifier = Modifier,
+    accuracy: Float = 1f,     // current accuracy: 1 = razor sharp ring, low = blurred ring
+    opacity: Float = 1f       // from the Aim transparency setting
+) {
     var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(startMs) {
         if (startMs == 0L) return@LaunchedEffect
@@ -49,6 +55,10 @@ fun ThrowRing(startMs: Long, periodSec: Float, modifier: Modifier = Modifier) {
     // 0 -> 1 -> 0 over one period, then a gentle pulse around the centre
     val scale = if (inCycle) sin(PI.toFloat() * t / periodSec) else 0.06f + 0.03f * sin((t - periodSec) * 8f)
     val nearCentre = !inCycle || (t > periodSec * 0.85f)
+    // Blur: a poor accuracy smears the ring into several soft, offset copies; a perfect one is a single crisp line.
+    val blur = (1f - accuracy.coerceIn(0f, 1f)).coerceIn(0f, 1f)
+    val layers = 1 + (blur * 7f).toInt()
+    val op = opacity.coerceIn(0.1f, 1f)
 
     Canvas(modifier = modifier) {
         val cx = size.width / 2f
@@ -56,10 +66,60 @@ fun ThrowRing(startMs: Long, periodSec: Float, modifier: Modifier = Modifier) {
         val boardR = minOf(size.width, size.height) / 2f / RIM_SCALE
         val r = boardR * scale.coerceIn(0.02f, 1f)
         val color = if (nearCentre) BrightGold else Gold
-        drawCircle(color.copy(alpha = 0.18f), r, Offset(cx, cy))
-        drawCircle(color.copy(alpha = 0.75f), r, Offset(cx, cy), style = Stroke(width = boardR * 0.05f))
+        val stroke = boardR * 0.05f
+        val spread = boardR * 0.14f * blur
+        drawCircle(color.copy(alpha = 0.18f * op), r, Offset(cx, cy))
+        if (layers == 1) {
+            drawCircle(color.copy(alpha = 0.75f * op), r, Offset(cx, cy), style = Stroke(width = stroke))
+        } else {
+            // Spread the stroke over the blur band, fading towards the edges of the band
+            for (i in 0 until layers) {
+                val k = if (layers == 1) 0f else i / (layers - 1f) * 2f - 1f     // -1 .. 1
+                val rr = (r + k * spread).coerceAtLeast(1f)
+                val a = (0.75f / layers) * (1.6f - 0.6f * kotlin.math.abs(k)) * op
+                drawCircle(color.copy(alpha = a.coerceIn(0f, 1f)), rr, Offset(cx, cy), style = Stroke(width = stroke * (1f + blur)))
+            }
+        }
         // Centre dot marks the ideal moment
-        drawCircle(color.copy(alpha = if (nearCentre) 0.9f else 0.35f), boardR * 0.025f, Offset(cx, cy))
+        drawCircle(color.copy(alpha = (if (nearCentre) 0.9f else 0.35f) * op), boardR * 0.025f, Offset(cx, cy))
+    }
+}
+
+/**
+ * A small star pop from the centre of the board, shown when a throw lands dead on the beat.
+ * Re-triggers whenever [trigger] changes to a new non-zero value. Draw it over the board box.
+ */
+@Composable
+fun PerfectPop(trigger: Int, modifier: Modifier = Modifier) {
+    var progress by remember { mutableStateOf(-1f) }
+    LaunchedEffect(trigger) {
+        if (trigger == 0) { progress = -1f; return@LaunchedEffect }
+        val start = withFrameNanos { it }
+        while (true) {
+            val t = (withFrameNanos { it } - start) / 1_000_000_000f
+            progress = t
+            if (t > 0.7f) { progress = -1f; break }
+        }
+    }
+    if (progress < 0f) return
+    val t = progress / 0.7f                       // 0..1
+    val ease = 1f - (1f - t) * (1f - t)           // ease-out
+    Canvas(modifier = modifier) {
+        val c = Offset(size.width / 2f, size.height / 2f)
+        val boardR = minOf(size.width, size.height) / 2f / RIM_SCALE
+        val fade = (1f - t).coerceIn(0f, 1f)
+        // Flash ring
+        drawCircle(OffWhite.copy(alpha = 0.8f * (1f - ease)), boardR * 0.04f + boardR * 0.22f * ease, c, style = Stroke(width = boardR * 0.015f))
+        // Eight little stars flying outwards, spinning
+        for (i in 0 until 8) {
+            val a = i * PI.toFloat() / 4f + 0.3f
+            val d = boardR * 0.3f * ease
+            val p = Offset(c.x + cos(a) * d, c.y + sin(a) * d)
+            val col = if (i % 2 == 0) BrightGold else OffWhite
+            drawStar(p, boardR * (0.035f + 0.015f * (1f - ease)), t * 4f + i, col.copy(alpha = fade))
+        }
+        // Centre star, biggest, shrinking away
+        drawStar(c, boardR * 0.08f * (1f - ease * 0.8f), t * 3f, BrightGold.copy(alpha = fade))
     }
 }
 

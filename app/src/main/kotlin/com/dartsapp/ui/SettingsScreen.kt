@@ -1,6 +1,8 @@
 package com.dartsapp.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.material3.*
@@ -13,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.dartsapp.logic.AimTransparency
 import com.dartsapp.logic.Difficulty
 import com.dartsapp.logic.Settings
 
@@ -20,10 +23,11 @@ import com.dartsapp.logic.Settings
 fun SettingsScreen(navController: NavHostController) {
     val context = LocalContext.current
     var difficulty by remember { mutableStateOf(Settings.difficulty(context)) }
+    var aimTransparency by remember { mutableStateOf(Settings.aimTransparency(context)) }
     val dartlessPrefs = remember { context.getSharedPreferences("dartless", android.content.Context.MODE_PRIVATE) }
     var best by remember { mutableStateOf(dartlessPrefs.getInt("best", 0)) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(bottom = 24.dp)) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         ScreenHeader("Settings", navController)
 
         Text("DIFFICULTY", fontSize = 14.sp, fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, color = Grey,
@@ -57,7 +61,31 @@ fun SettingsScreen(navController: NavHostController) {
         Text("Difficulty applies to Dartless Checkout: the pace window, how far a miss scatters, and how big the checkouts get.",
             fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
+        Text("AIM TRANSPARENCY", fontSize = 14.sp, fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, color = Grey,
+            modifier = Modifier.padding(start = 28.dp, bottom = 6.dp))
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (t in AimTransparency.values()) {
+                val selected = t == aimTransparency
+                OutlinedButton(
+                    onClick = { aimTransparency = t; Settings.setAimTransparency(context, t) },
+                    shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
+                    border = BorderStroke(2.dp, if (selected) Gold else Charcoal),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (selected) DarkRed else Black,
+                        contentColor = if (selected) OffWhite else Grey
+                    ),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1f).height(56.dp)
+                ) {
+                    Text(t.label.uppercase(), fontSize = 16.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                }
+            }
+        }
+        Text(aimTransparency.blurb + ". The aiming ring in Dartless Checkout and 501 vs bot.",
+            fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
+
+        Spacer(Modifier.height(16.dp))
         Text("RECORDS", fontSize = 14.sp, fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, color = Grey,
             modifier = Modifier.padding(start = 28.dp, bottom = 6.dp))
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), verticalAlignment = Alignment.CenterVertically) {

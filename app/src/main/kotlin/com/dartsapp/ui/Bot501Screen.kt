@@ -85,6 +85,8 @@ private fun targetPoint(hit: Hit): Offset {
 fun Bot501Screen(navController: NavHostController) {
     val context = LocalContext.current
     val difficulty = remember { Settings.difficulty(context) }
+    val aimTransparency = remember { Settings.aimTransparency(context) }
+    var perfectTrigger by remember { mutableStateOf(0) }
     val botAccuracy = when (difficulty) { Difficulty.EASY -> 0.55f; Difficulty.NORMAL -> 0.72f; Difficulty.HARD -> 0.88f }
     val botName = when (difficulty) { Difficulty.EASY -> "ROOKIE BOT"; Difficulty.NORMAL -> "PUB BOT"; Difficulty.HARD -> "PRO BOT" }
     val presets = remember { TimingPresets.load(context) }
@@ -227,7 +229,8 @@ fun Bot501Screen(navController: NavHostController) {
         val rhythm = if (pauseSec >= 0f) pauseFactor(pauseSec, p.dart, difficulty) else 1f
         accuracy = (throwAcc * rhythm).coerceIn(0.2f, 1f)
         val off = kotlin.math.abs(elapsed - p.dart)
-        timingNote = (if (off <= paceWindow(p.dart, difficulty)) "on pace" else if (elapsed < p.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late") +
+        if (off <= paceWindow(p.dart, difficulty)) perfectTrigger++
+        timingNote =(if (off <= paceWindow(p.dart, difficulty)) "on pace" else if (elapsed < p.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late") +
             (if (pauseSec >= 0f && rhythm < 0.999f) " · hesitated" else "") + "  →  ${(accuracy * 100).toInt()}%"
         throwStartMs = 0L
         lastTapMs = now
@@ -414,7 +417,12 @@ fun Bot501Screen(navController: NavHostController) {
                 boardPos = it.positionInRoot(); boardSize = it.size
             }) {
                 Dartboard(geometry = Geo, marks = marks, onTap = { userThrow(it) })
-                ThrowRing(startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                ThrowRing(
+                    startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f,
+                    accuracy = accuracy, opacity = aimTransparency.opacity,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                )
+                PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
             }
         }
 

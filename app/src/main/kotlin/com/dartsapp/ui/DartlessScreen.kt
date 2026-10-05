@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.window.Dialog
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -124,6 +122,8 @@ fun DartlessScreen(navController: NavHostController) {
     var allOnBeat by remember { mutableStateOf(true) }     // no judged throw off the beat so far this checkout
     var judgedThrows by remember { mutableStateOf(0) }
     var starTrigger by remember { mutableStateOf(0) }
+    var perfectTrigger by remember { mutableStateOf(0) }
+    val aimTransparency = remember { Settings.aimTransparency(context) }
     var burstOrigin by remember { mutableStateOf(Offset.Zero) }      // screen px of the winning dart
     var bustTrigger by remember { mutableStateOf(0) }
     var bustOrigin by remember { mutableStateOf(Offset.Zero) }
@@ -205,6 +205,7 @@ fun DartlessScreen(navController: NavHostController) {
             val rhythm = if (pauseSec >= 0f) pauseFactor(pauseSec, preset.dart, difficulty) else 1f
             accuracy = (throwAcc * rhythm).coerceIn(0.2f, 1f)
             val onPace = off <= paceWindow(preset.dart, difficulty) && rhythm >= 0.999f
+            if (off <= paceWindow(preset.dart, difficulty)) perfectTrigger++     // dead on the beat: star pop from the bull
             // Star criteria are more forgiving than the accuracy curve: roughly on the beat
             // (twice the window) and no long think between throws (2.5x the free pause).
             val starPace = off <= minOf(paceWindow(preset.dart, difficulty) * 2f, preset.dart / 2f)
@@ -299,7 +300,8 @@ fun DartlessScreen(navController: NavHostController) {
 
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = if (metronomeMode) 130.dp else 100.dp)
+        // No scrolling: the board must stay put under a swipe. The board box takes whatever height is left.
+        modifier = Modifier.fillMaxSize().padding(bottom = if (metronomeMode) 130.dp else 100.dp)
     ) {
         ScreenHeader("Dartless Checkout", navController) {
             TextButton(onClick = { showTutorial = true }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("?", color = Gold, fontWeight = FontWeight.Bold) }
@@ -402,10 +404,13 @@ fun DartlessScreen(navController: NavHostController) {
             )
         }
 
-        Box(modifier = Modifier.fillMaxWidth().padding(8.dp).onGloballyPositioned {
-            boardPos = it.positionInRoot()
-            boardSize = it.size
-        }) {
+        Box(
+            modifier = Modifier.fillMaxWidth().weight(1f, fill = false).padding(8.dp).onGloballyPositioned {
+                boardPos = it.positionInRoot()
+                boardSize = it.size
+            },
+            contentAlignment = Alignment.Center
+        ) {
             Dartboard(
                 geometry = BoardGeo,
                 marks = marks,
@@ -415,17 +420,21 @@ fun DartlessScreen(navController: NavHostController) {
                 ThrowRing(
                     startMs = if (finished) 0L else throwStartMs,
                     periodSec = preset?.dart ?: 0f,
+                    accuracy = accuracy,
+                    opacity = aimTransparency.opacity,
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f)
                 )
+                PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
             }
         }
 
     }
 
     if (metronomeMode && streak > 0) {
+        // Bottom-right corner, below the board, so the pile never covers the target.
         GoldBarStack(
             count = streak,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp).width(44.dp).fillMaxHeight(0.62f)
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 8.dp).width(44.dp).height(120.dp)
         )
     }
     // Darts still in hand this visit. Between visits (all three thrown) they are shown as outlines
