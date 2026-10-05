@@ -1,8 +1,6 @@
 package com.dartsapp.ui
 
 import android.content.Context
-import android.media.AudioManager
-import android.media.ToneGenerator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.dartsapp.logic.Sounds
 import com.dartsapp.logic.TimingPreset
 import com.dartsapp.logic.TimingPresets
 import kotlinx.coroutines.delay
@@ -72,12 +71,12 @@ private data class Learning(
 private enum class Mode { IDLE, PLAYING, LEARNING }
 
 /** Sound for the moment a step is COMPLETED (in stance, released, cleared, opponent done...). */
-internal fun playStepDoneTone(toneGen: ToneGenerator, done: Step) {
+internal fun playStepDoneTone(done: Step) {
     when (done.kind) {
-        Kind.START, Kind.OPPONENT -> toneGen.startTone(ToneGenerator.TONE_PROP_NACK, 220)
-        Kind.APPROACH -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 200)
-        Kind.DART -> toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 160)
-        Kind.REMOVE -> toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 200)
+        Kind.START, Kind.OPPONENT -> Sounds.buzz()
+        Kind.APPROACH -> Sounds.tick()
+        Kind.DART -> Sounds.beep()
+        Kind.REMOVE -> Sounds.tick()
         else -> {}
     }
 }
@@ -119,10 +118,8 @@ fun MetronomeScreen(navController: NavHostController) {
         prefs.edit().putBoolean("infoSeen", true).apply()
     }
 
-    val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }
-    DisposableEffect(Unit) { onDispose { toneGen.release() } }
 
-    fun clickDone(done: Step) = playStepDoneTone(toneGen, done)
+    fun clickDone(done: Step) = playStepDoneTone(done)
 
     fun durationSec(s: Step): Float = stepSeconds(s.kind, preset, intervalSec, opponentSec)
 

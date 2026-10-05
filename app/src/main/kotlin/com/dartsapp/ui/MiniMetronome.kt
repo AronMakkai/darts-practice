@@ -1,7 +1,5 @@
 package com.dartsapp.ui
 
-import android.media.AudioManager
-import android.media.ToneGenerator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -37,8 +35,6 @@ fun MiniMetronome(
     var runId by remember { mutableStateOf(0) }
     var menuOpen by remember { mutableStateOf(false) }
 
-    val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 90) }
-    DisposableEffect(Unit) { onDispose { toneGen.release() } }
 
     // Start a turn whenever the host bumps turnKey
     LaunchedEffect(turnKey) {
@@ -49,10 +45,10 @@ fun MiniMetronome(
         val p = preset ?: run { running = false; return@LaunchedEffect }
         for ((i, s) in turnSequence.withIndex()) {
             step = s
-            playStepDoneTone(toneGen, if (i == 0) Step.OPPONENT else turnSequence[i - 1])
+            playStepDoneTone(if (i == 0) Step.OPPONENT else turnSequence[i - 1])
             delay((stepSeconds(s.kind, p, 3f, 0f) * 1000).toLong())
         }
-        playStepDoneTone(toneGen, Step.REMOVE)
+        playStepDoneTone(Step.REMOVE)
         step = Step.READY
         running = false
     }

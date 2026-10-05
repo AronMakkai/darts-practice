@@ -341,16 +341,18 @@ fun Bot501Screen(navController: NavHostController) {
             text = {
                 Column {
                     Text("Opponent", fontSize = 12.sp, color = Grey)
-                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        for (o in Opponent.values()) {
-                            val sel = o == opponent
-                            Box(
-                                modifier = Modifier.size(40.dp)
-                                    .background(if (sel) DarkRed else Charcoal)
-                                    .border(2.dp, if (sel) Gold else Color.Transparent)
-                                    .clickable { opponent = o; Settings.setOpponentIndex(context, o.ordinal) },
-                                contentAlignment = Alignment.Center
-                            ) { OpponentHead(o, modifier = Modifier.size(36.dp)) }
+                    for (row in Opponent.values().toList().chunked(3)) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            for (o in row) {
+                                val sel = o == opponent
+                                Box(
+                                    modifier = Modifier.size(68.dp)
+                                        .background(if (sel) DarkRed else Charcoal)
+                                        .border(2.dp, if (sel) Gold else Color.Transparent)
+                                        .clickable { opponent = o; Settings.setOpponentIndex(context, o.ordinal) },
+                                    contentAlignment = Alignment.Center
+                                ) { OpponentHead(o, modifier = Modifier.size(62.dp)) }
+                            }
                         }
                     }
                     Text(opponent.blurb, fontSize = 11.sp, color = PaleGold, maxLines = 2, modifier = Modifier.padding(bottom = 6.dp))
@@ -393,8 +395,8 @@ fun Bot501Screen(navController: NavHostController) {
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (i == 1) OpponentHead(opponent, modifier = Modifier.size(44.dp).padding(end = 4.dp))
-                    Column(modifier = Modifier.width(if (i == 1) 88.dp else 96.dp)) {
+                    if (i == 1) OpponentHead(opponent, modifier = Modifier.size(56.dp).padding(end = 4.dp))
+                    Column(modifier = Modifier.width(if (i == 1) 84.dp else 96.dp)) {
                         Text(s.name, fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp, color = if (active) Gold else Grey, maxLines = 1)
                         Text(s.remaining.toString(), fontSize = 34.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = if (active) Gold else OffWhite)
                     }

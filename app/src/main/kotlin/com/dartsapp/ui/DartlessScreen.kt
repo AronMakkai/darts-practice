@@ -1,7 +1,5 @@
 package com.dartsapp.ui
 
-import android.media.AudioManager
-import android.media.ToneGenerator
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -134,20 +132,18 @@ fun DartlessScreen(navController: NavHostController) {
     val preset: TimingPreset? = presets.firstOrNull { it.name == presetName }
     var presetMenuOpen by remember { mutableStateOf(false) }
 
-    val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 80) }
-    DisposableEffect(Unit) { onDispose { toneGen.release() } }
 
     // Cue tones for an armed throw: a low tick when the ring reaches the edge, a high beep when it is
     // back at the centre (the ideal moment).
     LaunchedEffect(throwStartMs) {
         val period = preset?.dart ?: return@LaunchedEffect
         if (throwStartMs == 0L) return@LaunchedEffect
-        toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 60)
+        Sounds.tick()
         val half = (period * 500).toLong()
         delay(half)
-        toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 60)
+        Sounds.tick()
         delay(half)
-        toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 120)
+        Sounds.beep()
     }
 
     fun armThrow() {

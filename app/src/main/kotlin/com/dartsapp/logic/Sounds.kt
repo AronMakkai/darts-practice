@@ -14,6 +14,35 @@ import kotlin.math.sin
 object Sounds {
     private const val RATE = 44100
 
+    private val toneCache = HashMap<String, ShortArray>()
+
+    /**
+     * Short metronome tones, replacing the system ToneGenerator (which is quiet or silent on many
+     * phones). Each is a sine with a sharp click transient so it cuts through.
+     */
+    fun tick() = tone(880f, 70, 0.9f)             // low tick: ring at the edge, approach done, board cleared
+    fun beep() = tone(1760f, 130, 1.0f)           // high beep: the ideal release moment / dart done
+    fun buzz() = tone(330f, 220, 0.9f)            // low buzz: start of a turn, opponent done
+
+    fun tone(freqHz: Float, ms: Int, amp: Float) {
+        val key = "$freqHz/$ms/$amp"
+        val pcm = synchronized(toneCache) {
+            toneCache.getOrPut(key) {
+                val n = RATE * ms / 1000
+                val buf = FloatArray(n)
+                for (i in 0 until n) {
+                    val t = i.toFloat() / RATE
+                    val attack = (i / (RATE * 0.004f)).coerceAtMost(1f)
+                    val release = ((n - i) / (RATE * 0.02f)).coerceAtMost(1f)
+                    val click = exp(-t * 400f) * 0.5f
+                    buf[i] = ((sin(2 * PI * freqHz * t) * 0.8 + sin(2 * PI * freqHz * 2 * t) * 0.2).toFloat() * amp + click) * attack * release
+                }
+                toPcm(buf)
+            }
+        }
+        thread(name = "tone") { playPcm(pcm) }
+    }
+
     /** A little "pop" followed by a cascade of coin dings and a final sparkle chord. */
     fun playCheckoutJingle() {
         thread(name = "jingle") {
@@ -87,13 +116,18 @@ object Sounds {
         }
     }
 
-    private fun play(buf: FloatArray) {
-        // Soft clip and convert to 16-bit
+    private fun toPcm(buf: FloatArray): ShortArray {
         val pcm = ShortArray(buf.size)
         for (i in buf.indices) {
             val v = buf[i].coerceIn(-1f, 1f)
             pcm[i] = (v * 32000).toInt().toShort()
         }
+        return pcm
+    }
+
+    private fun play(buf: FloatArray) = playPcm(toPcm(buf))
+
+    private fun playPcm(pcm: ShortArray) {
         val track = AudioTrack(
             AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_GAME)
@@ -108,10 +142,16 @@ object Sounds {
             AudioTrack.MODE_STATIC,
             android.media.AudioManager.AUDIO_SESSION_ID_GENERATE
         )
-        track.write(pcm, 0, pcm.size)
-        track.play()
-        Thread.sleep((buf.size * 1000L / RATE) + 150)
-        track.stop()
-        track.release()
+        try {
+            track.setVolume(1f)
+            track.write(pcm, 0, pcm.size)
+            track.play()
+            Thread.sleep((pcm.size * 1000L / RATE) + 120)
+            track.stop()
+        } catch (e: Exception) {
+            // never let a sound problem take the game down
+        } finally {
+            track.release()
+        }
     }
 }
