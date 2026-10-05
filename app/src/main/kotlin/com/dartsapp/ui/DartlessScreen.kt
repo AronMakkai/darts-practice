@@ -157,7 +157,7 @@ fun DartlessScreen(navController: NavHostController) {
     fun idleMessage() = if (metronomeMode) "Swipe up from the bottom-left corner to start a throw" else "Simple mode — tap the board to throw"
 
     fun newCheckout() {
-        if (!finished && dartsTotal > 0 && streak > 0) { streak = 0; saveStreak() }
+        if (!finished && dartsTotal > 3 && streak > 0) { streak /= 2; saveStreak() }
         start = if (metronomeMode) CheckoutLogic.randomCheckoutForStreak(streak, difficulty.checkoutShift) else CheckoutLogic.randomCheckout()
         remaining = start
         visitStart = start
@@ -246,9 +246,11 @@ fun DartlessScreen(navController: NavHostController) {
                     burstOrigin = Offset(boardPos.x + cx + lx * r, boardPos.y + cy + ly * r)
                     starTrigger++
                     Sounds.playCheckoutJingle()
-                } else if (streak > 0) {
-                    streak = 0
+                } else if (streak > 0 && dartsTotal > 3) {
+                    // A messy checkout (more than one visit) halves the pile; a merely imperfect one keeps it.
+                    streak /= 2
                     saveStreak()
+                    message += "  Gold halved."
                 }
             }
             newRem < 0 || newRem == 1 || newRem == 0 -> {
