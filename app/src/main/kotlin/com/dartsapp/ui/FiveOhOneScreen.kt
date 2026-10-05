@@ -48,7 +48,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
     val context = LocalContext.current
     val presets = remember { TimingPresets.load(context) }
     var metronomeOn by remember { mutableStateOf(false) }
-    val presetNames = remember { mutableStateListOf(presets.firstOrNull()?.name, presets.firstOrNull()?.name) }
+    val presetNames = remember { mutableStateListOf<String?>(TimingPresets.selectedOrDefault(context, presets), TimingPresets.selectedOrDefault(context, presets)) }
     val turnKeys = remember { mutableStateListOf(0, 0) }
 
     var setupOpen by remember { mutableStateOf(true) }

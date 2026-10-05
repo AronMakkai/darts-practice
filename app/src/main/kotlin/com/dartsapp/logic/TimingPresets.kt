@@ -79,6 +79,15 @@ object TimingPresets {
 
     fun selectedName(ctx: Context): String? = prefs(ctx).getString(KEY_SELECTED, null)
 
+    /** The pace the game modes start with when nothing has been picked yet. */
+    const val DEFAULT_NAME = "Littler (fast)"
+
+    /** The selected preset's name if it still exists, else the default (Littler). */
+    fun selectedOrDefault(ctx: Context, presets: List<TimingPreset> = load(ctx)): String {
+        val sel = selectedName(ctx)
+        return if (sel != null && presets.any { it.name == sel }) sel else DEFAULT_NAME
+    }
+
     fun setSelected(ctx: Context, name: String?) {
         prefs(ctx).edit().apply { if (name == null) remove(KEY_SELECTED) else putString(KEY_SELECTED, name) }.apply()
     }

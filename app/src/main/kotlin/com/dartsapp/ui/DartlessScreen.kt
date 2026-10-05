@@ -130,7 +130,7 @@ fun DartlessScreen(navController: NavHostController) {
     var boardPos by remember { mutableStateOf(Offset.Zero) }
     var boardSize by remember { mutableStateOf(IntSize.Zero) }
     val presets = remember { TimingPresets.load(context) }
-    var presetName by remember { mutableStateOf(TimingPresets.selectedName(context) ?: presets.firstOrNull()?.name) }
+    var presetName by remember { mutableStateOf(TimingPresets.selectedOrDefault(context, presets)) }
     val preset: TimingPreset? = presets.firstOrNull { it.name == presetName }
     var presetMenuOpen by remember { mutableStateOf(false) }
 

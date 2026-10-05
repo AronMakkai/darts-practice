@@ -25,7 +25,7 @@ fun CheckoutScreen(navController: NavHostController) {
     val context = LocalContext.current
     val presets = remember { TimingPresets.load(context) }
     var metronomeOn by remember { mutableStateOf(false) }
-    var presetName by remember { mutableStateOf(TimingPresets.selectedName(context) ?: presets.firstOrNull()?.name) }
+    var presetName by remember { mutableStateOf(TimingPresets.selectedOrDefault(context, presets)) }
     val preset = presets.firstOrNull { it.name == presetName }
     var turnKey by remember { mutableStateOf(0) }
 

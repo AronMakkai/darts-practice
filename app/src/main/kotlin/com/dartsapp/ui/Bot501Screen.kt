@@ -91,7 +91,7 @@ fun Bot501Screen(navController: NavHostController) {
     val botAccuracy = when (difficulty) { Difficulty.EASY -> 0.55f; Difficulty.NORMAL -> 0.72f; Difficulty.HARD -> 0.88f }
     val botName = when (difficulty) { Difficulty.EASY -> "ROOKIE BOT"; Difficulty.NORMAL -> "PUB BOT"; Difficulty.HARD -> "PRO BOT" }
     val presets = remember { TimingPresets.load(context) }
-    var presetName by remember { mutableStateOf(TimingPresets.selectedName(context) ?: presets.firstOrNull()?.name) }
+    var presetName by remember { mutableStateOf(TimingPresets.selectedOrDefault(context, presets)) }
     val preset: TimingPreset? = presets.firstOrNull { it.name == presetName }
     var presetMenuOpen by remember { mutableStateOf(false) }
     val model = remember { AccuracyModel() }
