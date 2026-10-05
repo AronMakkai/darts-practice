@@ -89,6 +89,10 @@ fun DartlessScreen(navController: NavHostController) {
     val prefs = remember { context.getSharedPreferences("dartless", android.content.Context.MODE_PRIVATE) }
     val difficulty: Difficulty = remember { Settings.difficulty(context) }
 
+    // Tutorial: shown automatically the first time, and from the "?" button
+    var showTutorial by remember { mutableStateOf(!prefs.getBoolean("tutorialSeen", false)) }
+    fun closeTutorial() { showTutorial = false; prefs.edit().putBoolean("tutorialSeen", true).apply() }
+
     // Perfect-rhythm streak (gold bars) and the all-time best
     var streak by remember { mutableStateOf(prefs.getInt("streak", 0)) }
     var best by remember { mutableStateOf(prefs.getInt("best", 0)) }
@@ -280,6 +284,8 @@ fun DartlessScreen(navController: NavHostController) {
     val tip = remember(remaining) { if (remaining > 1) CheckoutLogic.tip(remaining) else "" }
     val dartNo = if (dartsInVisit >= 3) 3 else dartsInVisit
 
+    if (showTutorial) DartlessTutorial(onClose = { closeTutorial() })
+
     if (coachOpen) {
         CoachDialog(
             start = start,
@@ -296,6 +302,7 @@ fun DartlessScreen(navController: NavHostController) {
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = if (metronomeMode) 130.dp else 100.dp)
     ) {
         ScreenHeader("Dartless Checkout", navController) {
+            TextButton(onClick = { showTutorial = true }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("?", color = Gold, fontWeight = FontWeight.Bold) }
             TextButton(onClick = { showTip = !showTip }, enabled = !metronomeMode) { Text("Tip", color = if (showTip) Gold else Grey) }
             TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
         }
