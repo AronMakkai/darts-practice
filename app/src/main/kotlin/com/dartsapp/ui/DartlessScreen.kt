@@ -235,7 +235,6 @@ fun DartlessScreen(navController: NavHostController) {
                 finished = true
                 coachOpen = true
                 message = "$hitText — Checked out in $dartsTotal darts!"
-                Sounds.cheer(big = dartsTotal <= 3)
                 Announcer.gameShot()
                 // Star: a clean checkout (no bust, done inside one visit) in metronome mode, with every
                 // dart roughly on the beat and no long pause between throws.
