@@ -36,12 +36,35 @@ fun MainMenuScreen(navController: NavHostController) {
             ChromeTitle("METRO", modifier = Modifier.fillMaxWidth().height(74.dp))
             ChromeTitle("DARTS", modifier = Modifier.fillMaxWidth().height(74.dp))
             Spacer(Modifier.height(30.dp))
-            RetroButton("501  ·  2 PLAYER") { navController.navigate("x01") }
-            RetroButton("CHECKOUT") { navController.navigate("checkout") }
-            RetroButton("DARTLESS CHECKOUT") { navController.navigate("dartless") }
-            RetroButton("FAST 501  ·  SOLO") { navController.navigate("valuechecker") }
-            RetroButton("METRONOME") { navController.navigate("metronome") }
+            RetroButton("DARTS GAME") { navController.navigate("game") }
+            RetroButton("DARTS IRL") { navController.navigate("irl") }
             RetroButton("SETTINGS") { navController.navigate("settings") }
+            Spacer(Modifier.weight(1f))
+        }
+        TvFilter(modifier = Modifier.fillMaxSize())
+    }
+}
+
+/** Sub-menu on the same backdrop: a chrome heading and a stack of retro buttons. */
+@Composable
+fun SubMenuScreen(navController: NavHostController, title: String, entries: List<Pair<String, String>>) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        VectorBackdrop(modifier = Modifier.fillMaxSize())
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.weight(0.9f))
+            ChromeTitle(title, modifier = Modifier.fillMaxWidth().height(64.dp))
+            Spacer(Modifier.height(26.dp))
+            for ((label, route) in entries) {
+                RetroButton(label) { navController.navigate(route) }
+            }
+            Spacer(Modifier.height(10.dp))
+            TextButton(onClick = { navController.popBackStack() }) {
+                Text("< BACK", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, color = Gold)
+            }
             Spacer(Modifier.weight(1f))
         }
         TvFilter(modifier = Modifier.fillMaxSize())

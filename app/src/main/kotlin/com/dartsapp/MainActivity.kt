@@ -19,6 +19,8 @@ import com.dartsapp.ui.ValueCheckerScreen
 import com.dartsapp.ui.MetronomeScreen
 import com.dartsapp.ui.SettingsScreen
 import com.dartsapp.ui.FiveOhOneScreen
+import com.dartsapp.ui.Bot501Screen
+import com.dartsapp.ui.SubMenuScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,5 +46,26 @@ fun DartsApp() {
         composable("metronome") { MetronomeScreen(navController) }
         composable("settings") { SettingsScreen(navController) }
         composable("x01") { FiveOhOneScreen(navController) }
+        composable("bot501") { Bot501Screen(navController) }
+        composable("game") {
+            SubMenuScreen(
+                navController, "GAME",
+                listOf(
+                    "DARTLESS CHECKOUT" to "dartless",
+                    "501  ·  1 PLAYER" to "bot501",
+                    "FAST 501  ·  SOLO" to "valuechecker"
+                )
+            )
+        }
+        composable("irl") {
+            SubMenuScreen(
+                navController, "IRL",
+                listOf(
+                    "CHECKOUT" to "checkout",
+                    "501  ·  2 PLAYER" to "x01",
+                    "METRONOME" to "metronome"
+                )
+            )
+        }
     }
 }

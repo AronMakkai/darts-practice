@@ -337,7 +337,7 @@ private fun MatchSetupDialog(
 }
 
 @Composable
-private fun OptionRow(label: String, options: List<Int>, selected: Int, text: (Int) -> String, onSelect: (Int) -> Unit) {
+internal fun OptionRow(label: String, options: List<Int>, selected: Int, text: (Int) -> String, onSelect: (Int) -> Unit) {
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Text(label.uppercase(), fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey)
         Row(modifier = Modifier.fillMaxWidth()) {
