@@ -38,6 +38,9 @@ object Settings {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("aimOpacity", t.name).apply()
     }
 
+    fun opponentIndex(ctx: Context): Int = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("opponent", 0)
+    fun setOpponentIndex(ctx: Context, i: Int) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("opponent", i).apply() }
+
     fun difficulty(ctx: Context): Difficulty {
         val name = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("difficulty", null)
         return Difficulty.values().firstOrNull { it.name == name } ?: Difficulty.NORMAL

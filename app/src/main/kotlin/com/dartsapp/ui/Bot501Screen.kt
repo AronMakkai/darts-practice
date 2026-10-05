@@ -2,6 +2,8 @@ package com.dartsapp.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.material3.*
@@ -9,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -88,8 +91,10 @@ fun Bot501Screen(navController: NavHostController) {
     val aimOpacity = remember { Settings.aimOpacity(context) }
     var perfectTrigger by remember { mutableStateOf(0) }
     var hotThrows by remember { mutableStateOf(0) }      // consecutive on-pace throws -> ring heat
-    val botAccuracy = when (difficulty) { Difficulty.EASY -> 0.55f; Difficulty.NORMAL -> 0.72f; Difficulty.HARD -> 0.88f }
-    val botName = when (difficulty) { Difficulty.EASY -> "ROOKIE BOT"; Difficulty.NORMAL -> "PUB BOT"; Difficulty.HARD -> "PRO BOT" }
+    // Opponent: a character with a base skill, scaled by the difficulty setting
+    var opponent by remember { mutableStateOf(Opponent.values()[Settings.opponentIndex(context).coerceIn(0, Opponent.values().size - 1)]) }
+    val botAccuracy = (opponent.skill * when (difficulty) { Difficulty.EASY -> 0.78f; Difficulty.NORMAL -> 1.0f; Difficulty.HARD -> 1.1f }).coerceIn(0.3f, 0.95f)
+    val botName = opponent.displayName
     val presets = remember { TimingPresets.load(context) }
     var presetName by remember { mutableStateOf(TimingPresets.selectedOrDefault(context, presets)) }
     val preset: TimingPreset? = presets.firstOrNull { it.name == presetName }
@@ -335,11 +340,25 @@ fun Bot501Screen(navController: NavHostController) {
             title = { Text("501 vs $botName", fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Gold) },
             text = {
                 Column {
+                    Text("Opponent", fontSize = 12.sp, color = Grey)
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        for (o in Opponent.values()) {
+                            val sel = o == opponent
+                            Box(
+                                modifier = Modifier.size(40.dp)
+                                    .background(if (sel) DarkRed else Charcoal)
+                                    .border(2.dp, if (sel) Gold else Color.Transparent)
+                                    .clickable { opponent = o; Settings.setOpponentIndex(context, o.ordinal) },
+                                contentAlignment = Alignment.Center
+                            ) { OpponentHead(o, modifier = Modifier.size(36.dp)) }
+                        }
+                    }
+                    Text(opponent.blurb, fontSize = 11.sp, color = PaleGold, maxLines = 2, modifier = Modifier.padding(bottom = 6.dp))
                     OptionRow("Game", listOf(301, 501), startScore, { it.toString() }) { startScore = it }
                     OptionRow("Legs per set", listOf(1, 3, 5, 7), legsPerSet, { "$it" }) { legsPerSet = it }
                     OptionRow("Sets to win", listOf(1, 2, 3, 5), setsToWin, { "$it" }) { setsToWin = it }
                     Text(
-                        "Bot strength follows the difficulty in Settings (${difficulty.label}). You throw with the swipe-and-tap rhythm from Dartless Checkout.",
+                        "Opponent skill is scaled by the difficulty in Settings (${difficulty.label}). You throw with the swipe-and-tap rhythm from Dartless Checkout.",
                         fontSize = 12.sp, color = Grey, modifier = Modifier.padding(top = 8.dp)
                     )
                 }
@@ -374,7 +393,8 @@ fun Bot501Screen(navController: NavHostController) {
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.width(96.dp)) {
+                    if (i == 1) OpponentHead(opponent, modifier = Modifier.size(44.dp).padding(end = 4.dp))
+                    Column(modifier = Modifier.width(if (i == 1) 88.dp else 96.dp)) {
                         Text(s.name, fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp, color = if (active) Gold else Grey, maxLines = 1)
                         Text(s.remaining.toString(), fontSize = 34.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = if (active) Gold else OffWhite)
                     }
