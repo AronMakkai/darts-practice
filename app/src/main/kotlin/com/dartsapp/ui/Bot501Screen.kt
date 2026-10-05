@@ -43,11 +43,24 @@ private class Side(val name: String, var remaining: Int, var legs: Int = 0, var 
 
 /** Where the bot aims for a given remaining score: the book route when in range, otherwise T20. */
 private fun botTarget(remaining: Int): Hit {
-    if (remaining <= 170) CheckoutLogic.bestFinish(remaining)?.let { return it.first() }
-    // Setting up: T20, unless a treble would bust or leave 1
-    if (remaining - 60 >= 2) return Hit(20, Ring.TREBLE)
-    if (remaining - 20 >= 2) return Hit(20, Ring.SINGLE)
-    return Hit(remaining / 2, Ring.DOUBLE)
+    if (remaining <= 170) {
+        CheckoutLogic.bestFinish(remaining)?.let { return it.first() }
+        // Bogey: take the single that leaves an even double
+        return Hit(if (remaining - 20 >= 2) 20 else 1, Ring.SINGLE)
+    }
+    // Above 170: follow the setup route's first dart (keeps the bot off the bogeys)
+    val advice = CheckoutLogic.setupAdvice(remaining)
+    val first = advice?.route?.split(" ")?.firstOrNull() ?: "T20"
+    return parseDart(first)
+}
+
+private fun parseDart(label: String): Hit = when {
+    label == "25" -> Hit(25, Ring.OUTER_BULL)
+    label == "Bull" -> Hit(25, Ring.BULL)
+    label.startsWith("T") -> Hit(label.drop(1).toIntOrNull() ?: 20, Ring.TREBLE)
+    label.startsWith("D") -> Hit(label.drop(1).toIntOrNull() ?: 20, Ring.DOUBLE)
+    label.startsWith("S") -> Hit(label.drop(1).toIntOrNull() ?: 20, Ring.SINGLE)
+    else -> Hit(20, Ring.TREBLE)
 }
 
 /** Board coordinates (normalised) for the centre of a sector. */

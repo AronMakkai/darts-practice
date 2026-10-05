@@ -154,6 +154,91 @@ object CheckoutLogic {
         }
     }
 
+    // ---- Reaching a checkout (after dartscheckoutassistant.com, "A guide to reaching a checkout") ----
+
+    /** Scores from which you need MORE darts than a slightly higher score. All end in 2, 3, 5, 6, 8 or 9. */
+    private val bogeyUnder351 = setOf(349, 348, 346, 345, 343, 342, 339)
+    private val bogeyUnder171 = bogeyNumbers   // 169, 168, 166, 165, 163, 162, 159
+
+    /** Preferred checkout leaves: big finishes that end on the bull or D20. */
+    private val preferredLeaves = listOf(170, 167, 164, 161, 160)
+
+    data class SetupAdvice(val visit: Int, val route: String, val leaves: Int, val why: String, val warning: String?)
+
+    private data class Visit(val score: Int, val route: String)
+
+    private val setupVisits = listOf(
+        Visit(180, "T20 T20 T20"), Visit(177, "T20 T20 T19"), Visit(174, "T20 T20 T18"), Visit(171, "T20 T19 T18"),
+        Visit(140, "T20 T20 S20"), Visit(137, "T20 T19 S20"), Visit(134, "T20 T18 S20"),
+        Visit(105, "T20 S20 25"), Visit(100, "T20 S20 S20"), Visit(99, "T20 S20 S19"), Visit(97, "T20 S20 S17"),
+        Visit(65, "S20 S20 25"), Visit(60, "S20 S20 S20"), Visit(59, "S20 S20 S19"), Visit(58, "S20 S20 S18"), Visit(57, "S20 S20 S17"), Visit(55, "S20 S20 S15")
+    )
+
+    private fun isBogey(n: Int) = n in bogeyUnder351 || n in bogeyUnder171
+
+    /**
+     * What to throw from a score above 170 so that you LAND on a checkout — and never on a bogey.
+     * Above 350 the aim is to get under 351 (keeps a nine-darter alive); from 350 down the aim is
+     * a three-dart finish, ideally 170/167/164/161/160.
+     */
+    fun setupAdvice(remaining: Int): SetupAdvice? {
+        if (remaining <= 170) return null
+        val warnDigits = "Bogeys end in 2, 3, 5, 6, 8 or 9 — leave a score ending in 0, 1, 4 or 7."
+
+        if (remaining > 350) {
+            // Need three big trebles (or two plus bull) to get under 351. If a single 20 on the first
+            // dart would strand you on a bogey, open on 19 (or 18) instead.
+            for (bed in listOf(20, 19, 18)) {
+                val ifSingle = remaining - bed - 120
+                if (ifSingle in 2..350 && !isBogey(ifSingle)) {
+                    val best = remaining - bed * 3 - 120
+                    val route = "T$bed T20 T20"
+                    val why = (if (bed == 20) "Three big trebles: $route leaves $best. "
+                        else "Open on the $bed: a single 20 first would leave a bogey. $route leaves $best. ") +
+                        "If the first dart is only a single, two T20s still leave $ifSingle — under 351 and not a bogey."
+                    return SetupAdvice(bed * 3 + 120, route, best, why, if (remaining - 140 in bogeyUnder351) "Careful: 140 from here leaves ${remaining - 140}, a bogey." else null)
+                }
+            }
+            return SetupAdvice(180, "T20 T20 T20", remaining - 180, "Score as big as you can and get under 351.", warnDigits)
+        }
+
+        if (remaining > 230 && remaining <= 350 && (remaining - 180) in 2..170 && !isBogey(remaining - 180)) {
+            // Top of the range: a 180 is a checkout leave
+            if (remaining - 180 in preferredLeaves || remaining >= 341) {
+                return SetupAdvice(180, "T20 T20 T20", remaining - 180, "A 180 leaves ${remaining - 180} — a three-dart finish.", null)
+            }
+        }
+
+        // Pick the biggest realistic visit that lands on a checkout, preferring the classic leaves.
+        val candidates = setupVisits.filter { v ->
+            val left = remaining - v.score
+            left in 2..170 && !isBogey(left)
+        }
+        if (candidates.isEmpty()) {
+            // Not reachable this visit: just avoid the bogeys and score
+            val safe = (100 downTo 40).firstOrNull { !isBogey(remaining - it) && remaining - it >= 2 } ?: 60
+            return SetupAdvice(safe, if (safe >= 100) "T20 S20 S20" else "S20 S20 S20", remaining - safe,
+                "No checkout in reach this visit. Score and keep off the bogeys: $safe leaves ${remaining - safe}.", warnDigits)
+        }
+        val preferred = candidates.firstOrNull { remaining - it.score in preferredLeaves }
+        val pick = preferred ?: candidates.first()
+        val left = remaining - pick.score
+        val sb = StringBuilder()
+        sb.append("${pick.score} (${pick.route}) leaves $left")
+        sb.append(if (left in preferredLeaves) " — one of the big finishes (bull or D20 at the end). " else " — a three-dart finish. ")
+        // Switch advice: if three 20s would land on a bogey, say which bed to switch to
+        if (isBogey(remaining - 60) && pick.score in 55..59) {
+            sb.append("Three single 20s would leave ${remaining - 60}, a bogey, so after two 20s switch to the ${pick.route.takeLast(2).trimStart('S')}.")
+        }
+        if (pick.score == 60) sb.append("Don't throw a cover shot after two 20s — the third 20 is the one that matters.")
+        val warning = when {
+            isBogey(remaining - 100) && pick.score != 100 -> "A ton from here leaves ${remaining - 100}, a bogey."
+            isBogey(remaining - 60) && pick.score != 60 -> "Three 20s from here leave ${remaining - 60}, a bogey."
+            else -> null
+        }
+        return SetupAdvice(pick.score, pick.route, left, sb.toString().trim(), warning)
+    }
+
     fun tip(remaining: Int): String {
         if (remaining <= 1) return ""
         bestFinish(remaining)?.let { route ->

@@ -549,18 +549,9 @@ private fun coachPointers(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts
 @Composable
 internal fun CoachTipDialog(remaining: Int, playerName: String, onDismiss: () -> Unit) {
     val suggestion = remember(remaining) { if (remaining in 2..170) CheckoutLogic.suggest(remaining) else null }
-    val setup: String = remember(remaining) {
-        when {
-            remaining > 170 -> {
-                val afterTon = remaining - 100
-                "Too far out for a finish. Score — T20 is the bed. " +
-                    (if (afterTon in 2..170 && CheckoutLogic.isFinishable(afterTon)) "A ton leaves $afterTon, which is a finish. " else "") +
-                    "Aim to leave 32, 40 or 16 — doubles with a comfortable halving chain."
-            }
-            suggestion == null -> CheckoutLogic.tip(remaining) + ". " +
-                "This number has no three-dart finish: take the single that leaves an even double."
-            else -> ""
-        }
+    val setup = remember(remaining) { CheckoutLogic.setupAdvice(remaining) }
+    val bogeyNote = remember(remaining) {
+        if (remaining in 2..170 && suggestion == null) CheckoutLogic.tip(remaining) + ". No three-dart finish from here: take the single that leaves an even double." else ""
     }
     Dialog(onDismissRequest = onDismiss) {
         val interaction = remember { MutableInteractionSource() }
@@ -590,8 +581,16 @@ internal fun CoachTipDialog(remaining: Int, playerName: String, onDismiss: () ->
                         Text(CheckoutLogic.routeLabel(suggestion.alt), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = PaleGold, fontFamily = FontFamily.Monospace)
                         Text(suggestion.altWhy, fontSize = 13.sp, color = Grey, modifier = Modifier.padding(top = 4.dp))
                     }
+                } else if (setup != null) {
+                    Text("Set up", fontSize = 12.sp, color = Grey)
+                    Text("${setup.visit}  ·  ${setup.route}", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Gold, fontFamily = FontFamily.Monospace)
+                    Text("leaves ${setup.leaves}", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = PaleGold)
+                    Text(setup.why, fontSize = 14.sp, color = OffWhite, modifier = Modifier.padding(top = 4.dp))
+                    if (setup.warning != null) {
+                        Text(setup.warning, fontSize = 13.sp, color = Red, modifier = Modifier.padding(top = 6.dp))
+                    }
                 } else {
-                    Text(setup, fontSize = 14.sp, color = OffWhite)
+                    Text(bogeyNote, fontSize = 14.sp, color = OffWhite)
                 }
                 Spacer(Modifier.height(12.dp))
                 Text("tap anywhere to close", fontSize = 11.sp, color = Grey, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
