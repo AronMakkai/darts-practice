@@ -73,7 +73,7 @@ object Music {
 
     /** 8 bars at 118 BPM: four-on-the-floor kick, gated snare, hats, octave bass, detuned pad, square lead. */
     private fun renderMenuTrack(): ShortArray {
-        val bpm = 118f
+        val bpm = 128f
         val beat = 60f / bpm
         val bars = 8
         val n = (RATE * beat * 4 * bars).toInt()
@@ -105,14 +105,19 @@ object Music {
             val start = c * beat * 8
             for (m in triads[c]) pad(buf, start, beat * 8, hz(m), 0.07f)
         }
-        // Lead: pentatonic phrase on bars 3-4 and 7-8 (A minor pentatonic: A C D E G)
-        val phrase = intArrayOf(76, 79, 81, 79, 76, 74, 72, 74, 76, 0, 79, 76, 74, 72, 69, 0)
+        // Lead: a fast 16th-note FM riff with big leaps, bars 3-4 and 7-8 (original, A minor pentatonic + passing notes)
+        val riff = intArrayOf(
+            81, 83, 84, 76,  81, 83, 84, 76,  88, 84, 83, 81,  79, 76, 79, 81,
+            76, 79, 81, 83,  84, 83, 81, 79,  76, 74, 72, 74,  76, 0, 88, 0
+        )
         for (rep in 0 until 2) {
             val start = (if (rep == 0) 2 else 6) * beat * 4
-            for ((i, m) in phrase.withIndex()) {
+            for ((i, m) in riff.withIndex()) {
                 if (m == 0) continue
-                val dur = beat / 2f
-                lead(buf, start + i * dur, hz(m), dur * 0.85f, 0.16f)
+                val dur = sixteenth
+                // the last note of each bar rings a little longer
+                val hold = if (i % 16 == 15 || riff.getOrNull(i + 1) == 0) dur * 1.8f else dur * 0.9f
+                lead(buf, start + i * dur, hz(m), hold, 0.15f)
             }
         }
         // Gentle master compression by soft clipping
@@ -133,17 +138,20 @@ object Music {
     }
 
     private fun snare(buf: FloatArray, t0: Float, rnd: Random) {
-        val start = (t0 * RATE).toInt(); val dur = (0.28f * RATE).toInt()
-        var lp = 0f
+        val start = (t0 * RATE).toInt(); val dur = (0.15f * RATE).toInt()
+        var lp = 0f; var prev = 0f
         for (i in 0 until dur) {
             val idx = start + i; if (idx >= buf.size) break
             val p = i.toFloat() / dur
+            val t = i.toFloat() / RATE
             val white = rnd.nextFloat() * 2f - 1f
-            lp += 0.35f * (white - lp)
-            // gated-reverb feel: flat-ish body then a hard cut
-            val env = if (p < 0.7f) (1f - p * 0.5f) else (1f - (p - 0.7f) / 0.3f)
-            val body = sin(2 * PI * 190 * i / RATE).toFloat() * exp(-p * 12f)
-            buf[idx] += (lp * 0.55f + body * 0.4f) * env * 0.7f
+            lp += 0.7f * (white - lp)
+            val hp = lp - prev; prev = lp                      // bright, crisp noise
+            // Snap: a hard transient in the first 6 ms, a fast-decaying 200 Hz body, then a short gated tail
+            val snap = exp(-t * 350f)
+            val body = sin(2 * PI * 200 * t).toFloat() * exp(-t * 40f)
+            val tail = if (p < 0.75f) (1f - p * 0.6f) else (1f - (p - 0.75f) / 0.25f)
+            buf[idx] += (hp * 1.4f * (0.5f + snap) + lp * 0.3f + body * 0.9f) * tail * 0.75f
         }
     }
 
@@ -186,18 +194,26 @@ object Music {
         }
     }
 
+    /**
+     * 80s FM lead (DX-style): a sine carrier frequency-modulated by a sine at 2x, with the modulation
+     * index high at the attack and settling — bright, glassy pluck that mellows as it rings. A second
+     * slightly detuned voice fattens it.
+     */
     private fun lead(buf: FloatArray, t0: Float, f: Float, durSec: Float, amp: Float) {
         val start = (t0 * RATE).toInt(); val dur = (durSec * RATE).toInt()
+        var ph1 = 0.0; var ph2 = 0.0; var mod1 = 0.0; var mod2 = 0.0
         for (i in 0 until dur) {
             val idx = start + i; if (idx >= buf.size) break
             val t = i.toFloat() / RATE
             val p = i.toFloat() / dur
-            val vib = 1f + 0.006f * sin(2 * PI * 5.5 * t).toFloat() * minOf(1f, p * 3f)
-            // square-ish: odd harmonics
-            var v = 0f
-            for (h in intArrayOf(1, 3, 5)) v += (sin(2 * PI * f * vib * h * t) / h).toFloat()
-            val env = minOf(1f, i / (RATE * 0.01f)) * (if (p > 0.8f) (1f - p) / 0.2f else 1f)
-            buf[idx] += v * env * amp
+            val index = 1.2 + 4.5 * exp(-t * 18f)                    // FM depth: bright attack, warmer sustain
+            val vib = 1f + 0.004f * sin(2 * PI * 5.5 * t).toFloat() * minOf(1f, p * 3f)
+            val f1 = f * vib; val f2 = f * vib * 1.004f
+            mod1 += 2 * PI * f1 * 2.0 / RATE; mod2 += 2 * PI * f2 * 2.0 / RATE
+            ph1 += 2 * PI * f1 / RATE; ph2 += 2 * PI * f2 / RATE
+            val v = sin(ph1 + index * sin(mod1)) * 0.6 + sin(ph2 + index * sin(mod2)) * 0.4
+            val env = minOf(1f, i / (RATE * 0.003f)) * (if (p > 0.6f) ((1f - p) / 0.4f) else 1f)
+            buf[idx] += (v * env * amp).toFloat()
         }
     }
 
