@@ -66,11 +66,11 @@ data class BoardGeometry(
             doubleIn = 0.897f
         )
 
-        /** HOT STREAK board: trebles, doubles and bull roughly twice as fat as PRACTICE. */
+        /** HOT STREAK board: trebles, doubles and bull about half as fat again as PRACTICE. */
         val HOT = BoardGeometry(
-            bullR = 0.11f, outerBullR = 0.21f,
-            trebleIn = 0.47f, trebleOut = 0.69f,
-            doubleIn = 0.80f
+            bullR = 0.085f, outerBullR = 0.165f,
+            trebleIn = 0.515f, trebleOut = 0.67f,
+            doubleIn = 0.85f
         )
     }
 }
