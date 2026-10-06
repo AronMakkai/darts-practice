@@ -484,7 +484,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                         Text(s.remaining.toString(), fontSize = 34.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = if (active) Gold else OffWhite)
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        PowerBar(value = s.remaining.toFloat() / startScore, enabled = false, onChange = {}, modifier = Modifier.fillMaxWidth().height(18.dp))
+                        PowerBar(value = s.remaining.toFloat() / startScore, enabled = false, onChange = {}, modifier = Modifier.fillMaxWidth().height(18.dp), tint = if (s.remaining in 2..170) Gold else BoardCream)
                         Text(
                             "S ${s.sets}  L ${s.legs}   avg ${"%.1f".format(s.average)}" +
                                 (if (s.remaining in 2..170 && CheckoutLogic.isFinishable(s.remaining)) "   ${CheckoutLogic.tip(s.remaining)}" else ""),

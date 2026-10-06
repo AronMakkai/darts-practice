@@ -256,7 +256,8 @@ fun FiveOhOneScreen(navController: NavHostController) {
                                 value = p.remaining.toFloat() / startScore,
                                 enabled = false,
                                 onChange = {},
-                                modifier = Modifier.fillMaxWidth().height(22.dp)
+                                modifier = Modifier.fillMaxWidth().height(22.dp),
+                                tint = if (p.remaining in 2..170) Gold else BoardCream
                             )
                         }
                         if (p.hotStreak >= 3) {

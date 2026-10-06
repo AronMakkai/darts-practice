@@ -28,7 +28,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 private val BoardBlack = Color(0xFF141414)
-private val BoardCream = Color(0xFFEDE3C4)
+internal val BoardCream = Color(0xFFEDE3C4)
 private val BoardRed = Color(0xFFC8102E)
 private val BoardGreen = Color(0xFF0A6B36)
 private val BoardRim = Color(0xFF000000)

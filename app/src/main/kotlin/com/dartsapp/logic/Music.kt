@@ -108,16 +108,18 @@ object Music {
         // Lead: the tune the crowd whistles (root, 2, 4, 7, 4, 2, root, -3, root), elaborated into a
         // staccato 16th-note line: each tune note stated, then echoed an octave up or down with a
         // passing note, over bars 3-4 and 7-8. Root = A (81).
+        // Tune (semitones from A): 0 2 3 7 3 2 0 -2 0 — A B C E C B A G A, all inside the Am/F/C/G chords.
+        // Bar 1: the tune straight, as 8ths. Bar 2: the tune again with octave-up echoes on the long notes.
         val riff = intArrayOf(
-            81, 0, 93, 83,  0, 95, 85, 0,   88, 0, 100, 0,  85, 83, 0, 71,
-            81, 0, 93, 78,  0, 90, 0, 81,   76, 0, 88, 78,  81, 0, 93, 0
+            81, 0, 83, 0,   84, 0, 88, 0,   84, 0, 83, 0,   81, 0, 79, 81,
+            81, 93, 83, 0,  84, 96, 88, 0,  84, 96, 83, 0,  81, 93, 79, 81
         )
         for (rep in 0 until 2) {
             val start = (if (rep == 0) 2 else 6) * beat * 4
             for ((i, m) in riff.withIndex()) {
                 if (m == 0) continue
                 // Staccato: each note is short, with a tiny ring on the lowest and highest ones
-                val hold = if (m <= 69 || m >= 91) sixteenth * 1.1f else sixteenth * 0.55f
+                val hold = if (riff.getOrNull(i + 1) == 0) sixteenth * 1.6f else sixteenth * 0.6f
                 lead(buf, start + i * sixteenth, hz(m), hold, 0.17f)
             }
         }
@@ -276,10 +278,10 @@ object Music {
             }
         }
         // Whistling: one quiet snatch of the house tune, far across the room
-        val tune = intArrayOf(0, 2, 4, 7, 4, 2, 0, -3, 0)
+        val tune = intArrayOf(0, 2, 3, 7, 3, 2, 0, -2, 0)
         run {
             var t = 6f + rnd.nextFloat()
-            val root = 1480f
+            val root = 1760f     // A6 — the same key as the menu track
             for ((i, step) in tune.withIndex()) {
                 val dur = if (i == tune.size - 1) 0.5f else 0.22f + rnd.nextFloat() * 0.12f
                 whistle(buf, t, root * 2f.pow(step / 12f), dur, 0.018f)
@@ -301,9 +303,9 @@ object Music {
         }
         // Someone singing along in the corner: a slow pentatonic tune, lots of vibrato, far away
         run {
-            val notes = intArrayOf(0, 2, 4, 7, 4, 2, 0, -5, 0, 2, 4, 2, 0)
+            val notes = intArrayOf(0, 2, 3, 7, 3, 2, 0, -2, 0, 2, 3, 2, 0)
             var t = 1.5f
-            val root = 196f   // G3
+            val root = 220f   // A3 — the house tune, same key as the menu
             for ((i, st) in notes.withIndex()) {
                 val dur = if (i % 4 == 3) 0.9f else 0.45f
                 sing(buf, t, root * 2f.pow(st / 12f), dur, 0.03f, rnd)

@@ -544,7 +544,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawVectorDart(cent
  * orange to gold at the top, with a bevelled frame. Draggable when [enabled]; display-only otherwise.
  */
 @Composable
-fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier: Modifier = Modifier, gradient: Boolean = false) {
+fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier: Modifier = Modifier, gradient: Boolean = false, tint: Color? = null) {
     val latestChange = androidx.compose.runtime.rememberUpdatedState(onChange)
     val shown by androidx.compose.animation.core.animateFloatAsState(
         targetValue = value.coerceIn(0f, 1f),
@@ -607,7 +607,7 @@ fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier
         for (i in 0 until segments) {
             val x = inner.x + i * (segW + gap)
             val frac = i.toFloat() / segments
-            val base = when {
+            val base = tint ?: when {
                 frac < 0.33f -> Color(0xFFE0203A)
                 frac < 0.66f -> Color(0xFFF08A1E)
                 else -> Gold
