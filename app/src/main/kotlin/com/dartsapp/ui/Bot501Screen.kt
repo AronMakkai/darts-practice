@@ -117,7 +117,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var powerUsed by remember { mutableStateOf(false) }       // once per leg
     var boardBrightness by remember { mutableStateOf(0.25f) } // TEMP tuning value for the Viking's LIGHTS OUT
     var glareStrength by remember { mutableStateOf(0.7f) }    // TEMP tuning value for the Bling's glare
-    var wobbleStrength by remember { mutableStateOf(0.6f) }   // TEMP tuning value for the Jockey's drunk wobble
+    // TEMP tuning values for the Jockey's drunk board
+    var drunkSway by remember { mutableStateOf(0.4f) }    // tilt / slide / stretch
+    var drunkWave by remember { mutableStateOf(0.5f) }    // ripple distortion
+    var drunkSpeed by remember { mutableStateOf(1f) }     // 0.2x .. 3x
     // Opponent: a character with a base skill, scaled by the difficulty setting
     val tourRound = if (tournament) Tournament.round else 0
     var opponent by remember {
@@ -547,7 +550,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             ) {
                 // ONE FOR THE ROAD: the Jockey gets you drunk — the board sways and ripples on your turn
                 val drunkNow = powerActive && current == 0 && opponent == Opponent.MULLET
-                Dartboard(modifier = Modifier.drunk(drunkNow, wobbleStrength), geometry = if (hot && current == 0) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
+                Dartboard(modifier = Modifier.drunk(drunkNow, drunkSway, drunkWave, drunkSpeed), geometry = if (hot && current == 0) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
                 // LIGHTS OUT: the Viking stands in the light on your turn. Drawn under the aim ring; taps pass through.
                 if (powerActive && current == 0 && opponent == Opponent.BEARD) {
                     androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
@@ -586,8 +589,12 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     Slider(value = boardBrightness, onValueChange = { boardBrightness = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
                 }
                 if (powerActive && opponent == Opponent.MULLET) {
-                    Text("WOBBLE ${(wobbleStrength * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
-                    Slider(value = wobbleStrength, onValueChange = { wobbleStrength = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
+                    Text("SWAY ${(drunkSway * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
+                    Slider(value = drunkSway, onValueChange = { drunkSway = it }, valueRange = 0f..1f, modifier = Modifier.height(28.dp))
+                    Text("WAVE ${(drunkWave * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
+                    Slider(value = drunkWave, onValueChange = { drunkWave = it }, valueRange = 0f..1f, modifier = Modifier.height(28.dp))
+                    Text("SPEED ${"%.1f".format(drunkSpeed)}x", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
+                    Slider(value = drunkSpeed, onValueChange = { drunkSpeed = it }, valueRange = 0.2f..3f, modifier = Modifier.height(28.dp))
                 }
                 if (powerActive && opponent == Opponent.BLING) {
                     Text("GLARE ${(glareStrength * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)

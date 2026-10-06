@@ -164,26 +164,33 @@ private object DrunkWaves {
 }
 
 /**
- * The Jockey's special power: you've had a pint too many. The board sways, stretches and (on
- * Android 13+) ripples in waves. [strength] 0..1. Pass `active = false` for no effect.
+ * The Jockey's special power: you've had a pint too many. The board sways and stretches ([sway], 0..1)
+ * and, on Android 13+, ripples in waves ([wave], 0..1). [speed] scales how fast it all moves (1 = normal).
+ * Pass `active = false` for no effect.
  */
 @Composable
-fun Modifier.drunk(active: Boolean, strength: Float): Modifier {
+fun Modifier.drunk(active: Boolean, sway: Float, wave: Float, speed: Float): Modifier {
     var t by remember { mutableStateOf(0f) }
+    val liveSpeed = rememberUpdatedState(speed)
     LaunchedEffect(active) {
         if (!active) return@LaunchedEffect
-        val start = withFrameNanos { it }
-        while (true) t = (withFrameNanos { it } - start) / 1_000_000_000f
+        var last = withFrameNanos { it }
+        while (true) {
+            val now = withFrameNanos { it }
+            t += (now - last) / 1_000_000_000f * liveSpeed.value   // integrate, so changing speed never jumps
+            last = now
+        }
     }
-    val s = strength.coerceIn(0f, 1f)
+    val s = sway.coerceIn(0f, 1f)
+    val wv = wave.coerceIn(0f, 1f)
     return if (!active) this else this.graphicsLayer {
-        rotationZ = 5f * s * sin(t * 1.1f)
-        translationX = size.width * 0.035f * s * sin(t * 0.8f)
-        translationY = size.height * 0.02f * s * cos(t * 0.6f)
-        scaleX = 1f + 0.05f * s * sin(t * 1.7f)
-        scaleY = 1f + 0.05f * s * cos(t * 1.3f)
+        rotationZ = 8f * s * sin(t * 1.1f)
+        translationX = size.width * 0.06f * s * sin(t * 0.8f)
+        translationY = size.height * 0.035f * s * cos(t * 0.6f)
+        scaleX = 1f + 0.08f * s * sin(t * 1.7f)
+        scaleY = 1f + 0.08f * s * cos(t * 1.3f)
         if (android.os.Build.VERSION.SDK_INT >= 33) {
-            renderEffect = DrunkWaves.effect(t, size.width * 0.03f * s, size.width, size.height)
+            renderEffect = DrunkWaves.effect(t, size.width * 0.06f * wv, size.width, size.height)
         }
     }
 }
