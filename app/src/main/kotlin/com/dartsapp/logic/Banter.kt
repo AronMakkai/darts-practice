@@ -79,16 +79,16 @@ object Banter {
             "I'll remember this win for ever. Or until about ten o'clock. Whichever's first."
         ),
         Opponent.GOATEE to listOf(
-            "Ssssstay down. The lizard does not do rematches on a Tuesday.",
-            "That's a combination finish. What you did was a combination of nerves and bad vibes.",
-            "I've got cold blood and hot doubles. You've got warm hands and cold feet.",
-            "You just got out-finished by a man with hair like a lemon meringue. Think about that.",
-            "Delulu is not the solulu, my friend. Hitting the double is the solulu.",
-            "Your checkouts are like my morning sun lamp: on for a bit, then nothing happens.",
-            "I shed my skin once a year. You shed your composure once a visit.",
-            "That was giving 'slipped on the oche'. Get up, dust off, aim somewhere.",
-            "Very brave, aiming at the double. Very unsuccessful, but very brave.",
-            "I'd say 'close', but the double would like a word about the definition."
+            "Strewth, mate. I've seen roadkill on the Nullarbor with better aim than that.",
+            "Back home we'd call that a shocker. Here you call it 'a visit'. Yeah, nah.",
+            "That's a combination finish, cobber. What you did was a combination of panic and prayer.",
+            "Cold blood, hot doubles. You've got warm hands and a face like a stunned mullet.",
+            "You just got out-finished by a bloke with hair like a lemon pav. Sit with that.",
+            "Delulu is not the solulu, mate. Hitting the double is the solulu. Fair dinkum.",
+            "I've had drop bears throw a better dart. And they're not real. Probably.",
+            "That was giving 'tourist who got bitten by everything'. Walk it off, champ.",
+            "Good on ya for aiming at the double. Shame it ended up in Tasmania.",
+            "Close? Mate, Perth is closer to Sydney than that dart was to the 16."
         ),
         Opponent.TACHE to listOf(
             "I've had tighter groupings on a wet Wednesday in Stoke. With a cold.",
@@ -152,12 +152,12 @@ object Banter {
             "Good darts. I'm off for a lie-down in the car park. Wake me for the rematch."
         ),
         Opponent.GOATEE to listOf(
-            "Hsss. The lizard has been slain. Temporarily. Lizards are basically immortal.",
-            "My tail's gone cold. That's a real thing and it's your fault.",
-            "You finished better than me. I am going to go and lie under a heat lamp about it.",
-            "Fine, fine. You've got the combinations today. I've got the hair. Call it even.",
-            "I didn't lose, I moulted. Big difference. Look it up.",
-            "Respect. Grudging, cold-blooded respect."
+            "Yeah, nah, yeah. Fair enough. The lizard's been done over. Temporarily. We're basically immortal.",
+            "My tail's gone cold. That's a real thing where I'm from and it's your fault.",
+            "You finished better than me, so I'm off to lie on a hot rock about it.",
+            "Righto, you've got the combinations today. I've got the hair. Call it a draw, mate.",
+            "I didn't lose, I moulted. Big difference. Google it, ya galah.",
+            "Respect. Cold-blooded, sun-baked, grudging respect. Shout me a tinnie."
         ),
         Opponent.TACHE to listOf(
             "Well thrown. I'll be dreaming about that double for a week and it won't be a nice dream.",
