@@ -97,7 +97,8 @@ fun DartsApp() {
                     "501  ·  1 PLAYER" to "bot501",
                     "TOURNAMENT" to "tournament",
                     "FAST 501  ·  SOLO" to "valuechecker"
-                )
+                ),
+                showPace = true
             )
         }
         composable("irl") {

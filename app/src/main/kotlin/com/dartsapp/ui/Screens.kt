@@ -47,7 +47,11 @@ fun MainMenuScreen(navController: NavHostController) {
 
 /** Sub-menu on the same backdrop: a chrome heading and a stack of retro buttons. */
 @Composable
-fun SubMenuScreen(navController: NavHostController, title: String, entries: List<Pair<String, String>>) {
+fun SubMenuScreen(navController: NavHostController, title: String, entries: List<Pair<String, String>>, showPace: Boolean = false) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val presets = remember { com.dartsapp.logic.TimingPresets.load(context) }
+    var paceName by remember { mutableStateOf(com.dartsapp.logic.TimingPresets.selectedOrDefault(context, presets)) }
+    var paceOpen by remember { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxSize()) {
         VectorBackdrop(modifier = Modifier.fillMaxSize())
         Column(
@@ -60,6 +64,40 @@ fun SubMenuScreen(navController: NavHostController, title: String, entries: List
             Spacer(Modifier.height(26.dp))
             for ((label, route) in entries) {
                 RetroButton(label) { navController.navigate(route) }
+            }
+            if (showPace) {
+                // Which pace every game is played at: a pro's rhythm or one you recorded in the Metronome
+                Spacer(Modifier.height(6.dp))
+                Box {
+                    OutlinedButton(
+                        onClick = { paceOpen = true },
+                        shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
+                        border = BorderStroke(1.dp, Gold.copy(alpha = 0.6f)),
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = Black.copy(alpha = 0.6f), contentColor = PaleGold),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+                    ) {
+                        Text("PACE: ", fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 12.sp, color = Grey)
+                        Text(paceName.uppercase(), fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 12.sp)
+                        Text("  ▾", fontSize = 12.sp, color = Gold)
+                    }
+                    DropdownMenu(expanded = paceOpen, onDismissRequest = { paceOpen = false }) {
+                        for (p in presets) {
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(p.name, color = if (p.name == paceName) Gold else OffWhite)
+                                        Text(p.summary(), fontSize = 11.sp, color = Grey)
+                                    }
+                                },
+                                onClick = { paceName = p.name; com.dartsapp.logic.TimingPresets.setSelected(context, p.name); paceOpen = false }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Record my own pace…", color = PaleGold) },
+                            onClick = { paceOpen = false; navController.navigate("metronome") }
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(10.dp))
             TextButton(onClick = { navController.popBackStack() }) {

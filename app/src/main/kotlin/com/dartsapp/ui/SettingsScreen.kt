@@ -18,6 +18,7 @@ import androidx.navigation.NavHostController
 import com.dartsapp.logic.AimOpacity
 import com.dartsapp.logic.Difficulty
 import com.dartsapp.logic.Settings
+import com.dartsapp.logic.TimingPresets
 import com.dartsapp.logic.Sounds
 import com.dartsapp.logic.Music
 import com.dartsapp.logic.Announcer
@@ -86,6 +87,30 @@ fun SettingsScreen(navController: NavHostController) {
             }
         }
         Text(aimOpacity.blurb + ". The aiming ring in Checkout Game and 501 vs bot.",
+            fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
+
+        Spacer(Modifier.height(16.dp))
+        Text("GAME PACE", fontSize = 14.sp, fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, color = Grey,
+            modifier = Modifier.padding(start = 28.dp, bottom = 6.dp))
+        val presets = remember { TimingPresets.load(context) }
+        var paceName by remember { mutableStateOf(TimingPresets.selectedOrDefault(context, presets)) }
+        for (p in presets) {
+            val selected = p.name == paceName
+            OutlinedButton(
+                onClick = { paceName = p.name; TimingPresets.setSelected(context, p.name) },
+                shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
+                border = BorderStroke(2.dp, if (selected) Gold else Charcoal),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = if (selected) DarkRed else Black, contentColor = if (selected) OffWhite else Grey),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 3.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(p.name + (if (!p.builtIn) "  ·  recorded" else ""), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(p.summary(), fontSize = 11.sp)
+                }
+            }
+        }
+        Text("The rhythm every game is played at — the ring's dart time and the beat. Record your own in the Metronome (learning mode) and it appears here.",
             fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
 
         Spacer(Modifier.height(16.dp))
