@@ -32,15 +32,15 @@ object Banter {
     private val wins: Map<Opponent, List<String>> = mapOf(
         Opponent.BEARD to listOf(
             "In my village we'd have burned that scoring as an offering. To apologise to the board.",
-            "I've eaten pies with more consistency than your doubles. Several. Today.",
+            "Six ales deep and I still move faster to the treble than you. And I move like a glacier.",
             "That was giving 'lost tourist'. Were you aiming at the board or asking it for directions?",
-            "This beard has more discipline than your whole visit, and it's currently storing a sausage roll.",
+            "I take my time. You take the scenic route through the 5 and the 1.",
             "You throw like a man who has read about darts in a pamphlet. A damp pamphlet.",
             "Skill issue. Also a courage issue. Also a 'where is the 20' issue.",
-            "I've seen longboats sink with more dignity than that last leg, and I was ballast on most of them.",
-            "Go home. Eat soup. Reflect. Return when the gods have forgiven you. Bring soup for me too.",
-            "Not gonna lie, that was mid. Viking mid. Which is like normal mid but with more gravy.",
-            "You've been pillaged, mate. Gently. Like a buffet."
+            "Slow and steady wins the leg. Slow and wobbly, with a horn of mead, also wins the leg, apparently.",
+            "Go home. Eat soup. Reflect. Return when the gods have forgiven you. They are very patient. Like me.",
+            "Not gonna lie, that was mid. Viking mid. Which is like normal mid but it took longer and there was ale.",
+            "You've been pillaged, mate. Slowly. Thoroughly. With a refreshment break in the middle."
         ),
         Opponent.GRIN to listOf(
             "Cor, that was shocking. I've seen better aim from a pigeon with a grudge.",
@@ -120,12 +120,12 @@ object Banter {
 
     private val losses: Map<Opponent, List<String>> = mapOf(
         Opponent.BEARD to listOf(
-            "The gods were elsewhere. Possibly at a carvery. I'll have words. After I've been to the carvery.",
-            "You've won a battle. The war is long and I have a very large freezer. Full. Of me-sized portions.",
-            "Hmph. I was carrying too much weight. Emotionally. And the other way.",
-            "Fine. You throw like a slightly smaller Viking. Everyone is a slightly smaller Viking.",
-            "I was distracted by the smell of victory. Turned out it was a bacon roll. Yours. Give it here.",
-            "Enjoy it. Write a saga. Make me taller in it. Leave the rest as is, I'm comfortable."
+            "The gods were elsewhere. Possibly at the bar. I'll have words. At the bar.",
+            "You've won a battle. The war is long and I am in no hurry whatsoever.",
+            "Hmph. The ale was strong and the oche was far. Both of these are the ale's fault.",
+            "Fine. You throw like a slightly faster Viking. Everyone is a slightly faster Viking.",
+            "I was distracted by the smell of victory. Turned out it was the barrel they just tapped. Excuse me.",
+            "Enjoy it. Write a saga. Make me quicker in it. And give me a bigger horn."
         ),
         Opponent.GRIN to listOf(
             "Oi oi, who let you get good? Sort it out, I've got a reputation.",

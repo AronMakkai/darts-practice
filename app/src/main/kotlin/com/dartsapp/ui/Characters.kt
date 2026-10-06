@@ -28,7 +28,7 @@ enum class Opponent(
     val flair: Boolean = false,   // goes for bull and double-double finishes when the book allows
     val paceMs: Long = 850        // time between the bot's darts
 ) {
-    BEARD("THE VIKING", 0.74f, "Shaggy mane, full beard, built like a longboat — takes his time, and his pies", paceMs = 1400),
+    BEARD("THE VIKING", 0.74f, "Shaggy mane, full beard, a horn of ale never far away — moves at his own glacial pace", paceMs = 1400),
     GRIN("THE COCKNEY", 0.80f, "Mop top and a cheeky smile — scores for fun"),
     BLING("THE BLING", 0.76f, "Gold chains, gold rings — always after the bull and the double-double", flair = true),
     MULLET("THE JOCKEY", 0.70f, "Feathered hair, leather jacket, eight pints deep — and somehow the steadiest arm in the pub", scatter = 0.6f, jitter = 0.02f),
