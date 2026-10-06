@@ -124,7 +124,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     // The Jockey's drunk board: tilt/slide/stretch, ripple distortion, and how fast it moves
     val drunkSway = 0.5f
     val drunkWave = 0.5f
-    val drunkSpeed = 1f
+    val drunkSpeed = 1.1f
     // Opponent: a character with a base skill, scaled by the difficulty setting
     val tourRound = if (tournament) Tournament.round else 0
     var opponent by remember {
