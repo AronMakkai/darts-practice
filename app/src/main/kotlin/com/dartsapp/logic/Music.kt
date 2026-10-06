@@ -105,10 +105,12 @@ object Music {
             val start = c * beat * 8
             for (m in triads[c]) pad(buf, start, beat * 8, hz(m), 0.07f)
         }
-        // Lead: staccato 16th-note FM riff spanning two and a half octaves, bars 3-4 and 7-8 (original)
+        // Lead: the tune the crowd whistles (root, 2, 4, 7, 4, 2, root, -3, root), elaborated into a
+        // staccato 16th-note line: each tune note stated, then echoed an octave up or down with a
+        // passing note, over bars 3-4 and 7-8. Root = A (81).
         val riff = intArrayOf(
-            69, 0, 81, 84,  0, 88, 0, 76,   91, 0, 84, 0,   79, 76, 0, 67,
-            72, 0, 84, 0,   88, 0, 93, 0,   91, 88, 0, 84,  0, 81, 0, 64
+            81, 0, 93, 83,  0, 95, 85, 0,   88, 0, 100, 0,  85, 83, 0, 71,
+            81, 0, 93, 78,  0, 90, 0, 81,   76, 0, 88, 78,  81, 0, 93, 0
         )
         for (rep in 0 until 2) {
             val start = (if (rep == 0) 2 else 6) * beat * 4
@@ -273,19 +275,19 @@ object Music {
                 syllable(buf, at + i * 0.17f, f, vowels[0], 0.13f, 0.045f * (1f - i * 0.1f), 1f, consonant = 0.5f, rnd = rnd)
             }
         }
-        // Whistling: two short pentatonic snatches with vibrato
+        // Whistling: one quiet snatch of the house tune, far across the room
         val tune = intArrayOf(0, 2, 4, 7, 4, 2, 0, -3, 0)
-        for (k in 0 until 2) {
-            var t = 4.5f + k * 7f + rnd.nextFloat()
-            val root = if (k == 0) 1480f else 1760f
+        run {
+            var t = 6f + rnd.nextFloat()
+            val root = 1480f
             for ((i, step) in tune.withIndex()) {
                 val dur = if (i == tune.size - 1) 0.5f else 0.22f + rnd.nextFloat() * 0.12f
-                whistle(buf, t, root * 2f.pow(step / 12f), dur, 0.035f)
+                whistle(buf, t, root * 2f.pow(step / 12f), dur, 0.018f)
                 t += dur * 1.05f
             }
         }
-        // Glasses clinking softly: pint glasses (low ring) and wine glasses (high ring), gentle attacks
-        for (k in 0 until 7) {
+        // Glasses clinking softly, sparingly: a few pint glasses (low ring) and wine glasses (high ring)
+        for (k in 0 until 3) {
             val at = 0.5f + rnd.nextFloat() * (len - 1f)
             val pint = rnd.nextFloat() < 0.5f
             val f = if (pint) 900f + rnd.nextFloat() * 500f else 2400f + rnd.nextFloat() * 1600f
