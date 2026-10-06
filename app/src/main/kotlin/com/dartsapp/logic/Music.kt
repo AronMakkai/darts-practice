@@ -73,7 +73,7 @@ object Music {
 
     /** 8 bars at 118 BPM: four-on-the-floor kick, gated snare, hats, octave bass, detuned pad, square lead. */
     private fun renderMenuTrack(): ShortArray {
-        val bpm = 128f
+        val bpm = 112f
         val beat = 60f / bpm
         val bars = 8
         val n = (RATE * beat * 4 * bars).toInt()
@@ -105,19 +105,18 @@ object Music {
             val start = c * beat * 8
             for (m in triads[c]) pad(buf, start, beat * 8, hz(m), 0.07f)
         }
-        // Lead: a fast 16th-note FM riff with big leaps, bars 3-4 and 7-8 (original, A minor pentatonic + passing notes)
+        // Lead: staccato 16th-note FM riff spanning two and a half octaves, bars 3-4 and 7-8 (original)
         val riff = intArrayOf(
-            81, 83, 84, 76,  81, 83, 84, 76,  88, 84, 83, 81,  79, 76, 79, 81,
-            76, 79, 81, 83,  84, 83, 81, 79,  76, 74, 72, 74,  76, 0, 88, 0
+            69, 0, 81, 84,  0, 88, 0, 76,   91, 0, 84, 0,   79, 76, 0, 67,
+            72, 0, 84, 0,   88, 0, 93, 0,   91, 88, 0, 84,  0, 81, 0, 64
         )
         for (rep in 0 until 2) {
             val start = (if (rep == 0) 2 else 6) * beat * 4
             for ((i, m) in riff.withIndex()) {
                 if (m == 0) continue
-                val dur = sixteenth
-                // the last note of each bar rings a little longer
-                val hold = if (i % 16 == 15 || riff.getOrNull(i + 1) == 0) dur * 1.8f else dur * 0.9f
-                lead(buf, start + i * dur, hz(m), hold, 0.15f)
+                // Staccato: each note is short, with a tiny ring on the lowest and highest ones
+                val hold = if (m <= 69 || m >= 91) sixteenth * 1.1f else sixteenth * 0.55f
+                lead(buf, start + i * sixteenth, hz(m), hold, 0.17f)
             }
         }
         // Gentle master compression by soft clipping
@@ -195,24 +194,36 @@ object Music {
     }
 
     /**
-     * 80s FM lead (DX-style): a sine carrier frequency-modulated by a sine at 2x, with the modulation
-     * index high at the attack and settling — bright, glassy pluck that mellows as it rings. A second
-     * slightly detuned voice fattens it.
+     * 80s FM "string" lead: a two-operator FM stack (modulator at 3x with its own feedback for a reedy
+     * edge) on a 1x carrier, plus a second carrier modulated at 2x, three slightly detuned voices
+     * with a slow ensemble chorus, bowed attack and a bright-to-warm modulation sweep.
      */
     private fun lead(buf: FloatArray, t0: Float, f: Float, durSec: Float, amp: Float) {
         val start = (t0 * RATE).toInt(); val dur = (durSec * RATE).toInt()
-        var ph1 = 0.0; var ph2 = 0.0; var mod1 = 0.0; var mod2 = 0.0
+        val detunes = floatArrayOf(0.996f, 1f, 1.005f)
+        val ph = DoubleArray(3); val m3 = DoubleArray(3); val m2 = DoubleArray(3); var fb = 0.0
         for (i in 0 until dur) {
             val idx = start + i; if (idx >= buf.size) break
             val t = i.toFloat() / RATE
             val p = i.toFloat() / dur
-            val index = 1.2 + 4.5 * exp(-t * 18f)                    // FM depth: bright attack, warmer sustain
-            val vib = 1f + 0.004f * sin(2 * PI * 5.5 * t).toFloat() * minOf(1f, p * 3f)
-            val f1 = f * vib; val f2 = f * vib * 1.004f
-            mod1 += 2 * PI * f1 * 2.0 / RATE; mod2 += 2 * PI * f2 * 2.0 / RATE
-            ph1 += 2 * PI * f1 / RATE; ph2 += 2 * PI * f2 / RATE
-            val v = sin(ph1 + index * sin(mod1)) * 0.6 + sin(ph2 + index * sin(mod2)) * 0.4
-            val env = minOf(1f, i / (RATE * 0.003f)) * (if (p > 0.6f) ((1f - p) / 0.4f) else 1f)
+            val idx3 = 0.9 + 3.2 * exp(-t * 14f)                  // reedy 3x modulator: bright attack, settles
+            val idx2 = 0.6 + 1.2 * exp(-t * 8f)                   // softer 2x modulator for body
+            val vib = 1f + 0.006f * sin(2 * PI * 5.0 * t).toFloat() * minOf(1f, p * 2.5f)
+            val chorus = 1f + 0.0025f * sin(2 * PI * 0.8 * t + i * 0.0).toFloat()
+            var v = 0.0
+            for (k in 0 until 3) {
+                val fk = f * detunes[k] * vib * (if (k == 2) chorus else 1f)
+                m3[k] += 2 * PI * fk * 3.0 / RATE
+                m2[k] += 2 * PI * fk * 2.0 / RATE
+                ph[k] += 2 * PI * fk / RATE
+                val modA = sin(m3[k] + 0.35 * fb)                 // feedback gives the sawtooth-ish string rasp
+                fb = modA
+                val carrierA = sin(ph[k] + idx3 * modA)
+                val carrierB = sin(ph[k] * 1.0 + idx2 * sin(m2[k]))
+                v += (carrierA * 0.6 + carrierB * 0.4) / 3.0
+            }
+            // Bowed attack, sustained, then a quick release
+            val env = minOf(1f, i / (RATE * 0.012f)).let { it * it } * (if (p > 0.7f) ((1f - p) / 0.3f) else 1f)
             buf[idx] += (v * env * amp).toFloat()
         }
     }
