@@ -90,3 +90,48 @@ private fun DrawScope.drawLizard(len: Float, gait: Float, body: Color) {
     if (sin(gait * 0.35f) > 0.6f) drawLine(Color(0xFFD0304A), Offset(len * 0.39f, 0f), Offset(len * 0.47f, 0f), strokeWidth = len * 0.012f, cap = StrokeCap.Round)
     drawPath(tail, dark.copy(alpha = 0.25f), style = Stroke(width = len * 0.008f))
 }
+
+/**
+ * The Bling's special power: his jewellery throws the stage lights back in your eyes.
+ * [strength] 0..1 — how washed-out the board gets. Purely visual; taps pass through.
+ */
+@Composable
+fun BlingGlare(strength: Float, modifier: Modifier = Modifier) {
+    var t by remember { mutableStateOf(0f) }
+    LaunchedEffect(Unit) {
+        val start = withFrameNanos { it }
+        while (true) t = (withFrameNanos { it } - start) / 1_000_000_000f
+    }
+    Canvas(modifier = modifier) {
+        val w = size.width; val h = size.height
+        val s = strength.coerceIn(0f, 1f)
+        val gold = Color(0xFFFFE9A0)
+        // Overall wash, pulsing a little
+        drawRect(Color.White.copy(alpha = (s * (0.5f + 0.08f * sin(t * 3.1f))).coerceIn(0f, 1f)))
+        // The hot spot: a big flare that drifts across the board
+        val c = Offset(w / 2f + w * 0.3f * cos(t * 0.9f), h / 2f + h * 0.26f * sin(t * 1.3f))
+        drawCircle(
+            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                listOf(Color.White.copy(alpha = s), gold.copy(alpha = s * 0.7f), Color.Transparent),
+                center = c, radius = w * 0.55f
+            ),
+            radius = w * 0.55f, center = c
+        )
+        // Streaks through the hot spot
+        drawLine(Color.White.copy(alpha = s * 0.8f), Offset(c.x - w * 0.6f, c.y), Offset(c.x + w * 0.6f, c.y), strokeWidth = h * 0.012f, cap = StrokeCap.Round)
+        drawLine(Color.White.copy(alpha = s * 0.6f), Offset(c.x, c.y - h * 0.4f), Offset(c.x, c.y + h * 0.4f), strokeWidth = w * 0.008f, cap = StrokeCap.Round)
+        // Twinkling four-point sparkles
+        for (i in 0 until 9) {
+            val px = w * (0.1f + 0.8f * ((i * 0.37f + 0.13f) % 1f))
+            val py = h * (0.1f + 0.8f * ((i * 0.61f + 0.29f) % 1f))
+            val tw = sin(t * (3f + i * 0.7f) + i * 1.9f)
+            if (tw > 0f) {
+                val r = w * 0.09f * tw
+                val a = (s * tw).coerceIn(0f, 1f)
+                drawLine(Color.White.copy(alpha = a), Offset(px - r, py), Offset(px + r, py), strokeWidth = r * 0.14f, cap = StrokeCap.Round)
+                drawLine(Color.White.copy(alpha = a), Offset(px, py - r), Offset(px, py + r), strokeWidth = r * 0.14f, cap = StrokeCap.Round)
+                drawCircle(gold.copy(alpha = a), r * 0.22f, Offset(px, py))
+            }
+        }
+    }
+}

@@ -116,6 +116,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var powerActive by remember { mutableStateOf(false) }
     var powerUsed by remember { mutableStateOf(false) }       // once per leg
     var boardBrightness by remember { mutableStateOf(0.25f) } // TEMP tuning value for the Viking's LIGHTS OUT
+    var glareStrength by remember { mutableStateOf(0.7f) }    // TEMP tuning value for the Bling's glare
     // Opponent: a character with a base skill, scaled by the difficulty setting
     val tourRound = if (tournament) Tournament.round else 0
     var opponent by remember {
@@ -550,6 +551,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                         drawRect(Color.Black.copy(alpha = (1f - boardBrightness).coerceIn(0f, 1f)))
                     }
                 }
+                // BLINDED BY THE BLING: glare off his jewellery washes the board out on your turn
+                if (powerActive && current == 0 && opponent == Opponent.BLING) {
+                    BlingGlare(strength = glareStrength, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                }
                 // CREEPY CRAWLIES: the Lizzard's lizards wander over the board on your turn
                 if (powerActive && current == 0 && opponent == Opponent.GOATEE) {
                     LizardSwarm(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
@@ -576,6 +581,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 if (powerActive && opponent == Opponent.BEARD) {
                     Text("BRIGHT ${(boardBrightness * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
                     Slider(value = boardBrightness, onValueChange = { boardBrightness = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
+                }
+                if (powerActive && opponent == Opponent.BLING) {
+                    Text("GLARE ${(glareStrength * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
+                    Slider(value = glareStrength, onValueChange = { glareStrength = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
                 }
                 OutlinedButton(
                     onClick = { if (powerActive) powerActive = false else powerSplash = true },
