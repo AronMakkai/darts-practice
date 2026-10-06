@@ -116,7 +116,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var powerSplash by remember { mutableStateOf(false) }
     var powerActive by remember { mutableStateOf(false) }
     var powerUsed by remember { mutableStateOf(false) }       // once per leg
-    var boardBrightness by remember { mutableStateOf(0.25f) } // TEMP tuning value for the Viking's LIGHTS OUT
+    val boardBrightness = 0.11f                               // how much light is left under the Viking's LIGHTS OUT
     var glareStrength by remember { mutableStateOf(0.7f) }    // TEMP tuning value for the Bling's glare
     // TEMP tuning values for the Cockney's trembling aim ring
     var nervesBase by remember { mutableStateOf(0.25f) }  // how far the ring moves (on a double; less higher up)
@@ -562,9 +562,22 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 )
                 Dartboard(modifier = Modifier.drunk(drunkNow, drunkSway, drunkWave, drunkSpeed).graphicsLayer { rotationZ = flip }, geometry = if (hot && current == 0) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
                 // LIGHTS OUT: the Viking stands in the light on your turn. Drawn under the aim ring; taps pass through.
-                if (powerActive && current == 0 && opponent == Opponent.BEARD) {
+                val shade by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (powerActive && current == 0 && opponent == Opponent.BEARD) 1f else 0f,
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 1500), label = "shade"
+                )
+                if (shade > 0f) {
+                    // His shadow slides across the board from the left, soft at the leading edge
                     androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
-                        drawRect(Color.Black.copy(alpha = (1f - boardBrightness).coerceIn(0f, 1f)))
+                        val dark = Color.Black.copy(alpha = 1f - boardBrightness)
+                        val soft = size.width * 0.3f
+                        val x = shade * (size.width + soft) - soft
+                        if (x > 0f) drawRect(dark, topLeft = Offset.Zero, size = androidx.compose.ui.geometry.Size(x, size.height))
+                        drawRect(
+                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(dark, Color.Transparent), startX = x, endX = x + soft),
+                            topLeft = Offset(x.coerceAtLeast(0f), 0f),
+                            size = androidx.compose.ui.geometry.Size((x + soft - x.coerceAtLeast(0f)).coerceAtLeast(0f), size.height)
+                        )
                     }
                 }
                 // BLINDED BY THE BLING: glare off his jewellery washes the board out on your turn
@@ -599,10 +612,6 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         // TEMP test controls: fire the opponent's special power by hand, and tune the board brightness
         if (!matchOver && opponent.powerName != null) {
             Column(modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 8.dp).width(118.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                if (powerActive && opponent == Opponent.BEARD) {
-                    Text("BRIGHT ${(boardBrightness * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
-                    Slider(value = boardBrightness, onValueChange = { boardBrightness = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
-                }
                 if (powerActive && opponent == Opponent.GRIN) {
                     Text("SHAKE ${(nervesBase * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
                     Slider(value = nervesBase, onValueChange = { nervesBase = it }, valueRange = 0f..1f, modifier = Modifier.height(28.dp))
