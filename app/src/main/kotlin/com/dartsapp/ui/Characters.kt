@@ -1,6 +1,7 @@
 package com.dartsapp.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -46,14 +47,19 @@ enum class Opponent(
     TACHE("THE TAYLOR", 0.88f, "Dark hair, neat moustache, Stoke-on-Trent through and through — the heaviest scorer in the room", scoring = 1.08f,
         powerName = "BIG BOY PANTS",
         powerLine = "I am 16 time Metro Darts champion.. Let me put the big boy pants on and see if you can take the pressure..."),
-    COACH("THE COACH", 0.82f, "Your coach — swept-back hair, big grin, that Hawaiian shirt, knows every route in the book")
+    COACH("THE COACH", 0.82f, "Your coach — swept-back hair, big grin, that Hawaiian shirt, knows every route in the book",
+        powerName = "LOOK OVER THERE",
+        powerLine = "This is not going my way. But being both whimsical and charming has its perks. Look over there...")
 }
 
 /** Portrait of [who], flat-shaded like the coach. Fits a square. */
 @Composable
 fun OpponentHead(who: Opponent, modifier: Modifier = Modifier, angry: Boolean = false) {
     if (who == Opponent.COACH) {
-        CoachHead(modifier = modifier)
+        Box(modifier = modifier) {
+            CoachHead(modifier = Modifier.matchParentSize())
+            if (angry) Canvas(modifier = Modifier.matchParentSize()) { angryOverlay() }
+        }
     } else {
         Canvas(modifier = modifier) {
             when (who) {

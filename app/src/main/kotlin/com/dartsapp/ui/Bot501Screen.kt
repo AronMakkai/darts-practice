@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -550,7 +551,12 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             ) {
                 // ONE FOR THE ROAD: the Jockey gets you drunk — the board sways and ripples on your turn
                 val drunkNow = powerActive && current == 0 && opponent == Opponent.MULLET
-                Dartboard(modifier = Modifier.drunk(drunkNow, drunkSway, drunkWave, drunkSpeed), geometry = if (hot && current == 0) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
+                // LOOK OVER THERE: while you look away the Coach hangs the board upside down (20 at the bottom)
+                val flip by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (powerActive && current == 0 && opponent == Opponent.COACH) 180f else 0f,
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 700), label = "flip"
+                )
+                Dartboard(modifier = Modifier.drunk(drunkNow, drunkSway, drunkWave, drunkSpeed).graphicsLayer { rotationZ = flip }, geometry = if (hot && current == 0) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
                 // LIGHTS OUT: the Viking stands in the light on your turn. Drawn under the aim ring; taps pass through.
                 if (powerActive && current == 0 && opponent == Opponent.BEARD) {
                     androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
