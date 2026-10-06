@@ -110,9 +110,10 @@ object Music {
         // passing note, over bars 3-4 and 7-8. Root = A (81).
         // Tune (semitones from A): 0 2 3 7 3 2 0 -2 0 — A B C E C B A G A, all inside the Am/F/C/G chords.
         // Bar 1: the tune straight, as 8ths. Bar 2: the tune again with octave-up echoes on the long notes.
+        // Played an octave down (root A4 = 69) with the echoes only one octave up, so it sits in the mid-range
         val riff = intArrayOf(
-            81, 0, 83, 0,   84, 0, 88, 0,   84, 0, 83, 0,   81, 0, 79, 81,
-            81, 93, 83, 0,  84, 96, 88, 0,  84, 96, 83, 0,  81, 93, 79, 81
+            69, 0, 71, 0,   72, 0, 76, 0,   72, 0, 71, 0,   69, 0, 67, 69,
+            69, 81, 71, 0,  72, 84, 76, 0,  72, 84, 71, 0,  69, 81, 67, 69
         )
         for (rep in 0 until 2) {
             val start = (if (rep == 0) 2 else 6) * beat * 4
@@ -120,7 +121,7 @@ object Music {
                 if (m == 0) continue
                 // Staccato: each note is short, with a tiny ring on the lowest and highest ones
                 val hold = if (riff.getOrNull(i + 1) == 0) sixteenth * 1.6f else sixteenth * 0.6f
-                lead(buf, start + i * sixteenth, hz(m), hold, 0.17f)
+                lead(buf, start + i * sixteenth, hz(m), hold, 0.2f)
             }
         }
         // Gentle master compression by soft clipping
@@ -210,7 +211,7 @@ object Music {
             val idx = start + i; if (idx >= buf.size) break
             val t = i.toFloat() / RATE
             val p = i.toFloat() / dur
-            val idx3 = 0.9 + 3.2 * exp(-t * 14f)                  // reedy 3x modulator: bright attack, settles
+            val idx3 = 0.7 + 2.4 * exp(-t * 14f)                  // reedy 3x modulator: bright attack, settles
             val idx2 = 0.6 + 1.2 * exp(-t * 8f)                   // softer 2x modulator for body
             val vib = 1f + 0.006f * sin(2 * PI * 5.0 * t).toFloat() * minOf(1f, p * 2.5f)
             val chorus = 1f + 0.0025f * sin(2 * PI * 0.8 * t + i * 0.0).toFloat()
@@ -224,7 +225,7 @@ object Music {
                 fb = modA
                 val carrierA = sin(ph[k] + idx3 * modA)
                 val carrierB = sin(ph[k] * 1.0 + idx2 * sin(m2[k]))
-                v += (carrierA * 0.6 + carrierB * 0.4) / 3.0
+                v += (carrierA * 0.5 + carrierB * 0.5) / 3.0
             }
             // Bowed attack, sustained, then a quick release
             val env = minOf(1f, i / (RATE * 0.012f)).let { it * it } * (if (p > 0.7f) ((1f - p) / 0.3f) else 1f)
