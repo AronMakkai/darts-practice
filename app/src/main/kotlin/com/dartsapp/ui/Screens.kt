@@ -32,7 +32,7 @@ fun MainMenuScreen(navController: NavHostController) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.weight(0.9f))
+            Spacer(Modifier.weight(0.5f))
             ChromeTitle("METRO", modifier = Modifier.fillMaxWidth().height(74.dp))
             ChromeTitle("DARTS", modifier = Modifier.fillMaxWidth().height(74.dp))
             Spacer(Modifier.height(30.dp))
@@ -55,7 +55,7 @@ fun SubMenuScreen(navController: NavHostController, title: String, entries: List
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.weight(0.9f))
+            Spacer(Modifier.weight(0.5f))
             ChromeTitle(title, modifier = Modifier.fillMaxWidth().height(64.dp))
             Spacer(Modifier.height(26.dp))
             for ((label, route) in entries) {
@@ -217,7 +217,7 @@ private fun VectorBackdrop(modifier: Modifier = Modifier) {
         drawRect(Color(0xFF2A0A12), topLeft = Offset(0f, horizonY - h * 0.07f), size = Size(w, h * 0.07f))
 
         // Low-poly dartboard sun: 20 flat wedges
-        val sunC = Offset(w * 0.72f, horizonY - h * 0.17f)
+        val sunC = Offset(w * 0.72f, horizonY - h * 0.24f)
         val sunR = h * 0.13f
         for (i in 0 until 20) {
             val a0 = Math.toRadians((i * 18 - 99).toDouble())
