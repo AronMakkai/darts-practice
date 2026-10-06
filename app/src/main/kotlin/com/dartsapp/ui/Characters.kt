@@ -34,7 +34,7 @@ enum class Opponent(
     MULLET("THE JOCKEY", 0.70f, "Feathered hair, leather jacket, eight pints deep — and somehow the steadiest arm in the pub", scatter = 0.6f, jitter = 0.02f),
     GOATEE("THE LIZZARD", 0.84f, "Sun-bleached spikes, long goatee, straight outta the outback — deadly on combination finishes", finishing = 1.12f),
     TACHE("THE TAYLOR", 0.88f, "Dark hair, neat moustache, Stoke-on-Trent through and through — the heaviest scorer in the room", scoring = 1.08f),
-    COACH("THE COACH", 0.82f, "Your coach, cap and all — knows every route in the book")
+    COACH("THE COACH", 0.82f, "Your coach — Hawaiian shirt, headset, always laughing, knows every route in the book")
 }
 
 /** Portrait of [who], flat-shaded like the coach. Fits a square. */
