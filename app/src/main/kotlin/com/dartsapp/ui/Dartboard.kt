@@ -10,7 +10,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -92,14 +96,14 @@ fun Dartboard(
         }
     }
     // Landing animation for the newest mark: a small ring scales up into the dot and flashes red -> yellow
-    var landT by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(1f) }
-    var seenCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(marks.size) }
-    androidx.compose.runtime.LaunchedEffect(marks.size) {
+    var landT by remember { mutableStateOf<Float>(1f) }
+    var seenCount by remember { mutableStateOf<Int>(marks.size) }
+    LaunchedEffect(marks.size) {
         if (marks.size > seenCount) {
-            val start = androidx.compose.runtime.withFrameNanos { it }
+            val start = withFrameNanos { it }
             landT = 0f
             while (true) {
-                val t = (androidx.compose.runtime.withFrameNanos { it } - start) / 1_000_000_000f / 0.55f
+                val t = (withFrameNanos { it } - start) / 1_000_000_000f / 0.55f
                 landT = t.coerceAtMost(1f)
                 if (t >= 1f) break
             }
