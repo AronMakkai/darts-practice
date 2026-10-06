@@ -31,7 +31,7 @@ enum class Opponent(
     BEARD("THE VIKING", 0.74f, "Shaggy mane, full beard, stares the board down — takes his time", paceMs = 1400),
     GRIN("THE COCKNEY", 0.80f, "Mop top and a cheeky smile — scores for fun"),
     BLING("THE BLING", 0.76f, "Gold chains, gold rings — always after the bull and the double-double", flair = true),
-    MULLET("THE JOCKEY", 0.70f, "Feathered hair, leather jacket — steady as they come, never wild", scatter = 0.6f, jitter = 0.02f),
+    MULLET("THE JOCKEY", 0.70f, "Feathered hair, leather jacket, eight pints deep — and somehow the steadiest arm in the pub", scatter = 0.6f, jitter = 0.02f),
     GOATEE("THE LIZZARD", 0.84f, "Bleached spikes and a long goatee — deadly on combination finishes", finishing = 1.12f),
     TACHE("THE TAYLOR", 0.88f, "Dark hair, neat moustache — the heaviest scorer in the room", scoring = 1.08f),
     COACH("THE COACH", 0.82f, "Your coach, cap and all — knows every route in the book")

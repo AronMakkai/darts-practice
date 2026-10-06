@@ -67,16 +67,16 @@ object Banter {
             "Bless. Someone fetch this player a mirror so they can see what happened to them."
         ),
         Opponent.MULLET to listOf(
-            "Steady as she goes. You, meanwhile, went like a shopping trolley with a dodgy wheel.",
-            "Business in the front, party in the back, and you were neither. You were the car park.",
-            "I don't rush and I don't miss. You did one of those. Guess which.",
-            "That's what happens when you think with your rizz instead of your wrist.",
-            "Consistency, mate. Try it. It's like a hobby but you win things.",
-            "You've got main character energy with side character darts.",
-            "I've seen more composure from a bloke dropping a kebab on a night bus.",
-            "Relax. Breathe. Aim. You did none of that and it showed, pal.",
-            "Call that a visit? I've had shorter visits from the gas man.",
-            "Low and slow wins the race. You were high, fast and in the 1."
+            "Eight pints in and I still hit more trebles than you. That's not a boast, that's a medical mystery.",
+            "You throw like a man who's had NOTHING to drink. Disgraceful. Where's your commitment?",
+            "I've got the shakes, double vision and a kebab in my pocket, and I'm STILL up a leg.",
+            "Son, I saw two boards and hit the right one. You saw one and hit the wall.",
+            "That was so sobering I nearly ordered a soft drink. Nearly.",
+            "Is it last orders? No? Then why did you stop trying halfway through?",
+            "You've been beaten by a man who thinks the oche is a type of cheese. Have a think.",
+            "I'm not drunk, I'm consistently refreshed. You're consistently in the 5.",
+            "Skill issue, mate. Also a thirst issue. Get a round in and we'll call it even.",
+            "I'll remember this win for ever. Or until about ten o'clock. Whichever's first."
         ),
         Opponent.GOATEE to listOf(
             "Ssssstay down. The lizard does not do rematches on a Tuesday.",
@@ -144,12 +144,12 @@ object Banter {
             "I'll be back with more gold and fewer excuses. Probably more excuses."
         ),
         Opponent.MULLET to listOf(
-            "Steady loses to lucky sometimes. Not often. Today. Noted.",
-            "Nice one, pal. Don't let it go to your head, there's not much room up there.",
-            "I'll take that. On the chin. Below the mullet.",
-            "You've had your fun. Next time I'm bringing the other leather jacket.",
-            "No drama, no excuses. Just a quiet word with the practice board tonight.",
-            "Good darts. Said through gritted teeth, but good darts."
+            "Right, that's it, I'm switching to doubles. Whisky doubles. Then we'll see.",
+            "You beat a man on his ninth pint. Tell your grandchildren. Leave out the pint bit.",
+            "I'd shake your hand but I can't find it. Mine, I mean. Hang on.",
+            "Fair play. I blame the lager, the lighting and the general concept of Tuesday.",
+            "No excuses. Well, one excuse. It's amber, it's fizzy and it's in my other hand.",
+            "Good darts. I'm off for a lie-down in the car park. Wake me for the rematch."
         ),
         Opponent.GOATEE to listOf(
             "Hsss. The lizard has been slain. Temporarily. Lizards are basically immortal.",
