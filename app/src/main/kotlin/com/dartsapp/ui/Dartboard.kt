@@ -96,22 +96,22 @@ fun Dartboard(
         }
     }
     // Landing animation for the newest mark: a small ring scales up into the dot and flashes red -> yellow
-    var landT by remember { mutableStateOf<Float>(1f) }
-    var seenCount by remember { mutableStateOf<Int>(marks.size) }
+    val landState = remember { mutableStateOf(1f) }
+    val seenState = remember { mutableStateOf(marks.size) }
     LaunchedEffect(marks.size) {
-        if (marks.size > seenCount) {
+        if (marks.size > seenState.value) {
             val start = withFrameNanos { it }
-            landT = 0f
+            landState.value = 0f
             while (true) {
                 val t = (withFrameNanos { it } - start) / 1_000_000_000f / 0.55f
-                landT = t.coerceAtMost(1f)
+                landState.value = t.coerceAtMost(1f)
                 if (t >= 1f) break
             }
         }
-        seenCount = marks.size
+        seenState.value = marks.size
     }
     Canvas(modifier = m) {
-        drawBoard(geometry, showValues, marks, focus, landT)
+        drawBoard(geometry, showValues, marks, focus, landState.value)
     }
 }
 
