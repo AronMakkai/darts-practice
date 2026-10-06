@@ -96,9 +96,17 @@ private fun ChromeTitle(text: String, modifier: Modifier = Modifier) {
         val top = baseline - paint.textSize * 0.74f
         val bottom = baseline + paint.textSize * 0.04f
 
-        // Drop shadow
+        // Neon glow: two blurred passes, a wide soft magenta-pink halo and a tighter hot one
         paint.style = android.graphics.Paint.Style.FILL
         paint.shader = null
+        paint.maskFilter = android.graphics.BlurMaskFilter(h * 0.32f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+        paint.color = android.graphics.Color.argb(170, 0xFF, 0x30, 0x90)
+        drawContext.canvas.nativeCanvas.drawText(text, cx, baseline, paint)
+        paint.maskFilter = android.graphics.BlurMaskFilter(h * 0.12f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+        paint.color = android.graphics.Color.argb(200, 0xFF, 0xB0, 0x40)
+        drawContext.canvas.nativeCanvas.drawText(text, cx, baseline, paint)
+        paint.maskFilter = null
+        // Drop shadow
         paint.color = android.graphics.Color.argb(200, 0, 0, 0)
         drawContext.canvas.nativeCanvas.drawText(text, cx + h * 0.05f, baseline + h * 0.06f, paint)
         // Outline
@@ -150,32 +158,40 @@ private fun TvFilter(modifier: Modifier = Modifier) {
         val step = 4f
         var y = 0f
         while (y < h) {
-            drawRect(Color.Black.copy(alpha = 0.22f), Offset(0f, y), Size(w, 1.5f))
+            drawRect(Color.Black.copy(alpha = 0.42f), Offset(0f, y), Size(w, 2f))
             y += step
+        }
+        // Faint RGB phosphor stripes
+        var x = 0f
+        while (x < w) {
+            drawRect(Color(0xFFFF4040).copy(alpha = 0.035f), Offset(x, 0f), Size(1f, h))
+            drawRect(Color(0xFF40FF40).copy(alpha = 0.035f), Offset(x + 1f, 0f), Size(1f, h))
+            drawRect(Color(0xFF4060FF).copy(alpha = 0.035f), Offset(x + 2f, 0f), Size(1f, h))
+            x += 3f
         }
         // Rolling band
         val bandY = ((t * 0.12f) % 1f) * (h + 200f) - 100f
         drawRect(
             androidx.compose.ui.graphics.Brush.verticalGradient(
-                listOf(Color.Transparent, Color.White.copy(alpha = 0.05f), Color.Transparent),
-                startY = bandY, endY = bandY + 160f
+                listOf(Color.Transparent, Color.White.copy(alpha = 0.16f), Color.Transparent),
+                startY = bandY, endY = bandY + 220f
             ),
-            Offset(0f, bandY), Size(w, 160f)
+            Offset(0f, bandY), Size(w, 220f)
         )
         // Vignette + curved corners
         drawRect(
             androidx.compose.ui.graphics.Brush.radialGradient(
-                colors = listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = 0.55f), Color.Black.copy(alpha = 0.9f)),
+                colors = listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = 0.7f), Color.Black.copy(alpha = 0.97f)),
                 center = Offset(w / 2f, h / 2f),
-                radius = maxOf(w, h) * 0.78f
+                radius = maxOf(w, h) * 0.72f
             )
         )
         // Flicker
-        val flicker = (sin(t * 37f) * 0.5f + sin(t * 11.3f)) * 0.012f
+        val flicker = (sin(t * 37f) * 0.5f + sin(t * 11.3f)) * 0.035f
         if (flicker > 0f) drawRect(Color.White.copy(alpha = flicker))
         // Slight colour fringe at the edges
-        drawRect(Color(0xFF3060FF).copy(alpha = 0.06f), Offset(0f, 0f), Size(3f, h))
-        drawRect(Color(0xFFFF3030).copy(alpha = 0.06f), Offset(w - 3f, 0f), Size(3f, h))
+        drawRect(Color(0xFF3060FF).copy(alpha = 0.2f), Offset(0f, 0f), Size(6f, h))
+        drawRect(Color(0xFFFF3030).copy(alpha = 0.2f), Offset(w - 6f, 0f), Size(6f, h))
     }
 }
 
