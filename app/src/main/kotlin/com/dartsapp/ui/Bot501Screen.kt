@@ -42,7 +42,7 @@ import kotlin.math.sin
 
 private val Geo = BoardGeometry.PRACTICE
 private const val HOT_TAPS = 3      // perfect darts in a row to light the first HOT STREAK (one more each time)
-private const val HOT_DARTS = 3     // darts the fat board lasts
+private const val HOT_DARTS = 4     // darts the fat board lasts
 
 private class Side(val name: String, var remaining: Int, var legs: Int = 0, var sets: Int = 0, var darts: Int = 0, var scored: Int = 0) {
     val average: Float get() = if (darts == 0) 0f else scored * 3f / darts
@@ -268,6 +268,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
 
     fun userThrow(aim: Offset) {
         if (matchOver || current != 0) return
+        val hotNow = hotDartsLeft > 0          // read the live state: the tap handler may hold a stale `hot`
         val p = preset ?: run { message = "Pick a timing preset first"; return }
         if (throwStartMs == 0L) { message = "Swipe up from the arrow first"; return }
         val now = System.currentTimeMillis()
@@ -280,16 +281,16 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         val off = kotlin.math.abs(elapsed - p.dart)
         val perfect = off <= paceWindow(p.dart, difficulty)
         if (perfect) perfectTrigger++
-        timingNote = (if (hot) "🔥 HOT — ${hotDartsLeft} left" else if (perfect) "★ PERFECT" else if (elapsed < p.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late") +
+        timingNote = (if (hotNow) "🔥 HOT — ${hotDartsLeft} left" else if (perfect) "★ PERFECT" else if (elapsed < p.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late") +
             (if (pauseSec >= 0f && rhythm < 0.999f) " · hesitated" else "") + "  →  ${(accuracy * 100).toInt()}%"
         throwStartMs = 0L
         lastTapMs = now
 
         // HOT STREAK: the beds are fat (HOT geometry) for a few darts; the throw itself is unchanged
-        val geo = if (hot) BoardGeometry.HOT else Geo
+        val geo = if (hotNow) BoardGeometry.HOT else Geo
         val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, geo)
-        if (hot) {
+        if (hotNow) {
             hotDartsLeft--
             if (hotDartsLeft == 0) { hotThrows = 0; hotNeeded++ }      // harder to light next time
         } else {

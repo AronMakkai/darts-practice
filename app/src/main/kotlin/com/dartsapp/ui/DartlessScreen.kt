@@ -41,7 +41,7 @@ import kotlinx.coroutines.delay
 
 private val BoardGeo = BoardGeometry.PRACTICE
 private const val HOT_TAPS = 3      // perfect darts in a row to light the first HOT STREAK (one more each time)
-private const val HOT_DARTS = 3     // darts the fat board lasts
+private const val HOT_DARTS = 4     // darts the fat board lasts
 
 /** Window (seconds) around the ideal moment that counts as "on pace". */
 internal fun paceWindow(period: Float, d: Difficulty = Difficulty.NORMAL): Float =
@@ -193,6 +193,7 @@ fun DartlessScreen(navController: NavHostController) {
 
     fun throwAt(aim: Offset) {
         if (finished) return
+        val hotNow = hotDartsLeft > 0          // read the live state: the tap handler may hold a stale `hot`
         if (metronomeMode && preset == null) { message = "Pick a timing preset first (top right)"; return }
         val now = System.currentTimeMillis()
         if (dartsInVisit >= 3) {
@@ -222,7 +223,7 @@ fun DartlessScreen(navController: NavHostController) {
             val starRhythm = pauseSec < 0f || pauseSec <= pauseAllowance(preset.dart, difficulty) * 2.5f
             judgedThrows++
             if (!(starPace && starRhythm)) allOnBeat = false
-            val throwNote = if (hot) "🔥 HOT — $hotDartsLeft left" else if (perfect) "★ PERFECT" else if (elapsed < preset.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late"
+            val throwNote = if (hotNow) "🔥 HOT — $hotDartsLeft left" else if (perfect) "★ PERFECT" else if (elapsed < preset.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late"
             val pauseNote = if (pauseSec >= 0f && rhythm < 0.999f) "  ·  hesitated ${formatSec(pauseSec)} s" else ""
             timingNote = "Throw $throwNote$pauseNote  →  accuracy ${(accuracy * 100).toInt()}%"
             throwStartMs = 0L
@@ -230,12 +231,12 @@ fun DartlessScreen(navController: NavHostController) {
         }
 
         // HOT STREAK: the beds are fat (HOT geometry) for a few darts; the throw itself is unchanged
-        val geo = if (hot && metronomeMode) BoardGeometry.HOT else BoardGeo
+        val geo = if (hotNow && metronomeMode) BoardGeometry.HOT else BoardGeo
         val target = Board.hitTest(aim.x, aim.y, geo)
         val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, geo)
         if (metronomeMode) {
-            if (hot) {
+            if (hotNow) {
                 hotDartsLeft--
                 if (hotDartsLeft == 0) { hotThrows = 0; hotNeeded++ }      // harder to light next time
             } else {

@@ -166,6 +166,7 @@ fun PerfectPop(trigger: Int, modifier: Modifier = Modifier) {
  */
 @Composable
 fun SwipeToThrowZone(armed: Boolean, enabled: Boolean, onSwipe: () -> Unit, modifier: Modifier = Modifier) {
+    val latestSwipe = androidx.compose.runtime.rememberUpdatedState(onSwipe)
     var dragX by remember { mutableStateOf(0f) }
     var dragY by remember { mutableStateOf(0f) }
     var t by remember { mutableStateOf(0f) }
@@ -180,7 +181,7 @@ fun SwipeToThrowZone(armed: Boolean, enabled: Boolean, onSwipe: () -> Unit, modi
             detectDragGestures(
                 onDragStart = { dragX = 0f; dragY = 0f },
                 onDrag = { change, amount -> change.consume(); dragX += amount.x; dragY += amount.y },
-                onDragEnd = { if (dragX > 60f && dragY < -60f) onSwipe() },
+                onDragEnd = { if (dragX > 60f && dragY < -60f) latestSwipe.value() },
                 onDragCancel = { }
             )
         }
@@ -543,6 +544,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawVectorDart(cent
  */
 @Composable
 fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier: Modifier = Modifier, gradient: Boolean = false) {
+    val latestChange = androidx.compose.runtime.rememberUpdatedState(onChange)
     val shown by androidx.compose.animation.core.animateFloatAsState(
         targetValue = value.coerceIn(0f, 1f),
         animationSpec = androidx.compose.animation.core.tween(220),
@@ -552,12 +554,12 @@ fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier
         modifier = modifier.pointerInput(enabled) {
             if (!enabled) return@pointerInput
             detectDragGestures(
-                onDragStart = { p -> onChange((p.x / size.width).coerceIn(0f, 1f)) },
-                onDrag = { change, _ -> change.consume(); onChange((change.position.x / size.width).coerceIn(0f, 1f)) }
+                onDragStart = { p -> latestChange.value((p.x / size.width).coerceIn(0f, 1f)) },
+                onDrag = { change, _ -> change.consume(); latestChange.value((change.position.x / size.width).coerceIn(0f, 1f)) }
             )
         }.pointerInput(enabled) {
             if (!enabled) return@pointerInput
-            detectTapGestures { p -> onChange((p.x / size.width).coerceIn(0f, 1f)) }
+            detectTapGestures { p -> latestChange.value((p.x / size.width).coerceIn(0f, 1f)) }
         }
     ) {
         val w = size.width

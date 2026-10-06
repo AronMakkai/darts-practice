@@ -55,6 +55,9 @@ fun Dartboard(
     onTap: ((Offset) -> Unit)? = null,
     onPointer: ((Offset?) -> Unit)? = null
 ) {
+    // pointerInput(Unit) keeps the lambda from the first composition, so always call the latest one
+    val latestTap = androidx.compose.runtime.rememberUpdatedState(onTap)
+    val latestPointer = androidx.compose.runtime.rememberUpdatedState(onPointer)
     var m = modifier.fillMaxWidth().aspectRatio(1f)
     if (onTap != null) {
         m = m.pointerInput(Unit) {
@@ -62,7 +65,7 @@ fun Dartboard(
                 val cx = size.width / 2f
                 val cy = size.height / 2f
                 val radius = min(size.width, size.height) / 2f / RIM_SCALE
-                onTap(Offset((pos.x - cx) / radius, (pos.y - cy) / radius))
+                latestTap.value?.invoke(Offset((pos.x - cx) / radius, (pos.y - cy) / radius))
             }
         }
     }
@@ -74,15 +77,15 @@ fun Dartboard(
                 val radius = min(size.width, size.height) / 2f / RIM_SCALE
                 fun norm(p: Offset) = Offset((p.x - cx) / radius, (p.y - cy) / radius)
                 val down = awaitFirstDown()
-                onPointer(norm(down.position))
+                latestPointer.value?.invoke(norm(down.position))
                 while (true) {
                     val event = awaitPointerEvent()
                     val change = event.changes.firstOrNull { it.id == down.id } ?: event.changes.first()
                     if (!change.pressed) break
-                    onPointer(norm(change.position))
+                    latestPointer.value?.invoke(norm(change.position))
                     change.consume()
                 }
-                onPointer(null)
+                latestPointer.value?.invoke(null)
             }
         }
     }
