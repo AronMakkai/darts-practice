@@ -40,7 +40,7 @@ import com.dartsapp.logic.TimingPresets
 import kotlinx.coroutines.delay
 
 private val BoardGeo = BoardGeometry.PRACTICE
-private const val HOT_TAPS = 5      // perfect taps in a row to light the HOT STREAK
+private const val HOT_TAPS = 3      // perfect darts in a row to light the first HOT STREAK (one more each time)
 private const val HOT_DARTS = 3     // darts the fat board lasts
 
 /** Window (seconds) around the ideal moment that counts as "on pace". */
@@ -127,7 +127,9 @@ fun DartlessScreen(navController: NavHostController) {
     var perfectTrigger by remember { mutableStateOf(0) }
     var hotThrows by remember { mutableStateOf(0) }          // consecutive perfect taps
     var hotDartsLeft by remember { mutableStateOf(0) }       // > 0 while HOT STREAK is on
+    var hotNeeded by remember { mutableStateOf(HOT_TAPS) }   // perfect darts needed for the next streak; grows each time
     val hot = hotDartsLeft > 0
+    var lastPerfect by remember { mutableStateOf(false) }
     var popTrigger by remember { mutableStateOf(0) }
     val aimOpacity = remember { Settings.aimOpacity(context) }
     var burstOrigin by remember { mutableStateOf(Offset.Zero) }      // screen px of the winning dart
@@ -212,13 +214,8 @@ fun DartlessScreen(navController: NavHostController) {
             accuracy = (throwAcc * rhythm).coerceIn(0.2f, 1f)
             val onPace = off <= paceWindow(preset.dart, difficulty) && rhythm >= 0.999f
             val perfect = off <= paceWindow(preset.dart, difficulty)
-            if (perfect) { perfectTrigger++; hotThrows++ } else if (!hot) hotThrows = 0     // dead on the beat: star pop from the bull
-            // Five perfect taps in a row light the HOT STREAK: three darts on a board with fat trebles, doubles and bull
-            if (!hot && hotThrows >= HOT_TAPS) {
-                hotDartsLeft = HOT_DARTS
-                popTrigger++
-                Sounds.playCheckoutJingle()
-            }
+            if (perfect) perfectTrigger++     // dead on the beat: star pop from the bull
+            lastPerfect = perfect
             // Star criteria are more forgiving than the accuracy curve: roughly on the beat
             // (twice the window) and no long think between throws (2.5x the free pause).
             val starPace = off <= minOf(paceWindow(preset.dart, difficulty) * 2f, preset.dart / 2f)
@@ -234,10 +231,24 @@ fun DartlessScreen(navController: NavHostController) {
 
         // HOT STREAK: the beds are fat (HOT geometry) for a few darts; the throw itself is unchanged
         val geo = if (hot && metronomeMode) BoardGeometry.HOT else BoardGeo
-        if (hot && metronomeMode) { hotDartsLeft--; if (hotDartsLeft == 0) hotThrows = 0 }
         val target = Board.hitTest(aim.x, aim.y, geo)
         val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, geo)
+        if (metronomeMode) {
+            if (hot) {
+                hotDartsLeft--
+                if (hotDartsLeft == 0) { hotThrows = 0; hotNeeded++ }      // harder to light next time
+            } else {
+                // A "perfect dart" = on the beat AND in a treble, double or the bull. Counted in a row.
+                val bigBed = hit.ring == Ring.TREBLE || hit.ring == Ring.DOUBLE || hit.ring == Ring.BULL
+                hotThrows = if (lastPerfect && bigBed) hotThrows + 1 else 0
+                if (hotThrows >= hotNeeded) {
+                    hotDartsLeft = HOT_DARTS
+                    popTrigger++
+                    Sounds.playCheckoutJingle()
+                }
+            }
+        }
         Sounds.thud()
         marks.add(Offset(lx, ly))
         thrown.add(hit)

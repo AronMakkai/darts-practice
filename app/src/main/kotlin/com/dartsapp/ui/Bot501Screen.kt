@@ -41,7 +41,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private val Geo = BoardGeometry.PRACTICE
-private const val HOT_TAPS = 5      // perfect taps in a row to light the HOT STREAK
+private const val HOT_TAPS = 3      // perfect darts in a row to light the first HOT STREAK (one more each time)
 private const val HOT_DARTS = 3     // darts the fat board lasts
 
 private class Side(val name: String, var remaining: Int, var legs: Int = 0, var sets: Int = 0, var darts: Int = 0, var scored: Int = 0) {
@@ -104,7 +104,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     val aimOpacity = remember { Settings.aimOpacity(context) }
     var perfectTrigger by remember { mutableStateOf(0) }
     var hotThrows by remember { mutableStateOf(0) }      // consecutive on-pace throws -> ring heat
-    var hotDartsLeft by remember { mutableStateOf(0) }   // > 0 while HOT STREAK is on: darts land where intended
+    var hotDartsLeft by remember { mutableStateOf(0) }   // > 0 while HOT STREAK is on (fat beds)
+    var hotNeeded by remember { mutableStateOf(HOT_TAPS) } // perfect darts needed for the next streak; grows each time
     val hot = hotDartsLeft > 0
     // Opponent: a character with a base skill, scaled by the difficulty setting
     val tourRound = if (tournament) Tournament.round else 0
@@ -278,13 +279,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         accuracy = (throwAcc * rhythm).coerceIn(0.2f, 1f)
         val off = kotlin.math.abs(elapsed - p.dart)
         val perfect = off <= paceWindow(p.dart, difficulty)
-        if (perfect) { perfectTrigger++; hotThrows++ } else if (!hot) hotThrows = 0
-        // Five perfect taps in a row light the HOT STREAK: three darts on a board with fat trebles, doubles and bull
-        if (!hot && hotThrows >= HOT_TAPS) {
-            hotDartsLeft = HOT_DARTS
-            popText = "HOT STREAK!"; popHuge = true; popOrigin = panelCentre(0); popTrigger++
-            Sounds.playCheckoutJingle()
-        }
+        if (perfect) perfectTrigger++
         timingNote = (if (hot) "🔥 HOT — ${hotDartsLeft} left" else if (perfect) "★ PERFECT" else if (elapsed < p.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late") +
             (if (pauseSec >= 0f && rhythm < 0.999f) " · hesitated" else "") + "  →  ${(accuracy * 100).toInt()}%"
         throwStartMs = 0L
@@ -292,9 +287,21 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
 
         // HOT STREAK: the beds are fat (HOT geometry) for a few darts; the throw itself is unchanged
         val geo = if (hot) BoardGeometry.HOT else Geo
-        if (hot) { hotDartsLeft--; if (hotDartsLeft == 0) hotThrows = 0 }
         val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, geo)
+        if (hot) {
+            hotDartsLeft--
+            if (hotDartsLeft == 0) { hotThrows = 0; hotNeeded++ }      // harder to light next time
+        } else {
+            // A "perfect dart" = on the beat AND in a treble, double or the bull. Counted in a row.
+            val bigBed = hit.ring == Ring.TREBLE || hit.ring == Ring.DOUBLE || hit.ring == Ring.BULL
+            hotThrows = if (perfect && bigBed) hotThrows + 1 else 0
+            if (hotThrows >= hotNeeded) {
+                hotDartsLeft = HOT_DARTS
+                popText = "HOT STREAK!"; popHuge = true; popOrigin = panelCentre(0); popTrigger++
+                Sounds.playCheckoutJingle()
+            }
+        }
         Sounds.thud(); marks.add(Offset(lx, ly)); thrown.add(hit)
         dartsInVisit++
         val me = sides[0]
@@ -503,7 +510,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 Dartboard(geometry = if (hot) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
                 ThrowRing(
                     startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f,
-                    accuracy = accuracy, opacity = aimOpacity.opacity, heat = if (hot) 1f else hotThrows / 6f,
+                    accuracy = accuracy, opacity = aimOpacity.opacity, heat = if (hot) 1f else hotThrows.toFloat() / hotNeeded,
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f)
                 )
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
