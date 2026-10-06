@@ -89,15 +89,30 @@ fun Dartboard(
             }
         }
     }
+    // Landing animation for the newest mark: a small ring scales up into the dot and flashes red -> yellow
+    var landT by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(1f) }
+    var seenCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(marks.size) }
+    androidx.compose.runtime.LaunchedEffect(marks.size) {
+        if (marks.size > seenCount) {
+            val start = androidx.compose.runtime.withFrameNanos { it }
+            landT = 0f
+            while (true) {
+                val t = (androidx.compose.runtime.withFrameNanos { it } - start) / 1_000_000_000f / 0.55f
+                landT = t.coerceAtMost(1f)
+                if (t >= 1f) break
+            }
+        }
+        seenCount = marks.size
+    }
     Canvas(modifier = m) {
-        drawBoard(geometry, showValues, marks, focus)
+        drawBoard(geometry, showValues, marks, focus, landT)
     }
 }
 
 /** Board radius × this = full canvas radius (leaves room for the numbers ring). */
 internal const val RIM_SCALE = 1.2f
 
-private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: List<Offset>, focus: Offset?) {
+private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: List<Offset>, focus: Offset?, landT: Float = 1f) {
     val cx = size.width / 2f
     val cy = size.height / 2f
     val r = min(size.width, size.height) / 2f / RIM_SCALE
@@ -231,11 +246,34 @@ private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: Li
         }
     }
 
-    // Landed darts (gold flights)
-    for (p in marks) {
+    // Landed darts (gold flights). The newest one lands: a thin ring collapses into the dot while the
+    // dot scales up with a little overshoot and flashes red -> yellow -> gold.
+    for ((i, p) in marks.withIndex()) {
         val pt = Offset(cx + p.x * r, cy + p.y * r)
-        drawCircle(Color.Black, radius = r * 0.032f, center = pt)
-        drawCircle(Color(0xFFD4AF37), radius = r * 0.022f, center = pt)
+        val newest = i == marks.lastIndex && landT < 1f
+        if (!newest) {
+            drawCircle(Color.Black, radius = r * 0.032f, center = pt)
+            drawCircle(Color(0xFFD4AF37), radius = r * 0.022f, center = pt)
+        } else {
+            val t = landT
+            // scale: 0.35 -> 1.25 (overshoot at t≈0.55) -> 1.0
+            val scale = if (t < 0.55f) 0.35f + 0.9f * (t / 0.55f) else 1.25f - 0.25f * ((t - 0.55f) / 0.45f)
+            // colour: red for the first third, yellow in the middle, settling to gold
+            val col = when {
+                t < 0.3f -> Color(0xFFE0203A)
+                t < 0.6f -> Color(0xFFFFE23A)
+                else -> {
+                    val k = (t - 0.6f) / 0.4f
+                    val y = Color(0xFFFFE23A); val gold = Color(0xFFD4AF37)
+                    Color(y.red + (gold.red - y.red) * k, y.green + (gold.green - y.green) * k, y.blue + (gold.blue - y.blue) * k)
+                }
+            }
+            // collapsing ring from 3x the dot down to the dot
+            val ringR = r * 0.032f * (3.2f - 2.2f * t.coerceAtMost(1f))
+            drawCircle(col.copy(alpha = (1f - t) * 0.9f), radius = ringR, center = pt, style = Stroke(width = r * 0.012f))
+            drawCircle(Color.Black, radius = r * 0.032f * scale, center = pt)
+            drawCircle(col, radius = r * 0.022f * scale, center = pt)
+        }
     }
 }
 
