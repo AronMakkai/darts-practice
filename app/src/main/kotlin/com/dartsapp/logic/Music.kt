@@ -26,7 +26,14 @@ object Music {
     @Volatile private var crowdWanted = false
 
     fun startMenu() { menuWanted = true; crowdWanted = false; thread(name = "music") { syncTracks() } }
-    fun startCrowd() { crowdWanted = true; menuWanted = false; thread(name = "music") { syncTracks() } }
+    fun startCrowd() {
+        crowdWanted = true; menuWanted = false
+        thread(name = "music") {
+            syncTracks()
+            // Pre-render the roars so the first ton-plus visit is not late
+            synchronized(roarCache) { roarCache.getOrPut(false) { renderRoar(false) }; roarCache.getOrPut(true) { renderRoar(true) } }
+        }
+    }
     fun stopAll() { menuWanted = false; crowdWanted = false; thread(name = "music") { syncTracks() } }
 
     @Synchronized
