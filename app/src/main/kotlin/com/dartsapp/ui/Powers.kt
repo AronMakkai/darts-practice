@@ -262,20 +262,25 @@ fun HeckleBubbles(modifier: Modifier = Modifier) {
 }
 
 /**
- * The Cockney's special power, part two: nerves. Whatever this is applied to (the aim ring) trembles;
- * [amount] 0..1 sets how badly. Pass `active = false` for no effect.
+ * The Cockney's special power, part two: nerves. Whatever this is applied to (the aim ring) trembles.
+ * [amount] 0..1 sets how far it moves, [speed] how fast (1 = normal). Pass `active = false` for no effect.
  */
 @Composable
-fun Modifier.nerves(active: Boolean, amount: Float): Modifier {
+fun Modifier.nerves(active: Boolean, amount: Float, speed: Float = 1f): Modifier {
     var t by remember { mutableStateOf(0f) }
+    val liveSpeed = rememberUpdatedState(speed)
     LaunchedEffect(active) {
         if (!active) return@LaunchedEffect
-        val start = withFrameNanos { it }
-        while (true) t = (withFrameNanos { it } - start) / 1_000_000_000f
+        var last = withFrameNanos { it }
+        while (true) {
+            val now = withFrameNanos { it }
+            t += (now - last) / 1_000_000_000f * liveSpeed.value
+            last = now
+        }
     }
     val a = amount.coerceIn(0f, 1f)
     return if (!active) this else this.graphicsLayer {
-        translationX = size.width * 0.05f * a * (sin(t * 31f) * 0.6f + sin(t * 47f + 1.3f) * 0.4f)
-        translationY = size.height * 0.05f * a * (cos(t * 37f) * 0.6f + sin(t * 53f + 0.7f) * 0.4f)
+        translationX = size.width * 0.12f * a * (sin(t * 31f) * 0.6f + sin(t * 47f + 1.3f) * 0.4f)
+        translationY = size.height * 0.12f * a * (cos(t * 37f) * 0.6f + sin(t * 53f + 0.7f) * 0.4f)
     }
 }

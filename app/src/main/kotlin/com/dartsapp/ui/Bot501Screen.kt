@@ -118,7 +118,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var powerUsed by remember { mutableStateOf(false) }       // once per leg
     var boardBrightness by remember { mutableStateOf(0.25f) } // TEMP tuning value for the Viking's LIGHTS OUT
     var glareStrength by remember { mutableStateOf(0.7f) }    // TEMP tuning value for the Bling's glare
-    var nervesBase by remember { mutableStateOf(0.5f) }   // TEMP tuning value for the Cockney's ring shake
+    // TEMP tuning values for the Cockney's trembling aim ring
+    var nervesBase by remember { mutableStateOf(0.25f) }  // how far the ring moves (on a double; less higher up)
+    var nervesSpeed by remember { mutableStateOf(1f) }    // 0.1x .. 2x
+    var nervesFlat by remember { mutableStateOf(false) }  // true = same shake at every score
     // TEMP tuning values for the Jockey's drunk board
     var drunkSway by remember { mutableStateOf(0.4f) }    // tilt / slide / stretch
     var drunkWave by remember { mutableStateOf(0.5f) }    // ripple distortion
@@ -572,7 +575,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 val windUp = powerActive && current == 0 && opponent == Opponent.GRIN
                 if (windUp) HeckleBubbles(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
                 // ...and the aim ring trembles: worse on a finish, worst when you are on a double
-                val nervesNow = nervesBase * when { sides[0].remaining <= 40 -> 1f; sides[0].remaining <= 170 -> 0.65f; else -> 0.35f }
+                val nervesNow = nervesBase * when { nervesFlat || sides[0].remaining <= 40 -> 1f; sides[0].remaining <= 170 -> 0.65f; else -> 0.35f }
                 // CREEPY CRAWLIES: the Lizzard's lizards wander over the board on your turn
                 if (powerActive && current == 0 && opponent == Opponent.GOATEE) {
                     LizardSwarm(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
@@ -580,7 +583,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 ThrowRing(
                     startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f,
                     accuracy = accuracy, opacity = aimOpacity.opacity, heat = if (hot) 1f else hotThrows.toFloat() / hotNeeded,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).nerves(windUp, nervesNow)
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).nerves(windUp, nervesNow, nervesSpeed)
                 )
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
             }
@@ -601,8 +604,13 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     Slider(value = boardBrightness, onValueChange = { boardBrightness = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
                 }
                 if (powerActive && opponent == Opponent.GRIN) {
-                    Text("NERVES ${(nervesBase * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
-                    Slider(value = nervesBase, onValueChange = { nervesBase = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
+                    Text("SHAKE ${(nervesBase * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
+                    Slider(value = nervesBase, onValueChange = { nervesBase = it }, valueRange = 0f..1f, modifier = Modifier.height(28.dp))
+                    Text("SPEED ${"%.1f".format(nervesSpeed)}x", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
+                    Slider(value = nervesSpeed, onValueChange = { nervesSpeed = it }, valueRange = 0.1f..2f, modifier = Modifier.height(28.dp))
+                    TextButton(onClick = { nervesFlat = !nervesFlat }, contentPadding = PaddingValues(0.dp), modifier = Modifier.height(26.dp)) {
+                        Text(if (nervesFlat) "SAME AT ALL SCORES" else "WORSE NEAR DOUBLE", fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = Gold)
+                    }
                 }
                 if (powerActive && opponent == Opponent.MULLET) {
                     Text("SWAY ${(drunkSway * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
