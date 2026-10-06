@@ -12,6 +12,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -129,28 +133,29 @@ fun PerfectPop(trigger: Int, modifier: Modifier = Modifier) {
         while (true) {
             val t = (withFrameNanos { it } - start) / 1_000_000_000f
             progress = t
-            if (t > 0.7f) { progress = -1f; break }
+            if (t > 0.9f) { progress = -1f; break }
         }
     }
     if (progress < 0f) return
-    val t = progress / 0.7f                       // 0..1
+    val t = progress / 0.9f                       // 0..1
     val ease = 1f - (1f - t) * (1f - t)           // ease-out
     Canvas(modifier = modifier) {
         val c = Offset(size.width / 2f, size.height / 2f)
         val boardR = minOf(size.width, size.height) / 2f / RIM_SCALE
         val fade = (1f - t).coerceIn(0f, 1f)
         // Flash ring
-        drawCircle(OffWhite.copy(alpha = 0.8f * (1f - ease)), boardR * 0.04f + boardR * 0.22f * ease, c, style = Stroke(width = boardR * 0.015f))
-        // Eight little stars flying outwards, spinning
-        for (i in 0 until 8) {
-            val a = i * PI.toFloat() / 4f + 0.3f
-            val d = boardR * 0.3f * ease
+        drawCircle(OffWhite.copy(alpha = 0.9f * (1f - ease)), boardR * 0.05f + boardR * 0.5f * ease, c, style = Stroke(width = boardR * 0.03f * (1f - ease * 0.5f)))
+        drawCircle(BrightGold.copy(alpha = 0.35f * (1f - ease)), boardR * 0.04f + boardR * 0.3f * ease, c)
+        // Twelve stars flying outwards, spinning
+        for (i in 0 until 12) {
+            val a = i * PI.toFloat() / 6f + 0.3f
+            val d = boardR * (0.45f + 0.1f * (i % 3)) * ease
             val p = Offset(c.x + cos(a) * d, c.y + sin(a) * d)
-            val col = if (i % 2 == 0) BrightGold else OffWhite
-            drawStar(p, boardR * (0.035f + 0.015f * (1f - ease)), t * 4f + i, col.copy(alpha = fade))
+            val col = when (i % 3) { 0 -> BrightGold; 1 -> OffWhite; else -> Gold }
+            drawStar(p, boardR * (0.06f + 0.02f * (1f - ease)), t * 4f + i, col.copy(alpha = fade))
         }
         // Centre star, biggest, shrinking away
-        drawStar(c, boardR * 0.08f * (1f - ease * 0.8f), t * 3f, BrightGold.copy(alpha = fade))
+        drawStar(c, boardR * 0.14f * (1f - ease * 0.8f), t * 3f, BrightGold.copy(alpha = fade))
     }
 }
 
@@ -784,5 +789,45 @@ fun FlameFrame(modifier: Modifier = Modifier) {
             path.close()
             drawPath(path, color.copy(alpha = 0.9f - layer * 0.15f))
         }
+    }
+}
+
+/**
+ * The accuracy meter with a hot-streak treatment: when [hot], flames lick up from behind the bar
+ * and a pulsing gold glow frames it; otherwise it is the plain bar.
+ */
+@Composable
+fun HotMeter(value: Float, hot: Boolean, modifier: Modifier = Modifier) {
+    var t by remember { mutableStateOf(0f) }
+    LaunchedEffect(hot) {
+        if (!hot) return@LaunchedEffect
+        val start = withFrameNanos { it }
+        while (true) t = (withFrameNanos { it } - start) / 1_000_000_000f
+    }
+    androidx.compose.foundation.layout.Box(modifier = modifier) {
+        if (hot) {
+            FlameFrame(modifier = Modifier.matchParentSize().padding(bottom = 10.dp))
+            Canvas(modifier = Modifier.matchParentSize()) {
+                val pulse = 0.5f + 0.5f * sin(t * 7f)
+                val barTop = size.height - 20.dp.toPx()
+                drawRoundRect(
+                    BrightGold.copy(alpha = 0.25f + 0.25f * pulse),
+                    topLeft = Offset(-6.dp.toPx(), barTop - 6.dp.toPx()),
+                    size = Size(size.width + 12.dp.toPx(), 20.dp.toPx() + 12.dp.toPx()),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx())
+                )
+                drawRoundRect(
+                    Color(0xFFFF7A1A).copy(alpha = 0.5f + 0.4f * pulse),
+                    topLeft = Offset(-2.dp.toPx(), barTop - 2.dp.toPx()),
+                    size = Size(size.width + 4.dp.toPx(), 20.dp.toPx() + 4.dp.toPx()),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(5.dp.toPx()),
+                    style = Stroke(width = 2.dp.toPx())
+                )
+            }
+        }
+        PowerBar(
+            value = if (hot) 1f else value, enabled = false, onChange = {},
+            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).fillMaxWidth().height(20.dp)
+        )
     }
 }

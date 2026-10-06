@@ -102,6 +102,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     val aimOpacity = remember { Settings.aimOpacity(context) }
     var perfectTrigger by remember { mutableStateOf(0) }
     var hotThrows by remember { mutableStateOf(0) }      // consecutive on-pace throws -> ring heat
+    var hotDartsLeft by remember { mutableStateOf(0) }   // > 0 while HOT STREAK is on: darts land where intended
+    val hot = hotDartsLeft > 0
     // Opponent: a character with a base skill, scaled by the difficulty setting
     val tourRound = if (tournament) Tournament.round else 0
     var opponent by remember {
@@ -273,13 +275,34 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         val rhythm = if (pauseSec >= 0f) pauseFactor(pauseSec, p.dart, difficulty) else 1f
         accuracy = (throwAcc * rhythm).coerceIn(0.2f, 1f)
         val off = kotlin.math.abs(elapsed - p.dart)
-        if (off <= paceWindow(p.dart, difficulty)) { perfectTrigger++; hotThrows++ } else hotThrows = 0
-        timingNote =(if (off <= paceWindow(p.dart, difficulty)) "on pace" else if (elapsed < p.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late") +
-            (if (pauseSec >= 0f && rhythm < 0.999f) " · hesitated" else "") + "  →  ${(accuracy * 100).toInt()}%"
+        val perfect = off <= paceWindow(p.dart, difficulty)
+        if (perfect) { perfectTrigger++; hotThrows++ } else if (!hot) hotThrows = 0
+        // Three perfect taps in a row light the HOT STREAK: six darts that land exactly where intended
+        if (!hot && hotThrows >= 3) {
+            hotDartsLeft = 6
+            popText = "HOT STREAK!"; popHuge = true; popOrigin = panelCentre(0); popTrigger++
+            Sounds.playCheckoutJingle()
+        }
+        timingNote = (if (hot) "🔥 HOT — ${hotDartsLeft} left" else if (perfect) "★ PERFECT" else if (elapsed < p.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late") +
+            (if (pauseSec >= 0f && rhythm < 0.999f) " · hesitated" else "") + "  →  ${if (hot) 100 else (accuracy * 100).toInt()}%"
         throwStartMs = 0L
         lastTapMs = now
 
-        val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
+        val landing = if (hot) {
+            // Land exactly on what you meant: the book dart if you tapped its bed, else the centre of the bed you tapped
+            val tapped = Board.hitTest(aim.x, aim.y, Geo)
+            val (book, _) = botTarget(sides[0].remaining, false)
+            val intended = when {
+                tapped.ring == Ring.MISS -> book
+                tapped.number == book.number -> book
+                tapped.ring == Ring.BULL || tapped.ring == Ring.OUTER_BULL -> if (book.ring == Ring.BULL || book.ring == Ring.OUTER_BULL) book else tapped
+                else -> tapped
+            }
+            hotDartsLeft--
+            if (hotDartsLeft == 0) hotThrows = 0
+            targetPoint(intended)
+        } else null
+        val (lx, ly) = if (landing != null) landing.x to landing.y else model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, Geo)
         Sounds.thud(); marks.add(Offset(lx, ly)); thrown.add(hit)
         dartsInVisit++
@@ -458,8 +481,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
 
             // Accuracy + preset
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("ACCURACY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey, modifier = Modifier.width(72.dp))
-                PowerBar(value = accuracy, enabled = false, onChange = {}, modifier = Modifier.weight(1f).height(20.dp))
+                Text(if (hot) "HOT!" else "ACCURACY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(72.dp))
+                HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(34.dp))
                 Box {
                     TextButton(onClick = { presetMenuOpen = true }, contentPadding = PaddingValues(horizontal = 6.dp)) {
                         Text(preset?.name ?: "Preset", fontSize = 11.sp, color = if (preset != null) PaleGold else Gold, maxLines = 1)
@@ -489,7 +512,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 Dartboard(geometry = Geo, marks = marks, onTap = { userThrow(it) })
                 ThrowRing(
                     startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f,
-                    accuracy = accuracy, opacity = aimOpacity.opacity, heat = hotThrows / 9f,
+                    accuracy = accuracy, opacity = aimOpacity.opacity, heat = if (hot) 1f else hotThrows / 6f,
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f)
                 )
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
