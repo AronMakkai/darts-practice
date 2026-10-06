@@ -121,10 +121,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     // The Cockney's trembling aim ring: full shake on a double, less higher up
     val nervesBase = 0.75f
     val nervesSpeed = 1.5f
-    // TEMP tuning values for the Jockey's drunk board
-    var drunkSway by remember { mutableStateOf(0.4f) }    // tilt / slide / stretch
-    var drunkWave by remember { mutableStateOf(0.5f) }    // ripple distortion
-    var drunkSpeed by remember { mutableStateOf(1f) }     // 0.2x .. 3x
+    // The Jockey's drunk board: tilt/slide/stretch, ripple distortion, and how fast it moves
+    val drunkSway = 0.5f
+    val drunkWave = 0.5f
+    val drunkSpeed = 1f
     // Opponent: a character with a base skill, scaled by the difficulty setting
     val tourRound = if (tournament) Tournament.round else 0
     var opponent by remember {
@@ -608,17 +608,9 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).size(120.dp)
         )
         DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp, bottom = 22.dp).size(width = 132.dp, height = 90.dp))
-        // TEMP test controls: fire the opponent's special power by hand, and tune the board brightness
+        // TEMP test control: fire the opponent's special power by hand
         if (!matchOver && opponent.powerName != null) {
             Column(modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 8.dp).width(118.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                if (powerActive && opponent == Opponent.MULLET) {
-                    Text("SWAY ${(drunkSway * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
-                    Slider(value = drunkSway, onValueChange = { drunkSway = it }, valueRange = 0f..1f, modifier = Modifier.height(28.dp))
-                    Text("WAVE ${(drunkWave * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
-                    Slider(value = drunkWave, onValueChange = { drunkWave = it }, valueRange = 0f..1f, modifier = Modifier.height(28.dp))
-                    Text("SPEED ${"%.1f".format(drunkSpeed)}x", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
-                    Slider(value = drunkSpeed, onValueChange = { drunkSpeed = it }, valueRange = 0.2f..3f, modifier = Modifier.height(28.dp))
-                }
                 OutlinedButton(
                     onClick = { if (powerActive) powerActive = false else powerSplash = true },
                     border = BorderStroke(2.dp, Red), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
