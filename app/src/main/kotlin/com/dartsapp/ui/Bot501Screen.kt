@@ -41,6 +41,8 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private val Geo = BoardGeometry.PRACTICE
+private const val HOT_TAPS = 5      // perfect taps in a row to light the HOT STREAK
+private const val HOT_DARTS = 3     // darts the fat board lasts
 
 private class Side(val name: String, var remaining: Int, var legs: Int = 0, var sets: Int = 0, var darts: Int = 0, var scored: Int = 0) {
     val average: Float get() = if (darts == 0) 0f else scored * 3f / darts
@@ -277,26 +279,22 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         val off = kotlin.math.abs(elapsed - p.dart)
         val perfect = off <= paceWindow(p.dart, difficulty)
         if (perfect) { perfectTrigger++; hotThrows++ } else if (!hot) hotThrows = 0
-        // Three perfect taps in a row light the HOT STREAK: six darts that land exactly where intended
-        if (!hot && hotThrows >= 3) {
-            hotDartsLeft = 6
+        // Five perfect taps in a row light the HOT STREAK: three darts on a board with fat trebles, doubles and bull
+        if (!hot && hotThrows >= HOT_TAPS) {
+            hotDartsLeft = HOT_DARTS
             popText = "HOT STREAK!"; popHuge = true; popOrigin = panelCentre(0); popTrigger++
             Sounds.playCheckoutJingle()
         }
         timingNote = (if (hot) "🔥 HOT — ${hotDartsLeft} left" else if (perfect) "★ PERFECT" else if (elapsed < p.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late") +
-            (if (pauseSec >= 0f && rhythm < 0.999f) " · hesitated" else "") + "  →  ${if (hot) 100 else (accuracy * 100).toInt()}%"
+            (if (pauseSec >= 0f && rhythm < 0.999f) " · hesitated" else "") + "  →  ${(accuracy * 100).toInt()}%"
         throwStartMs = 0L
         lastTapMs = now
 
-        val landing = if (hot) {
-            // Land on the coach's dart (the book route), honouring a tap that picks another book route
-            val tapped = Board.hitTest(aim.x, aim.y, Geo)
-            hotDartsLeft--
-            if (hotDartsLeft == 0) hotThrows = 0
-            targetPoint(CheckoutLogic.guidedDart(sides[0].remaining, tapped))
-        } else null
-        val (lx, ly) = if (landing != null) landing.x to landing.y else model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
-        val hit = Board.hitTest(lx, ly, Geo)
+        // HOT STREAK: the beds are fat (HOT geometry) for a few darts; the throw itself is unchanged
+        val geo = if (hot) BoardGeometry.HOT else Geo
+        if (hot) { hotDartsLeft--; if (hotDartsLeft == 0) hotThrows = 0 }
+        val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
+        val hit = Board.hitTest(lx, ly, geo)
         Sounds.thud(); marks.add(Offset(lx, ly)); thrown.add(hit)
         dartsInVisit++
         val me = sides[0]
@@ -502,7 +500,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 },
                 contentAlignment = Alignment.Center
             ) {
-                Dartboard(geometry = Geo, marks = marks, onTap = { userThrow(it) })
+                Dartboard(geometry = if (hot) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
                 ThrowRing(
                     startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f,
                     accuracy = accuracy, opacity = aimOpacity.opacity, heat = if (hot) 1f else hotThrows / 6f,

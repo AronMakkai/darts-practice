@@ -838,7 +838,7 @@ fun HotMeter(value: Float, hot: Boolean, modifier: Modifier = Modifier) {
             }
         }
         PowerBar(
-            value = if (hot) 1f else value, enabled = false, onChange = {},
+            value = value, enabled = false, onChange = {},
             modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).fillMaxWidth().height(20.dp)
         )
     }

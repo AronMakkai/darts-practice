@@ -40,6 +40,8 @@ import com.dartsapp.logic.TimingPresets
 import kotlinx.coroutines.delay
 
 private val BoardGeo = BoardGeometry.PRACTICE
+private const val HOT_TAPS = 5      // perfect taps in a row to light the HOT STREAK
+private const val HOT_DARTS = 3     // darts the fat board lasts
 
 /** Window (seconds) around the ideal moment that counts as "on pace". */
 internal fun paceWindow(period: Float, d: Difficulty = Difficulty.NORMAL): Float =
@@ -211,9 +213,9 @@ fun DartlessScreen(navController: NavHostController) {
             val onPace = off <= paceWindow(preset.dart, difficulty) && rhythm >= 0.999f
             val perfect = off <= paceWindow(preset.dart, difficulty)
             if (perfect) { perfectTrigger++; hotThrows++ } else if (!hot) hotThrows = 0     // dead on the beat: star pop from the bull
-            // Three perfect taps in a row light the HOT STREAK: six darts that land exactly where intended
-            if (!hot && hotThrows >= 3) {
-                hotDartsLeft = 6
+            // Five perfect taps in a row light the HOT STREAK: three darts on a board with fat trebles, doubles and bull
+            if (!hot && hotThrows >= HOT_TAPS) {
+                hotDartsLeft = HOT_DARTS
                 popTrigger++
                 Sounds.playCheckoutJingle()
             }
@@ -225,20 +227,17 @@ fun DartlessScreen(navController: NavHostController) {
             if (!(starPace && starRhythm)) allOnBeat = false
             val throwNote = if (hot) "🔥 HOT — $hotDartsLeft left" else if (perfect) "★ PERFECT" else if (elapsed < preset.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late"
             val pauseNote = if (pauseSec >= 0f && rhythm < 0.999f) "  ·  hesitated ${formatSec(pauseSec)} s" else ""
-            timingNote = "Throw $throwNote$pauseNote  →  accuracy ${if (hot) 100 else (accuracy * 100).toInt()}%"
+            timingNote = "Throw $throwNote$pauseNote  →  accuracy ${(accuracy * 100).toInt()}%"
             throwStartMs = 0L
             lastTapMs = now
         }
 
-        val target = Board.hitTest(aim.x, aim.y, BoardGeo)
-        val landing = if (hot && metronomeMode) {
-            // Land on the coach's dart (the book route), honouring a tap that picks another book route
-            hotDartsLeft--
-            if (hotDartsLeft == 0) hotThrows = 0
-            boardPoint(CheckoutLogic.guidedDart(remaining, target), BoardGeo)
-        } else null
-        val (lx, ly) = if (landing != null) landing.x to landing.y else model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
-        val hit = Board.hitTest(lx, ly, BoardGeo)
+        // HOT STREAK: the beds are fat (HOT geometry) for a few darts; the throw itself is unchanged
+        val geo = if (hot && metronomeMode) BoardGeometry.HOT else BoardGeo
+        if (hot && metronomeMode) { hotDartsLeft--; if (hotDartsLeft == 0) hotThrows = 0 }
+        val target = Board.hitTest(aim.x, aim.y, geo)
+        val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
+        val hit = Board.hitTest(lx, ly, geo)
         Sounds.thud()
         marks.add(Offset(lx, ly))
         thrown.add(hit)
@@ -436,7 +435,7 @@ fun DartlessScreen(navController: NavHostController) {
             contentAlignment = Alignment.Center
         ) {
             Dartboard(
-                geometry = BoardGeo,
+                geometry = if (hot && metronomeMode) BoardGeometry.HOT else BoardGeo,
                 marks = marks,
                 onTap = { throwAt(it) }
             )
