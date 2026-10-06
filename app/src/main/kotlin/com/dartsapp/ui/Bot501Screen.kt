@@ -46,17 +46,26 @@ private class Side(val name: String, var remaining: Int, var legs: Int = 0, var 
     val average: Float get() = if (darts == 0) 0f else scored * 3f / darts
 }
 
-/** Where the bot aims for a given remaining score: the book route when in range, otherwise T20. */
-private fun botTarget(remaining: Int): Hit {
+/** A flashy finish: ends on the bull, or has two doubles in it. */
+private fun isFlashy(route: List<Hit>) = route.last().ring == Ring.BULL || route.count { it.ring == Ring.DOUBLE } >= 2
+
+/**
+ * Where the bot aims for a given remaining score: the book route when in range, otherwise T20.
+ * Returns the dart and whether it is a finishing-route dart. A [flair] player picks the showiest
+ * route the book offers.
+ */
+private fun botTarget(remaining: Int, flair: Boolean): Pair<Hit, Boolean> {
     if (remaining <= 170) {
-        CheckoutLogic.bestFinish(remaining)?.let { return it.first() }
+        val routes = CheckoutLogic.allFinishes(remaining)
+        val route = (if (flair) routes.firstOrNull { isFlashy(it) } else null) ?: routes.firstOrNull()
+        if (route != null) return route.first() to true
         // Bogey: take the single that leaves an even double
-        return Hit(if (remaining - 20 >= 2) 20 else 1, Ring.SINGLE)
+        return Hit(if (remaining - 20 >= 2) 20 else 1, Ring.SINGLE) to false
     }
     // Above 170: follow the setup route's first dart (keeps the bot off the bogeys)
     val advice = CheckoutLogic.setupAdvice(remaining)
     val first = advice?.route?.split(" ")?.firstOrNull() ?: "T20"
-    return parseDart(first)
+    return parseDart(first) to false
 }
 
 private fun parseDart(label: String): Hit = when {
@@ -317,10 +326,13 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         val start = bot.remaining
         var visit = 0
         var done = false
+        // Form for this visit: steady players barely swing, others drift a little either way
+        val form = 1f + (kotlin.random.Random.nextFloat() * 2f - 1f) * opponent.jitter
         for (d in 1..3) {
-            val aim = botTarget(bot.remaining)
+            val (aim, finishingDart) = botTarget(bot.remaining, opponent.flair)
             val tp = targetPoint(aim)
-            val (lx, ly) = model.land(tp.x, tp.y, botAccuracy, 1f)
+            val dartAcc = (botAccuracy * form * (if (finishingDart) opponent.finishing else opponent.scoring)).coerceIn(0.25f, 0.97f)
+            val (lx, ly) = model.land(tp.x, tp.y, dartAcc, opponent.scatter)
             val hit = Board.hitTest(lx, ly, Geo)
             Sounds.thud(); marks.add(Offset(lx, ly)); thrown.add(hit)
             bot.darts++
@@ -345,7 +357,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     bot.scored += hit.score; bot.remaining = newRem; visit += hit.score
                     message = "$botName: ${hit.label} (${hit.score})"
                     version++
-                    delay(850)
+                    delay(opponent.paceMs)
                 }
             }
             if (done) break
