@@ -201,22 +201,33 @@ object CheckoutLogic {
     )
 
     /**
-     * HOT STREAK landing: the coach's dart for [remaining] — the first dart of the book route (or of
-     * the setup route above 170). If the player tapped the bed that starts another book route, that
-     * route's first dart is taken instead, so a deliberate switch of route is honoured.
+     * HOT STREAK landing. Start from the coach's dart (first dart of the book route, or of the setup
+     * route above 170). Then read the tap:
+     *  - off the board, or on the coach's number (any ring) → the coach's dart;
+     *  - a treble or double in another bed → that bed, dead centre (a deliberate bed switch, e.g. T19);
+     *  - a single in a sector next to the coach's number → the coach's dart (a stray tap at it);
+     *  - any other bed → that bed, dead centre.
+     * The dart never lands in a stray neighbour like the 3 beside the 19.
      */
     fun guidedDart(remaining: Int, tapped: Hit?): Hit {
-        if (remaining in 2..170) {
-            val routes = allFinishes(remaining)
-            if (tapped != null && tapped.ring != Ring.MISS) {
-                routes.firstOrNull { it.first().number == tapped.number && (it.first().ring == tapped.ring || tapped.ring == Ring.SINGLE || tapped.ring == Ring.TREBLE) }
-                    ?.let { return it.first() }
-            }
-            routes.firstOrNull()?.let { return it.first() }
-            return Hit(if (remaining - 20 >= 2) 20 else 1, Ring.SINGLE)
+        val coach: Hit = if (remaining in 2..170) {
+            allFinishes(remaining).firstOrNull()?.first() ?: Hit(if (remaining - 20 >= 2) 20 else 1, Ring.SINGLE)
+        } else {
+            parseToken(setupAdvice(remaining)?.route?.split(" ")?.firstOrNull() ?: "T20")
         }
-        val first = setupAdvice(remaining)?.route?.split(" ")?.firstOrNull() ?: "T20"
-        return parseToken(first)
+        if (tapped == null || tapped.ring == Ring.MISS) return coach
+        val coachBull = coach.ring == Ring.BULL || coach.ring == Ring.OUTER_BULL
+        val tapBull = tapped.ring == Ring.BULL || tapped.ring == Ring.OUTER_BULL
+        if (tapBull) return if (coachBull) coach else tapped
+        if (coachBull) return tapped
+        if (tapped.number == coach.number) return coach
+        if (tapped.ring == Ring.TREBLE || tapped.ring == Ring.DOUBLE) return tapped
+        // Single in a neighbouring sector of the coach's number: treat as a slightly-off attempt at it
+        val a = Board.segments.indexOf(tapped.number)
+        val b = Board.segments.indexOf(coach.number)
+        val d = kotlin.math.abs(a - b).let { minOf(it, 20 - it) }
+        if (d <= 1) return coach
+        return tapped
     }
 
     /** Parses a book token into a [Hit]. */
