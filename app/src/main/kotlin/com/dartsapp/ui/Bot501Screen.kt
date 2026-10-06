@@ -116,6 +116,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var powerSplash by remember { mutableStateOf(false) }
     var powerActive by remember { mutableStateOf(false) }
     var powerUsed by remember { mutableStateOf(false) }       // once per leg
+    var coachAngle by remember { mutableStateOf(180f) }       // the Coach's board rotation; re-rolled after every dart of yours
     val boardBrightness = 0.11f                               // how much light is left under the Viking's LIGHTS OUT
     val glareStrength = 1f                                    // the Bling's glare, full strength
     // The Cockney's trembling aim ring: full shake on a double, less higher up
@@ -326,6 +327,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             }
         }
         Sounds.thud(); marks.add(Offset(lx, ly)); thrown.add(hit)
+        coachAngle = 40f + kotlin.random.Random.nextFloat() * 280f   // never close to upright
         dartsInVisit++
         val me = sides[0]
         me.darts++
@@ -436,7 +438,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
 
     if (powerSplash) {
-        PowerSplash(opponent = opponent, onDismiss = { powerSplash = false; powerActive = true })
+        PowerSplash(opponent = opponent, onDismiss = { powerSplash = false; powerActive = true; coachAngle = 40f + kotlin.random.Random.nextFloat() * 280f })
     }
 
     if (setupOpen) {
@@ -554,10 +556,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             ) {
                 // ONE FOR THE ROAD: the Jockey gets you drunk — the board sways and ripples on your turn
                 val drunkNow = powerActive && current == 0 && opponent == Opponent.MULLET
-                // LOOK OVER THERE: while you look away the Coach hangs the board upside down (20 at the bottom)
+                // LOOK OVER THERE: the Coach spins the board to a new random angle after every dart you throw
                 val flip by androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = if (powerActive && current == 0 && opponent == Opponent.COACH) 180f else 0f,
-                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 700), label = "flip"
+                    targetValue = if (powerActive && current == 0 && opponent == Opponent.COACH) coachAngle else 0f,
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 500), label = "flip"
                 )
                 Dartboard(modifier = Modifier.drunk(drunkNow, drunkSway, drunkWave, drunkSpeed).graphicsLayer { rotationZ = flip }, geometry = if (hot && current == 0) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
                 // LIGHTS OUT: the Viking stands in the light on your turn. Drawn under the aim ring; taps pass through.
