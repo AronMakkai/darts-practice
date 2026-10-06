@@ -32,15 +32,15 @@ object Banter {
     private val wins: Map<Opponent, List<String>> = mapOf(
         Opponent.BEARD to listOf(
             "In my village we'd have burned that scoring as an offering. To apologise to the board.",
-            "I have sailed further in a bathtub than your darts travelled towards the treble.",
+            "I've eaten pies with more consistency than your doubles. Several. Today.",
             "That was giving 'lost tourist'. Were you aiming at the board or asking it for directions?",
-            "My beard has more consistency than your doubles, and it's got crisps in it.",
+            "This beard has more discipline than your whole visit, and it's currently storing a sausage roll.",
             "You throw like a man who has read about darts in a pamphlet. A damp pamphlet.",
             "Skill issue. Also a courage issue. Also a 'where is the 20' issue.",
-            "I've seen longboats sink with more dignity than that last visit.",
-            "Go home. Eat soup. Reflect. Return when the gods have forgiven you.",
-            "Not gonna lie, that was mid. Viking mid. Which is like normal mid but colder.",
-            "You've been pillaged, mate. Gently. Like a library."
+            "I've seen longboats sink with more dignity than that last leg, and I was ballast on most of them.",
+            "Go home. Eat soup. Reflect. Return when the gods have forgiven you. Bring soup for me too.",
+            "Not gonna lie, that was mid. Viking mid. Which is like normal mid but with more gravy.",
+            "You've been pillaged, mate. Gently. Like a buffet."
         ),
         Opponent.GRIN to listOf(
             "Cor, that was shocking. I've seen better aim from a pigeon with a grudge.",
@@ -91,16 +91,16 @@ object Banter {
             "Close? Mate, Perth is closer to Sydney than that dart was to the 16."
         ),
         Opponent.TACHE to listOf(
-            "I've had tighter groupings on a wet Wednesday in Stoke. With a cold.",
-            "Son, I score. You... attend. Thanks for attending.",
+            "I've had tighter groupings on a wet Wednesday in Hanley. With a cold. In the rain.",
+            "Duck, I score. You... attend. Thanks for attending.",
             "That moustache is more disciplined than your whole visit, and it's just hair.",
-            "You've been Taylored. Measured, cut, and sent home in a bag.",
-            "Scoring is a conversation with the treble. You two are not speaking.",
+            "You've been Taylored. Measured, cut, and sent home in a bag from Burslem market.",
+            "Scoring is a conversation with the treble. You two aren't speaking, duck.",
             "Big respect for showing up. No respect for anything after that.",
-            "That wasn't a leg. That was a cry for help with a dart in it.",
-            "It's not 'bad luck' when you do it nine visits in a row. That's a lifestyle.",
-            "I get told I'm old school. Old school still beats no school.",
-            "Tell your mates you lost to the power. Leave out the bit where it took me three visits."
+            "That weren't a leg. That were a cry for help with a dart in it.",
+            "It's not 'bad luck' when you do it nine visits on the trot. That's a lifestyle.",
+            "Stoke's got six towns and I've been thrown out of darts clubs in all of 'em for winning too much.",
+            "Tell your mates you lost to the power. Leave out the bit where I were thinking about oatcakes."
         ),
         Opponent.COACH to listOf(
             "Did you read a single thing I said about the 19s? Clearly not. Cup of tea and a think.",
@@ -120,12 +120,12 @@ object Banter {
 
     private val losses: Map<Opponent, List<String>> = mapOf(
         Opponent.BEARD to listOf(
-            "The gods were elsewhere. Possibly at a different pub. I'll have words.",
-            "You've won a battle. The war is long and I have a very large freezer.",
-            "Hmph. My beard got in my eyes. A likely story, but it is MY likely story.",
-            "Fine. You throw like a slightly smaller Viking. That's as nice as I get.",
-            "I was distracted by the smell of victory. Turned out it was yours. Annoying.",
-            "Enjoy it. Write a saga. Make me taller in it."
+            "The gods were elsewhere. Possibly at a carvery. I'll have words. After I've been to the carvery.",
+            "You've won a battle. The war is long and I have a very large freezer. Full. Of me-sized portions.",
+            "Hmph. I was carrying too much weight. Emotionally. And the other way.",
+            "Fine. You throw like a slightly smaller Viking. Everyone is a slightly smaller Viking.",
+            "I was distracted by the smell of victory. Turned out it was a bacon roll. Yours. Give it here.",
+            "Enjoy it. Write a saga. Make me taller in it. Leave the rest as is, I'm comfortable."
         ),
         Opponent.GRIN to listOf(
             "Oi oi, who let you get good? Sort it out, I've got a reputation.",
@@ -160,12 +160,12 @@ object Banter {
             "Respect. Cold-blooded, sun-baked, grudging respect. Shout me a tinnie."
         ),
         Opponent.TACHE to listOf(
-            "Well thrown. I'll be dreaming about that double for a week and it won't be a nice dream.",
-            "You scored more than me. Write the date down, it's a national holiday.",
-            "Credit where it's due. Not much credit. A fiver's worth.",
+            "Well thrown, duck. I'll be dreaming about that double for a week and it won't be a nice dream.",
+            "You scored more than me. Write the date down, they'll hang bunting in Hanley.",
+            "Credit where it's due. Not much credit. An oatcake's worth.",
             "I taught you nothing and you've learned it all. Infuriating.",
-            "The power is temporarily out. Engineers are on their way.",
-            "One for the scrapbook. Mine says 'off day'. Yours can say what it likes."
+            "The power is temporarily out. It's Stoke, happens all the time.",
+            "One for the scrapbook. Mine says 'off day'. Yours can say what it likes, duck."
         ),
         Opponent.COACH to listOf(
             "THAT'S what I've been talking about. Now do it again without the lucky bounce-outs.",

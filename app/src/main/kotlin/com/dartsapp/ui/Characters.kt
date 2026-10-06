@@ -28,12 +28,12 @@ enum class Opponent(
     val flair: Boolean = false,   // goes for bull and double-double finishes when the book allows
     val paceMs: Long = 850        // time between the bot's darts
 ) {
-    BEARD("THE VIKING", 0.74f, "Shaggy mane, full beard, stares the board down — takes his time", paceMs = 1400),
+    BEARD("THE VIKING", 0.74f, "Shaggy mane, full beard, built like a longboat — takes his time, and his pies", paceMs = 1400),
     GRIN("THE COCKNEY", 0.80f, "Mop top and a cheeky smile — scores for fun"),
     BLING("THE BLING", 0.76f, "Gold chains, gold rings — always after the bull and the double-double", flair = true),
     MULLET("THE JOCKEY", 0.70f, "Feathered hair, leather jacket, eight pints deep — and somehow the steadiest arm in the pub", scatter = 0.6f, jitter = 0.02f),
     GOATEE("THE LIZZARD", 0.84f, "Sun-bleached spikes, long goatee, straight outta the outback — deadly on combination finishes", finishing = 1.12f),
-    TACHE("THE TAYLOR", 0.88f, "Dark hair, neat moustache — the heaviest scorer in the room", scoring = 1.08f),
+    TACHE("THE TAYLOR", 0.88f, "Dark hair, neat moustache, Stoke-on-Trent through and through — the heaviest scorer in the room", scoring = 1.08f),
     COACH("THE COACH", 0.82f, "Your coach, cap and all — knows every route in the book")
 }
 
