@@ -367,7 +367,9 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             val (aim, finishingDart) = botTarget(bot.remaining, opponent.flair)
             val tp = targetPoint(aim)
             val dartAcc = (botAccuracy * form * (if (finishingDart) opponent.finishing else opponent.scoring)).coerceIn(0.25f, 0.97f)
-            val (lx, ly) = model.land(tp.x, tp.y, dartAcc, opponent.scatter)
+            // BIG BOY PANTS: the Taylor throws near-perfect darts until he has drawn level
+            val pants = powerActive && opponent == Opponent.TACHE
+            val (lx, ly) = if (pants) model.land(tp.x, tp.y, 0.95f, 0.5f) else model.land(tp.x, tp.y, dartAcc, opponent.scatter)
             val hit = Board.hitTest(lx, ly, Geo)
             Sounds.thud(); marks.add(Offset(lx, ly)); thrown.add(hit)
             bot.darts++
@@ -391,6 +393,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 else -> {
                     bot.scored += hit.score; bot.remaining = newRem; visit += hit.score
                     message = "$botName: ${hit.label} (${hit.score})"
+                    if (pants && bot.remaining <= sides[0].remaining) { powerActive = false; message += " — level. Pants off." }
                     version++
                     delay(opponent.paceMs)
                 }
@@ -566,7 +569,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         // TEMP test controls: fire the opponent's special power by hand, and tune the board brightness
         if (!matchOver && opponent.powerName != null) {
             Column(modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 8.dp).width(118.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                if (powerActive) {
+                if (powerActive && opponent == Opponent.BEARD) {
                     Text("BRIGHT ${(boardBrightness * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
                     Slider(value = boardBrightness, onValueChange = { boardBrightness = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
                 }
