@@ -111,6 +111,11 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var banterText by remember { mutableStateOf("") }
     var banterOpen by remember { mutableStateOf(false) }
     val hot = hotDartsLeft > 0
+    // Opponent's special power: a splash screen, then its effect for the rest of the leg
+    var powerSplash by remember { mutableStateOf(false) }
+    var powerActive by remember { mutableStateOf(false) }
+    var powerUsed by remember { mutableStateOf(false) }       // once per leg
+    var boardBrightness by remember { mutableStateOf(0.25f) } // TEMP tuning value for the Viking's LIGHTS OUT
     // Opponent: a character with a base skill, scaled by the difficulty setting
     val tourRound = if (tournament) Tournament.round else 0
     var opponent by remember {
@@ -199,6 +204,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     fun newLeg() {
         for (s in sides) { s.remaining = startScore; s.darts = 0; s.scored = 0 }
         legStarter = 1 - legStarter
+        powerActive = false; powerUsed = false
         current = legStarter
         resetVisit()
         if (current == 1) botTurnKey++
@@ -209,6 +215,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     fun startMatch() {
         sides = listOf(Side("YOU", startScore), Side(botName, startScore))
         current = 0; legStarter = 0; matchOver = false
+        powerActive = false; powerUsed = false; powerSplash = false
         resetVisit()
         message = "Game on — swipe up from the arrow to pick up a dart"
         setupOpen = false
@@ -396,6 +403,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             current = 0
             resetVisit()
             version++
+            // Being beaten with some margin: you are on a finish and he is 100+ behind -> special power
+            if (opponent.powerName != null && !powerUsed && sides[0].remaining <= 170 && sides[1].remaining - sides[0].remaining >= 100) {
+                powerUsed = true; powerSplash = true
+            }
         }
     }
 
@@ -410,6 +421,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
     if (banterOpen) {
         BanterDialog(opponent = opponent, text = banterText, youWon = sides[0].sets >= setsToWin, onDismiss = { banterOpen = false })
+    }
+
+    if (powerSplash) {
+        PowerSplash(opponent = opponent, onDismiss = { powerSplash = false; powerActive = true })
     }
 
     if (setupOpen) {
@@ -526,6 +541,12 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 contentAlignment = Alignment.Center
             ) {
                 Dartboard(geometry = if (hot && current == 0) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
+                // LIGHTS OUT: the Viking stands in the light on your turn. Drawn under the aim ring; taps pass through.
+                if (powerActive && current == 0 && opponent == Opponent.BEARD) {
+                    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
+                        drawRect(Color.Black.copy(alpha = (1f - boardBrightness).coerceIn(0f, 1f)))
+                    }
+                }
                 ThrowRing(
                     startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f,
                     accuracy = accuracy, opacity = aimOpacity.opacity, heat = if (hot) 1f else hotThrows.toFloat() / hotNeeded,
@@ -542,6 +563,21 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).size(120.dp)
         )
         DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp, bottom = 22.dp).size(width = 132.dp, height = 90.dp))
+        // TEMP test controls: fire the opponent's special power by hand, and tune the board brightness
+        if (!matchOver && opponent.powerName != null) {
+            Column(modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 8.dp).width(118.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                if (powerActive) {
+                    Text("BRIGHT ${(boardBrightness * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
+                    Slider(value = boardBrightness, onValueChange = { boardBrightness = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
+                }
+                OutlinedButton(
+                    onClick = { if (powerActive) powerActive = false else powerSplash = true },
+                    border = BorderStroke(2.dp, Red), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Black, contentColor = OffWhite),
+                    modifier = Modifier.height(34.dp)
+                ) { Text(if (powerActive) "POWER OFF" else "POWER", fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold) }
+            }
+        }
         if (matchOver) {
             if (tournament) Button(onClick = { navController.popBackStack() }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("Back to the draw") }
             else Button(onClick = { setupOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("New match") }
@@ -552,6 +588,38 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
 }
 
+
+/** Special-power splash: the opponent, furious, fills the screen and announces what he is about to do. */
+@Composable
+internal fun PowerSplash(opponent: Opponent, onDismiss: () -> Unit) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().background(Color(0xF0200000))
+                .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { onDismiss() }
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+        ) {
+            Text("SPECIAL POWER", fontFamily = FontFamily.Monospace, letterSpacing = 6.sp, fontSize = 14.sp, color = PaleGold)
+            Text(opponent.powerName ?: "", fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, fontWeight = FontWeight.Black, fontSize = 40.sp, color = Color(0xFFFF3B1F), textAlign = TextAlign.Center)
+            OpponentHead(opponent, modifier = Modifier.padding(vertical = 12.dp).size(300.dp), angry = true)
+            Box(modifier = Modifier.background(DarkRed).border(2.dp, Gold).padding(horizontal = 18.dp, vertical = 6.dp)) {
+                Text(opponent.displayName, fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, fontWeight = FontWeight.Black, color = Gold, fontSize = 18.sp)
+            }
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                    .background(OffWhite, CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .border(BorderStroke(3.dp, Black), CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .padding(16.dp)
+            ) {
+                Text("\u201C" + opponent.powerLine + "\u201D", color = Black, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, lineHeight = 23.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            }
+            Text("tap to continue", fontSize = 11.sp, color = Grey, modifier = Modifier.padding(top = 16.dp))
+        }
+    }
+}
 
 /** The opponent's post-match word: big portrait, name plate and a speech bubble. Tap anywhere to close. */
 @Composable

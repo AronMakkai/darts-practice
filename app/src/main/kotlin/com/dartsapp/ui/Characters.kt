@@ -26,9 +26,13 @@ enum class Opponent(
     val scatter: Float = 1f,      // spread of a miss (lower = tighter, more consistent)
     val jitter: Float = 0.08f,    // visit-to-visit form swing (lower = steadier)
     val flair: Boolean = false,   // goes for bull and double-double finishes when the book allows
-    val paceMs: Long = 850        // time between the bot's darts
+    val paceMs: Long = 850,       // time between the bot's darts
+    val powerName: String? = null, // special power, played when he is being beaten (null = none yet)
+    val powerLine: String = ""     // what he says on the splash screen
 ) {
-    BEARD("THE VIKING", 0.74f, "Shaggy mane, full beard, a horn of ale never far away — moves at his own glacial pace", paceMs = 1400),
+    BEARD("THE VIKING", 0.74f, "Shaggy mane, full beard, a horn of ale never far away — moves at his own glacial pace", paceMs = 1400,
+        powerName = "LIGHTS OUT",
+        powerLine = "This is not looking good. Let me move my large frame over here and see how that affects your view of the board..."),
     GRIN("THE COCKNEY", 0.80f, "Mop top and a cheeky smile — scores for fun"),
     BLING("THE BLING", 0.76f, "Walk-on music, smoke machine, more gold than a pawnbroker — always after the bull and the double-double", flair = true),
     MULLET("THE JOCKEY", 0.70f, "Feathered hair, leather jacket, eight pints deep — and somehow the steadiest arm in the pub", scatter = 0.6f, jitter = 0.02f),
@@ -39,7 +43,7 @@ enum class Opponent(
 
 /** Portrait of [who], flat-shaded like the coach. Fits a square. */
 @Composable
-fun OpponentHead(who: Opponent, modifier: Modifier = Modifier) {
+fun OpponentHead(who: Opponent, modifier: Modifier = Modifier, angry: Boolean = false) {
     if (who == Opponent.COACH) {
         CoachHead(modifier = modifier)
     } else {
@@ -53,8 +57,20 @@ fun OpponentHead(who: Opponent, modifier: Modifier = Modifier) {
                 Opponent.TACHE -> drawTache()
                 Opponent.COACH -> {}
             }
+            if (angry) angryOverlay()
         }
     }
+}
+
+/** Drawn over a portrait for the special-power splash: flushed face, heavy scowling brows, furrow. */
+private fun DrawScope.angryOverlay() {
+    val w = size.width; val h = size.height; val cx = w / 2f
+    val brow = Color(0xFF1A0F0C)
+    drawOval(Color(0xFFD01818).copy(alpha = 0.28f), Offset(cx - w * 0.27f, h * 0.2f), Size(w * 0.54f, h * 0.5f))
+    drawLine(brow, Offset(cx - w * 0.23f, h * 0.35f), Offset(cx - w * 0.04f, h * 0.45f), strokeWidth = h * 0.05f, cap = StrokeCap.Round)
+    drawLine(brow, Offset(cx + w * 0.23f, h * 0.35f), Offset(cx + w * 0.04f, h * 0.45f), strokeWidth = h * 0.05f, cap = StrokeCap.Round)
+    drawLine(brow, Offset(cx - w * 0.015f, h * 0.36f), Offset(cx - w * 0.015f, h * 0.42f), strokeWidth = h * 0.012f, cap = StrokeCap.Round)
+    drawLine(brow, Offset(cx + w * 0.015f, h * 0.36f), Offset(cx + w * 0.015f, h * 0.42f), strokeWidth = h * 0.012f, cap = StrokeCap.Round)
 }
 
 // ---- shared pieces -------------------------------------------------------------------------
