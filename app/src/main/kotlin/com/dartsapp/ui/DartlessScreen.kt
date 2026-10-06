@@ -131,6 +131,7 @@ fun DartlessScreen(navController: NavHostController) {
     val hot = hotDartsLeft > 0
     var lastPerfect by remember { mutableStateOf(false) }
     var popTrigger by remember { mutableStateOf(0) }
+    var coachAdviceOpen by remember { mutableStateOf(false) }
     val aimOpacity = remember { Settings.aimOpacity(context) }
     var burstOrigin by remember { mutableStateOf(Offset.Zero) }      // screen px of the winning dart
     var bustTrigger by remember { mutableStateOf(0) }
@@ -328,14 +329,20 @@ fun DartlessScreen(navController: NavHostController) {
         )
     }
 
+    if (coachAdviceOpen) {
+        CoachTipDialog(remaining = remaining, playerName = "You", onDismiss = { coachAdviceOpen = false })
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
         // No scrolling: the board must stay put under a swipe. The board box takes whatever height is left.
         modifier = Modifier.fillMaxSize().padding(bottom = if (metronomeMode) 130.dp else 100.dp)
     ) {
         ScreenHeader("Checkout Game", navController) {
+            // The coach: tap for his route advice on the current score (same dialog as the 501 modes)
+            IconButton(onClick = { coachAdviceOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
             TextButton(onClick = { showTutorial = true }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("?", color = Gold, fontWeight = FontWeight.Bold) }
-            TextButton(onClick = { showTip = !showTip }, enabled = !metronomeMode) { Text("Tip", color = if (showTip) Gold else Grey) }
+            if (!metronomeMode) TextButton(onClick = { showTip = !showTip }) { Text("Tip", color = if (showTip) Gold else Grey) }
             TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
         }
 
