@@ -196,62 +196,143 @@ object Music {
 
     // ---- crowd --------------------------------------------------------------------------------
 
+    // Vowel formants (F1, F2) for a / e / i / o / u
+    private val vowels = arrayOf(730f to 1090f, 530f to 1840f, 270f to 2290f, 570f to 840f, 300f to 870f)
+
     /**
-     * 10 s of a big room talking quietly: forty overlapping voices, each a stream of soft vowel-like
-     * syllables at its own pitch and pace, mixed low and heavily low-passed so no single voice stands
-     * out — a warm wash of conversation rather than hiss.
+     * 16 s of a busy pub: a handful of near voices you can almost follow — proper syllables with
+     * consonant onsets, vowel colour and sentence intonation, taking turns — over a dozen distant,
+     * duller voices, with the odd laugh, a whistled tune and a glass clink. No noise bed, so it
+     * reads as people rather than a cabin hum.
      */
     private fun renderCrowd(): ShortArray {
-        val len = 10f
+        val len = 16f
         val n = (RATE * len).toInt()
         val buf = FloatArray(n)
-        val rnd = Random(23)
-        for (voice in 0 until 40) {
-            val base = 95f + rnd.nextFloat() * 150f               // deep to light voices
-            val pace = 0.1f + rnd.nextFloat() * 0.12f               // syllable length
-            val formant = 400f + rnd.nextFloat() * 1000f
-            val distance = 0.3f + rnd.nextFloat() * 0.7f            // far voices are quieter and duller
-            var t = rnd.nextFloat() * 0.6f
+        val rnd = Random(29)
+
+        // Near voices: distinct pitches, loud enough to pick out, speaking in turns
+        val near = arrayOf(105f, 125f, 150f, 195f, 230f)
+        var turnEnd = 0f
+        for (round in 0 until 9) {
+            val v = rnd.nextInt(near.size)
+            val start = turnEnd - rnd.nextFloat() * 0.3f               // slight overlap of turns
+            val phraseLen = talk(buf, start.coerceAtLeast(0f), near[v], amp = 0.05f, bright = 1f, rnd = rnd, syllablesMin = 5, syllablesMax = 14)
+            turnEnd = start + phraseLen + 0.2f + rnd.nextFloat() * 0.5f
+            if (turnEnd > len - 1f) break
+        }
+        // Distant voices: quieter, duller, overlapping freely
+        for (voice in 0 until 12) {
+            val base = 95f + rnd.nextFloat() * 150f
+            var t = rnd.nextFloat() * 2f
             while (t < len) {
-                // a phrase of a few syllables, then a gap while "someone else talks"
-                val syllables = 2 + rnd.nextInt(6)
-                for (k in 0 until syllables) {
-                    val f = base * (0.9f + rnd.nextFloat() * 0.25f)
-                    val dur = pace * (0.7f + rnd.nextFloat() * 0.6f)
-                    syllable(buf, t, f, formant, dur, 0.012f * distance * distance, 1f - distance * 0.5f)
-                    t += dur * 1.05f
-                }
-                t += 0.4f + rnd.nextFloat() * 1.6f
+                t += talk(buf, t, base, amp = 0.012f, bright = 0.35f, rnd = rnd, syllablesMin = 3, syllablesMax = 9)
+                t += 0.6f + rnd.nextFloat() * 2.5f
             }
         }
-        // Room tone: very low, slow-moving filtered noise under the voices
-        var lp = 0f; var lp2 = 0f
-        for (i in 0 until n) {
-            val white = rnd.nextFloat() * 2f - 1f
-            lp += 0.05f * (white - lp); lp2 += 0.02f * (lp - lp2)
-            buf[i] += lp2 * 0.5f
+        // Laughter: two bursts, "ha-ha-ha-ha" rising then tailing off
+        for (k in 0 until 2) {
+            val at = 2.5f + k * 7.5f + rnd.nextFloat()
+            val f0 = if (k == 0) 170f else 240f
+            for (i in 0 until 5 + rnd.nextInt(3)) {
+                val f = f0 * (1.15f - 0.05f * i)
+                syllable(buf, at + i * 0.17f, f, vowels[0], 0.13f, 0.045f * (1f - i * 0.1f), 1f, consonant = 0.5f, rnd = rnd)
+            }
         }
-        // Gentle low-pass over the whole mix so it sits in the background
+        // Whistling: two short pentatonic snatches with vibrato
+        val tune = intArrayOf(0, 2, 4, 7, 4, 2, 0, -3, 0)
+        for (k in 0 until 2) {
+            var t = 4.5f + k * 7f + rnd.nextFloat()
+            val root = if (k == 0) 1480f else 1760f
+            for ((i, step) in tune.withIndex()) {
+                val dur = if (i == tune.size - 1) 0.5f else 0.22f + rnd.nextFloat() * 0.12f
+                whistle(buf, t, root * 2f.pow(step / 12f), dur, 0.035f)
+                t += dur * 1.05f
+            }
+        }
+        // Glass clinks
+        for (k in 0 until 3) {
+            val at = 1f + rnd.nextFloat() * (len - 2f)
+            val f = 2600f + rnd.nextFloat() * 2000f
+            val start = (at * RATE).toInt(); val dur = (0.3f * RATE).toInt()
+            for (i in 0 until dur) {
+                val idx = start + i; if (idx >= n) break
+                val tt = i.toFloat() / RATE
+                buf[idx] += ((sin(2 * PI * f * tt) + 0.5 * sin(2 * PI * f * 1.42 * tt)) * exp(-tt * 16f) * 0.05f).toFloat()
+            }
+        }
+        // Light smoothing only (keeps the consonants), then a seamless loop
         var y = 0f
-        for (i in 0 until n) { y += 0.22f * (buf[i] - y); buf[i] = y }
-        // Seamless loop: cross-fade the tail into the head, then drop the tail
-        val x = (0.6f * RATE).toInt()
+        for (i in 0 until n) { y += 0.6f * (buf[i] - y); buf[i] = y }
+        val x = (0.8f * RATE).toInt()
         for (i in 0 until x) { val k = i.toFloat() / x; buf[i] = buf[i] * k + buf[n - x + i] * (1f - k) }
         return toPcm(buf.copyOf(n - x))
     }
 
-    /** One soft spoken syllable: pitched buzz with a formant, bell-shaped envelope. */
-    private fun syllable(buf: FloatArray, t0: Float, f: Float, formant: Float, durSec: Float, amp: Float, bright: Float) {
+    /** One spoken phrase: a run of syllables with a wandering pitch that falls at the end. Returns its length in seconds. */
+    private fun talk(buf: FloatArray, t0: Float, base: Float, amp: Float, bright: Float, rnd: Random, syllablesMin: Int, syllablesMax: Int): Float {
+        val count = syllablesMin + rnd.nextInt(syllablesMax - syllablesMin + 1)
+        var t = t0
+        var pitch = base * (0.95f + rnd.nextFloat() * 0.15f)
+        for (i in 0 until count) {
+            val p = i.toFloat() / count
+            // intonation: random walk, lifted mid-phrase, dropping on the last two syllables
+            pitch *= 0.96f + rnd.nextFloat() * 0.09f
+            val contour = if (p > 0.75f) 0.88f else if (p in 0.3f..0.6f) 1.06f else 1f
+            val stressed = rnd.nextFloat() < 0.3f
+            val dur = (if (stressed) 0.16f else 0.09f) + rnd.nextFloat() * 0.08f
+            val vowel = vowels[rnd.nextInt(vowels.size)]
+            syllable(buf, t, pitch * contour, vowel, dur, amp * (if (stressed) 1.3f else 1f), bright, consonant = 0.3f + rnd.nextFloat() * 0.7f, rnd = rnd)
+            t += dur + 0.02f + (if (rnd.nextFloat() < 0.15f) 0.12f else 0f)   // occasional word gap
+        }
+        return t - t0
+    }
+
+    /** One syllable: a short consonant burst, then a vowel built from harmonics shaped by two formants. */
+    private fun syllable(buf: FloatArray, t0: Float, f: Float, vowel: Pair<Float, Float>, durSec: Float, amp: Float, bright: Float, consonant: Float, rnd: Random) {
+        val start = (t0 * RATE).toInt(); val dur = (durSec * RATE).toInt()
+        val (f1, f2) = vowel
+        // Harmonic gains from the formants (bright voices keep more of F2)
+        val harmonics = 10
+        val gains = FloatArray(harmonics) { h ->
+            val fh = f * (h + 1)
+            val g1 = 1f / (1f + ((fh - f1) / 130f).let { it * it })
+            val g2 = bright * 0.7f / (1f + ((fh - f2) / 200f).let { it * it })
+            (g1 + g2 + 0.08f) / (h + 1)
+        }
+        // Consonant: a brief noise burst coloured by the voice brightness
+        val cLen = (RATE * (0.012f + 0.014f * consonant)).toInt()
+        var lp = 0f
+        for (i in 0 until cLen) {
+            val idx = start + i; if (idx >= buf.size) break
+            val white = rnd.nextFloat() * 2f - 1f
+            lp += (0.2f + 0.5f * bright) * (white - lp)
+            buf[idx] += lp * amp * 1.5f * consonant * (1f - i.toFloat() / cLen)
+        }
+        var phase = 0.0
+        for (i in 0 until dur) {
+            val idx = start + cLen + i; if (idx >= buf.size) break
+            val p = i.toFloat() / dur
+            val glide = f * (1f + 0.05f * (0.5f - p)) * (1f + 0.004f * sin(2 * PI * 5.0 * i / RATE).toFloat())
+            phase += 2 * PI * glide / RATE
+            val env = minOf(1f, p / 0.12f) * (if (p > 0.6f) (1f - p) / 0.4f else 1f)
+            var v = 0.0
+            for (h in 0 until harmonics) v += gains[h] * sin((h + 1) * phase)
+            buf[idx] += (v * env * amp).toFloat()
+        }
+    }
+
+    private fun whistle(buf: FloatArray, t0: Float, f: Float, durSec: Float, amp: Float) {
         val start = (t0 * RATE).toInt(); val dur = (durSec * RATE).toInt()
         var phase = 0.0
         for (i in 0 until dur) {
             val idx = start + i; if (idx >= buf.size) break
+            val t = i.toFloat() / RATE
             val p = i.toFloat() / dur
-            val glide = f * (1f + 0.06f * (0.5f - p))
-            phase += 2 * PI * glide / RATE
-            val env = sin(PI * p).toFloat()
-            val v = sin(phase) + 0.5 * sin(2 * phase) * bright + 0.25 * sin(3 * phase) * bright + 0.3 * sin(2 * PI * formant * i / RATE) * sin(phase)
-            buf[idx] += (v * env * amp).toFloat()
+            val vib = 1f + 0.012f * sin(2 * PI * 6.0 * t).toFloat() * minOf(1f, p * 4f)
+            phase += 2 * PI * f * vib / RATE
+            val env = minOf(1f, p / 0.1f) * (if (p > 0.7f) (1f - p) / 0.3f else 1f)
+            buf[idx] += (sin(phase) * env * amp).toFloat()
         }
     }
 
