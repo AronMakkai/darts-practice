@@ -336,6 +336,115 @@ object Music {
         }
     }
 
+    // ---- roar ---------------------------------------------------------------------------------
+
+    private val roarCache = HashMap<Boolean, ShortArray>()
+
+    /**
+     * A crowd roar for a ton-plus visit, built from voices rather than noise: dozens of people
+     * shouting vowels with sweeping pitch, staggered so the wall builds and decays, individual claps
+     * from many pairs of hands, and whistles. [big] (180 or a finish) is longer, louder and denser.
+     */
+    fun roar(big: Boolean) {
+        thread(name = "roar") {
+            val pcm = synchronized(roarCache) { roarCache.getOrPut(big) { renderRoar(big) } }
+            playOnce(pcm, 1f)
+        }
+    }
+
+    private fun renderRoar(big: Boolean): ShortArray {
+        val len = if (big) 3.4f else 2.2f
+        val n = (RATE * len).toInt()
+        val buf = FloatArray(n)
+        val rnd = Random(if (big) 101 else 57)
+        val shoutVowels = arrayOf(vowels[0], vowels[3], vowels[1])          // "yeah", "ohh", "eh"
+        // Shouting voices: onset spread over the first part so the roar builds, each a sweep up then down
+        val voices = if (big) 90 else 50
+        for (v in 0 until voices) {
+            val female = rnd.nextFloat() < 0.4f
+            val f0 = (if (female) 220f else 130f) * (0.85f + rnd.nextFloat() * 0.35f)
+            val onset = rnd.nextFloat() * rnd.nextFloat() * len * 0.45f          // most people shout early
+            val dur = 0.5f + rnd.nextFloat() * (if (big) 1.3f else 0.8f)
+            val vowel = shoutVowels[rnd.nextInt(shoutVowels.size)]
+            shout(buf, onset, f0, vowel, dur, 0.022f * (0.6f + rnd.nextFloat() * 0.6f), rnd)
+        }
+        // Clapping: hundreds of individual claps, densest just after the shout peak
+        val claps = if (big) 700 else 350
+        for (c in 0 until claps) {
+            val at = (0.15f + rnd.nextFloat() * (len - 0.3f)) * (0.7f + 0.3f * rnd.nextFloat())
+            clap(buf, at, 0.05f + rnd.nextFloat() * 0.05f, rnd)
+        }
+        // Whistles on the big ones
+        if (big) for (w in 0 until 4) {
+            var t = 0.3f + rnd.nextFloat() * 1.2f
+            val f = 1500f + rnd.nextFloat() * 700f
+            whistle(buf, t, f, 0.35f, 0.05f); t += 0.3f
+            whistle(buf, t, f * 1.25f, 0.5f, 0.05f)
+        }
+        // Overall shape: quick swell, long tail, then soft clip so it is loud but not harsh
+        for (i in 0 until n) {
+            val p = i.toFloat() / n
+            val env = minOf(1f, p / 0.1f) * (if (p > 0.55f) ((1f - p) / 0.45f).let { it * it * (3f - 2f * it) } else 1f)
+            val x = buf[i] * env * 2.2f
+            buf[i] = x / (1f + kotlin.math.abs(x) * 0.7f)
+        }
+        return toPcm(buf)
+    }
+
+    /** One shouted vowel: pitch rises quickly then sags, formant-shaped harmonics, a little rasp. */
+    private fun shout(buf: FloatArray, t0: Float, f0: Float, vowel: Pair<Float, Float>, durSec: Float, amp: Float, rnd: Random) {
+        val start = (t0 * RATE).toInt(); val dur = (durSec * RATE).toInt()
+        val (f1, f2) = vowel
+        val harmonics = 10
+        var phase = 0.0
+        val rasp = rnd.nextFloat() * 0.3f
+        for (i in 0 until dur) {
+            val idx = start + i; if (idx >= buf.size) break
+            val p = i.toFloat() / dur
+            val f = f0 * (1f + 0.35f * sin(PI * minOf(1f, p * 1.4f)).toFloat()) * (1f + 0.01f * sin(2 * PI * 6.0 * i / RATE).toFloat())
+            phase += 2 * PI * f / RATE
+            val env = minOf(1f, p / 0.08f) * (if (p > 0.5f) (1f - p) / 0.5f else 1f)
+            var v = 0.0
+            for (h in 1..harmonics) {
+                val fh = f * h
+                val g1 = 1f / (1f + ((fh - f1) / 150f).let { it * it })
+                val g2 = 0.8f / (1f + ((fh - f2) / 220f).let { it * it })
+                v += (g1 + g2 + 0.1f) / h * sin(h * phase)
+            }
+            if (rasp > 0.15f) v += (rnd.nextFloat() * 2f - 1f) * rasp * 0.3f
+            buf[idx] += (v * env * amp).toFloat()
+        }
+    }
+
+    /** One hand clap: a very short burst of band-limited noise. */
+    private fun clap(buf: FloatArray, t0: Float, amp: Float, rnd: Random) {
+        val start = (t0 * RATE).toInt(); val dur = (0.012f * RATE).toInt()
+        var lp = 0f; var prev = 0f
+        for (i in 0 until dur) {
+            val idx = start + i; if (idx >= buf.size) break
+            val white = rnd.nextFloat() * 2f - 1f
+            lp += 0.6f * (white - lp)
+            val bp = lp - prev; prev = lp
+            val p = i.toFloat() / dur
+            buf[idx] += bp * (1f - p) * amp * 4f
+        }
+    }
+
+    private fun playOnce(pcm: ShortArray, volume: Float) {
+        try {
+            val track = AudioTrack(
+                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
+                AudioFormat.Builder().setSampleRate(RATE).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build(),
+                pcm.size * 2, AudioTrack.MODE_STATIC, android.media.AudioManager.AUDIO_SESSION_ID_GENERATE
+            )
+            track.setVolume(volume)
+            track.write(pcm, 0, pcm.size)
+            track.play()
+            Thread.sleep(pcm.size * 1000L / RATE + 120)
+            track.stop(); track.release()
+        } catch (e: Exception) { }
+    }
+
     private fun toPcm(buf: FloatArray): ShortArray {
         val pcm = ShortArray(buf.size)
         for (i in buf.indices) pcm[i] = (buf[i].coerceIn(-1f, 1f) * 30000).toInt().toShort()

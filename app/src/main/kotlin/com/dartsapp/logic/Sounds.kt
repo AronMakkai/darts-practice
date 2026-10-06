@@ -64,57 +64,8 @@ object Sounds {
         thread(name = "thud") { playPcm(pcm) }
     }
 
-    /** Crowd roar: a wall of voices and applause for a ton-plus visit; [big] (180 or a finish) is longer and louder. */
-    fun cheer(big: Boolean) {
-        thread(name = "cheer") {
-            val len = if (big) 3.2f else 2.0f
-            val n = (RATE * len).toInt()
-            val buf = FloatArray(n)
-            val rnd = java.util.Random(if (big) 9 else 4)
-            // Applause / roar bed: filtered noise with a fast swell and a long tail, crackle on top
-            var lp = 0f
-            for (i in 0 until n) {
-                val t = i.toFloat() / RATE
-                val p = t / len
-                val white = rnd.nextFloat() * 2f - 1f
-                lp += 0.18f * (white - lp)
-                val env = minOf(p / 0.08f, 1f) * (1f - p).let { it * it * (3f - 2f * it) }
-                val crackle = if (rnd.nextFloat() < 0.03f) (rnd.nextFloat() * 2f - 1f) * 0.7f else 0f
-                buf[i] = (lp * 1.8f + crackle) * env * (if (big) 1.0f else 0.75f)
-            }
-            // Shouting voices: many rising-then-falling sweeps, each with its own start and pitch
-            val voices = if (big) 28 else 14
-            for (v in 0 until voices) {
-                val f0 = 150f + rnd.nextFloat() * 220f
-                val start = (rnd.nextFloat() * 0.35f * RATE).toInt()
-                val dur = ((0.6f + rnd.nextFloat() * 0.9f) * RATE).toInt()
-                var phase = 0.0
-                for (i in 0 until dur) {
-                    val idx = start + i; if (idx >= n) break
-                    val p = i.toFloat() / dur
-                    val f = f0 * (1f + 0.4f * sin(PI * p).toFloat())
-                    phase += 2 * PI * f / RATE
-                    val env = sin(PI * p).toFloat()
-                    buf[idx] += ((sin(phase) + 0.5 * sin(2 * phase) + 0.25 * sin(3 * phase)) * env * 0.05f).toFloat()
-                }
-            }
-            // Whistles for the big ones
-            if (big) for (w in 0 until 3) {
-                val start = ((0.2f + rnd.nextFloat() * 0.8f) * RATE).toInt()
-                val dur = (0.5f * RATE).toInt()
-                var phase = 0.0
-                for (i in 0 until dur) {
-                    val idx = start + i; if (idx >= n) break
-                    val p = i.toFloat() / dur
-                    phase += 2 * PI * (1800f + 600f * sin(PI * p)) / RATE
-                    buf[idx] += (sin(phase) * sin(PI * p) * 0.08f).toFloat()
-                }
-            }
-            // Soft clip so the roar is loud but never harsh
-            for (i in buf.indices) { val x = buf[i]; buf[i] = x / (1f + kotlin.math.abs(x) * 0.5f) }
-            play(buf)
-        }
-    }
+    /** Crowd roar for a ton-plus visit — voices, claps and whistles, synthesised in [Music]. */
+    fun cheer(big: Boolean) = Music.roar(big)
 
     /** Crowd groan for a bust: a falling "ooh". */
     fun groan() {
