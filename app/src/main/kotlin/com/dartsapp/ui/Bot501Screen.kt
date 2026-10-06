@@ -117,7 +117,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var powerActive by remember { mutableStateOf(false) }
     var powerUsed by remember { mutableStateOf(false) }       // once per leg
     val boardBrightness = 0.11f                               // how much light is left under the Viking's LIGHTS OUT
-    var glareStrength by remember { mutableStateOf(0.7f) }    // TEMP tuning value for the Bling's glare
+    val glareStrength = 1f                                    // the Bling's glare, full strength
     // The Cockney's trembling aim ring: full shake on a double, less higher up
     val nervesBase = 0.75f
     val nervesSpeed = 1.5f
@@ -618,10 +618,6 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     Slider(value = drunkWave, onValueChange = { drunkWave = it }, valueRange = 0f..1f, modifier = Modifier.height(28.dp))
                     Text("SPEED ${"%.1f".format(drunkSpeed)}x", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
                     Slider(value = drunkSpeed, onValueChange = { drunkSpeed = it }, valueRange = 0.2f..3f, modifier = Modifier.height(28.dp))
-                }
-                if (powerActive && opponent == Opponent.BLING) {
-                    Text("GLARE ${(glareStrength * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
-                    Slider(value = glareStrength, onValueChange = { glareStrength = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
                 }
                 OutlinedButton(
                     onClick = { if (powerActive) powerActive = false else powerSplash = true },
