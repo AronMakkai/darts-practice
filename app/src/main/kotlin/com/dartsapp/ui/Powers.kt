@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -192,5 +193,89 @@ fun Modifier.drunk(active: Boolean, sway: Float, wave: Float, speed: Float): Mod
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             renderEffect = DrunkWaves.effect(t, size.width * 0.06f * wv, size.width, size.height)
         }
+    }
+}
+
+private val HECKLES = listOf(
+    "MISS!", "BOTTLE JOB!", "NOT TODAY, SON", "BOOOO!", "YOU'LL CHOKE!", "WIDE!", "MY NAN THROWS BETTER",
+    "SIT DOWN!", "WHO ARE YA?", "NO CHANCE!", "WOBBLY!", "HE'S GONE!", "GET ON WITH IT!", "SHAKY HANDS!"
+)
+
+/**
+ * The Cockney's special power, part one: he turns the crowd on you. Heckles pop up over the board
+ * and the crowd jeers. Purely visual (plus sound); taps pass through.
+ */
+@Composable
+fun HeckleBubbles(modifier: Modifier = Modifier) {
+    var t by remember { mutableStateOf(0f) }
+    LaunchedEffect(Unit) {
+        val start = withFrameNanos { it }
+        while (true) t = (withFrameNanos { it } - start) / 1_000_000_000f
+    }
+    // The crowd gets on your back every few seconds
+    LaunchedEffect(Unit) {
+        while (true) {
+            com.dartsapp.logic.Sounds.groan()
+            kotlinx.coroutines.delay(3200)
+        }
+    }
+    val fill = remember { android.graphics.Paint().apply { isAntiAlias = true; color = android.graphics.Color.WHITE } }
+    val edge = remember { android.graphics.Paint().apply { isAntiAlias = true; color = android.graphics.Color.BLACK; style = android.graphics.Paint.Style.STROKE } }
+    val ink = remember {
+        android.graphics.Paint().apply {
+            isAntiAlias = true; color = android.graphics.Color.BLACK; textAlign = android.graphics.Paint.Align.CENTER
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+        }
+    }
+    Canvas(modifier = modifier) {
+        val w = size.width; val h = size.height
+        val every = 0.8f      // seconds between heckles
+        val life = 1.9f       // how long each one stays up
+        val newest = (t / every).toInt()
+        val canvas = drawContext.canvas.nativeCanvas
+        ink.textSize = w * 0.062f
+        edge.strokeWidth = w * 0.008f
+        for (i in (newest - 3).coerceAtLeast(0)..newest) {
+            val age = t - i * every
+            if (age < 0f || age > life) continue
+            val text = HECKLES[(i * 7 + 3) % HECKLES.size]
+            val px = w * (0.22f + 0.56f * ((i * 0.618f + 0.21f) % 1f))
+            val py = h * (0.14f + 0.72f * ((i * 0.377f + 0.43f) % 1f))
+            val pop = if (age < 0.12f) age / 0.12f * 1.2f else if (age < 0.2f) 1.2f - (age - 0.12f) / 0.08f * 0.2f else 1f
+            val alpha = (if (age > life - 0.4f) (life - age) / 0.4f else 1f).coerceIn(0f, 1f)
+            val a = (alpha * 255).toInt()
+            fill.alpha = a; edge.alpha = a; ink.alpha = a
+            val tw = ink.measureText(text)
+            val bw = tw + w * 0.07f
+            val bh = w * 0.11f
+            canvas.save()
+            canvas.translate(px.coerceIn(bw / 2f, w - bw / 2f), py)
+            canvas.rotate(((i * 37) % 21 - 10).toFloat())
+            canvas.scale(pop, pop)
+            val rect = android.graphics.RectF(-bw / 2f, -bh / 2f, bw / 2f, bh / 2f)
+            canvas.drawRoundRect(rect, bh * 0.3f, bh * 0.3f, fill)
+            canvas.drawRoundRect(rect, bh * 0.3f, bh * 0.3f, edge)
+            canvas.drawText(text, 0f, ink.textSize * 0.35f, ink)
+            canvas.restore()
+        }
+    }
+}
+
+/**
+ * The Cockney's special power, part two: nerves. Whatever this is applied to (the aim ring) trembles;
+ * [amount] 0..1 sets how badly. Pass `active = false` for no effect.
+ */
+@Composable
+fun Modifier.nerves(active: Boolean, amount: Float): Modifier {
+    var t by remember { mutableStateOf(0f) }
+    LaunchedEffect(active) {
+        if (!active) return@LaunchedEffect
+        val start = withFrameNanos { it }
+        while (true) t = (withFrameNanos { it } - start) / 1_000_000_000f
+    }
+    val a = amount.coerceIn(0f, 1f)
+    return if (!active) this else this.graphicsLayer {
+        translationX = size.width * 0.05f * a * (sin(t * 31f) * 0.6f + sin(t * 47f + 1.3f) * 0.4f)
+        translationY = size.height * 0.05f * a * (cos(t * 37f) * 0.6f + sin(t * 53f + 0.7f) * 0.4f)
     }
 }
