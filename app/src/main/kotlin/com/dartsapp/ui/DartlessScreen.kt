@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -122,6 +123,10 @@ fun DartlessScreen(navController: NavHostController) {
     var judgedThrows by remember { mutableStateOf(0) }
     var starTrigger by remember { mutableStateOf(0) }
     var perfectTrigger by remember { mutableStateOf(0) }
+    var hotThrows by remember { mutableStateOf(0) }          // consecutive perfect taps
+    var hotDartsLeft by remember { mutableStateOf(0) }       // > 0 while HOT STREAK is on
+    val hot = hotDartsLeft > 0
+    var popTrigger by remember { mutableStateOf(0) }
     val aimOpacity = remember { Settings.aimOpacity(context) }
     var burstOrigin by remember { mutableStateOf(Offset.Zero) }      // screen px of the winning dart
     var bustTrigger by remember { mutableStateOf(0) }
@@ -178,6 +183,8 @@ fun DartlessScreen(navController: NavHostController) {
         pauseSec = -1f
         allOnBeat = true
         judgedThrows = 0
+        hotThrows = 0
+        hotDartsLeft = 0
     }
 
     fun throwAt(aim: Offset) {
@@ -202,22 +209,43 @@ fun DartlessScreen(navController: NavHostController) {
             val rhythm = if (pauseSec >= 0f) pauseFactor(pauseSec, preset.dart, difficulty) else 1f
             accuracy = (throwAcc * rhythm).coerceIn(0.2f, 1f)
             val onPace = off <= paceWindow(preset.dart, difficulty) && rhythm >= 0.999f
-            if (off <= paceWindow(preset.dart, difficulty)) perfectTrigger++     // dead on the beat: star pop from the bull
+            val perfect = off <= paceWindow(preset.dart, difficulty)
+            if (perfect) { perfectTrigger++; hotThrows++ } else if (!hot) hotThrows = 0     // dead on the beat: star pop from the bull
+            // Three perfect taps in a row light the HOT STREAK: six darts that land exactly where intended
+            if (!hot && hotThrows >= 3) {
+                hotDartsLeft = 6
+                popTrigger++
+                Sounds.playCheckoutJingle()
+            }
             // Star criteria are more forgiving than the accuracy curve: roughly on the beat
             // (twice the window) and no long think between throws (2.5x the free pause).
             val starPace = off <= minOf(paceWindow(preset.dart, difficulty) * 2f, preset.dart / 2f)
             val starRhythm = pauseSec < 0f || pauseSec <= pauseAllowance(preset.dart, difficulty) * 2.5f
             judgedThrows++
             if (!(starPace && starRhythm)) allOnBeat = false
-            val throwNote = if (off <= paceWindow(preset.dart, difficulty)) "on pace" else if (elapsed < preset.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late"
+            val throwNote = if (hot) "🔥 HOT — $hotDartsLeft left" else if (perfect) "★ PERFECT" else if (elapsed < preset.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late"
             val pauseNote = if (pauseSec >= 0f && rhythm < 0.999f) "  ·  hesitated ${formatSec(pauseSec)} s" else ""
-            timingNote = "Throw $throwNote$pauseNote  →  accuracy ${(accuracy * 100).toInt()}%"
+            timingNote = "Throw $throwNote$pauseNote  →  accuracy ${if (hot) 100 else (accuracy * 100).toInt()}%"
             throwStartMs = 0L
             lastTapMs = now
         }
 
         val target = Board.hitTest(aim.x, aim.y, BoardGeo)
-        val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
+        val landing = if (hot && metronomeMode) {
+            // Land exactly on what you meant: the book dart if you tapped its bed, else the centre of the bed you tapped
+            val book = CheckoutLogic.bestFinish(remaining)?.firstOrNull()
+            val intended = when {
+                book == null -> if (target.ring == Ring.MISS) Hit(20, Ring.SINGLE) else target
+                target.ring == Ring.MISS -> book
+                target.number == book.number -> book
+                (target.ring == Ring.BULL || target.ring == Ring.OUTER_BULL) && (book.ring == Ring.BULL || book.ring == Ring.OUTER_BULL) -> book
+                else -> target
+            }
+            hotDartsLeft--
+            if (hotDartsLeft == 0) hotThrows = 0
+            boardPoint(intended, BoardGeo)
+        } else null
+        val (lx, ly) = if (landing != null) landing.x to landing.y else model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, BoardGeo)
         Sounds.thud()
         marks.add(Offset(lx, ly))
@@ -313,13 +341,18 @@ fun DartlessScreen(navController: NavHostController) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("ACCURACY", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey, modifier = Modifier.width(78.dp))
-            PowerBar(
-                value = accuracy,
-                enabled = !metronomeMode,
-                onChange = { accuracy = it },
-                modifier = Modifier.weight(1f).height(26.dp)
-            )
+            Text(if (hot) "HOT!" else "ACCURACY", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp,
+                color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(78.dp))
+            if (metronomeMode) {
+                HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(34.dp))
+            } else {
+                PowerBar(
+                    value = accuracy,
+                    enabled = true,
+                    onChange = { accuracy = it },
+                    modifier = Modifier.weight(1f).height(26.dp)
+                )
+            }
             Text(
                 "${(accuracy * 100).toInt()}%",
                 fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = Gold,
@@ -421,7 +454,7 @@ fun DartlessScreen(navController: NavHostController) {
                     periodSec = preset?.dart ?: 0f,
                     accuracy = accuracy,
                     opacity = aimOpacity.opacity,
-                    heat = streak / 10f,      // orange at 0, yellow around 5 clean checkouts, white at 10+
+                    heat = if (hot) 1f else streak / 10f,      // orange at 0, yellow around 5 clean checkouts, white at 10+
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f)
                 )
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
@@ -462,6 +495,7 @@ fun DartlessScreen(navController: NavHostController) {
         )
     }
     StarBurst(trigger = starTrigger, origin = burstOrigin, modifier = Modifier.fillMaxSize())
+    BigPop(trigger = popTrigger, text = "HOT STREAK!", huge = true, origin = Offset(boardPos.x + boardSize.width / 2f, boardPos.y + boardSize.height / 2f), modifier = Modifier.fillMaxSize())
     BustOverlay(trigger = bustTrigger, origin = bustOrigin, modifier = Modifier.fillMaxSize())
     }
 }

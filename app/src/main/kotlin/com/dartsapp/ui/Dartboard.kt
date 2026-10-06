@@ -235,3 +235,17 @@ private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: Li
         drawCircle(Color(0xFFD4AF37), radius = r * 0.022f, center = pt)
     }
 }
+
+/** Normalised board coordinates for the centre of a bed (used to land a dart exactly where intended). */
+internal fun boardPoint(hit: com.dartsapp.data.Hit, g: BoardGeometry): Offset {
+    if (hit.ring == com.dartsapp.data.Ring.BULL) return Offset(0f, 0f)
+    if (hit.ring == com.dartsapp.data.Ring.OUTER_BULL) return Offset(0f, -(g.bullR + g.outerBullR) / 2f)
+    val idx = com.dartsapp.data.Board.segments.indexOf(hit.number)
+    val a = Math.toRadians(com.dartsapp.data.Board.segmentAngle(idx).toDouble())
+    val r = when (hit.ring) {
+        com.dartsapp.data.Ring.TREBLE -> (g.trebleIn + g.trebleOut) / 2f
+        com.dartsapp.data.Ring.DOUBLE -> (g.doubleIn + g.doubleOut) / 2f
+        else -> (g.trebleOut + g.doubleIn) / 2f
+    }
+    return Offset(r * kotlin.math.cos(a).toFloat(), r * kotlin.math.sin(a).toFloat())
+}
