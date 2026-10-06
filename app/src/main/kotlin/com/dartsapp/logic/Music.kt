@@ -257,20 +257,50 @@ object Music {
                 t += dur * 1.05f
             }
         }
-        // Glass clinks
-        for (k in 0 until 3) {
-            val at = 1f + rnd.nextFloat() * (len - 2f)
-            val f = 2600f + rnd.nextFloat() * 2000f
-            val start = (at * RATE).toInt(); val dur = (0.3f * RATE).toInt()
+        // Glasses clinking softly: pint glasses (low ring) and wine glasses (high ring), gentle attacks
+        for (k in 0 until 7) {
+            val at = 0.5f + rnd.nextFloat() * (len - 1f)
+            val pint = rnd.nextFloat() < 0.5f
+            val f = if (pint) 900f + rnd.nextFloat() * 500f else 2400f + rnd.nextFloat() * 1600f
+            val start = (at * RATE).toInt(); val dur = (0.5f * RATE).toInt()
             for (i in 0 until dur) {
                 val idx = start + i; if (idx >= n) break
                 val tt = i.toFloat() / RATE
-                buf[idx] += ((sin(2 * PI * f * tt) + 0.5 * sin(2 * PI * f * 1.42 * tt)) * exp(-tt * 16f) * 0.05f).toFloat()
+                val attack = minOf(1f, i / (RATE * 0.004f))
+                buf[idx] += ((sin(2 * PI * f * tt) + 0.4 * sin(2 * PI * f * 1.5 * tt) + 0.2 * sin(2 * PI * f * 2.76 * tt)) * exp(-tt * 9f) * 0.028f * attack).toFloat()
             }
         }
-        // Light smoothing only (keeps the consonants), then a seamless loop
+        // Someone singing along in the corner: a slow pentatonic tune, lots of vibrato, far away
+        run {
+            val notes = intArrayOf(0, 2, 4, 7, 4, 2, 0, -5, 0, 2, 4, 2, 0)
+            var t = 1.5f
+            val root = 196f   // G3
+            for ((i, st) in notes.withIndex()) {
+                val dur = if (i % 4 == 3) 0.9f else 0.45f
+                sing(buf, t, root * 2f.pow(st / 12f), dur, 0.03f, rnd)
+                t += dur * 1.02f
+                if (t > len - 0.5f) break
+            }
+        }
+        // A distant table cheering something: a soft, far-off "heyyy" from a few voices
+        for (k in 0 until 2) {
+            val at = 3f + k * 7f + rnd.nextFloat() * 1.5f
+            for (v in 0 until 5) {
+                val f0 = 140f + rnd.nextFloat() * 160f
+                val start = ((at + rnd.nextFloat() * 0.12f) * RATE).toInt(); val dur = ((0.6f + rnd.nextFloat() * 0.4f) * RATE).toInt()
+                var phase = 0.0
+                for (i in 0 until dur) {
+                    val idx = start + i; if (idx >= n) break
+                    val p = i.toFloat() / dur
+                    phase += 2 * PI * f0 * (1f + 0.25f * sin(PI * minOf(1f, p * 1.3f))) / RATE
+                    val env = sin(PI * p).toFloat().let { it * it }
+                    buf[idx] += ((sin(phase) + 0.4 * sin(2 * phase)) * env * 0.012f).toFloat()
+                }
+            }
+        }
+        // Gentle smoothing (takes any remaining edge off the onsets), then a seamless loop
         var y = 0f
-        for (i in 0 until n) { y += 0.6f * (buf[i] - y); buf[i] = y }
+        for (i in 0 until n) { y += 0.45f * (buf[i] - y); buf[i] = y }
         val x = (0.8f * RATE).toInt()
         for (i in 0 until x) { val k = i.toFloat() / x; buf[i] = buf[i] * k + buf[n - x + i] * (1f - k) }
         return toPcm(buf.copyOf(n - x))
@@ -307,14 +337,15 @@ object Music {
             val g2 = bright * 0.7f / (1f + ((fh - f2) / 200f).let { it * it })
             (g1 + g2 + 0.08f) / (h + 1)
         }
-        // Consonant: a brief noise burst coloured by the voice brightness
-        val cLen = (RATE * (0.012f + 0.014f * consonant)).toInt()
-        var lp = 0f
+        // Consonant: a soft breathy onset (no click) — low-passed noise that swells and fades
+        val cLen = (RATE * (0.02f + 0.02f * consonant)).toInt()
+        var lp = 0f; var lp2 = 0f
         for (i in 0 until cLen) {
             val idx = start + i; if (idx >= buf.size) break
             val white = rnd.nextFloat() * 2f - 1f
-            lp += (0.2f + 0.5f * bright) * (white - lp)
-            buf[idx] += lp * amp * 1.5f * consonant * (1f - i.toFloat() / cLen)
+            lp += 0.12f * (white - lp); lp2 += 0.12f * (lp - lp2)
+            val p = i.toFloat() / cLen
+            buf[idx] += lp2 * amp * 0.9f * consonant * sin(PI * p).toFloat()
         }
         var phase = 0.0
         for (i in 0 until dur) {
@@ -322,9 +353,25 @@ object Music {
             val p = i.toFloat() / dur
             val glide = f * (1f + 0.05f * (0.5f - p)) * (1f + 0.004f * sin(2 * PI * 5.0 * i / RATE).toFloat())
             phase += 2 * PI * glide / RATE
-            val env = minOf(1f, p / 0.12f) * (if (p > 0.6f) (1f - p) / 0.4f else 1f)
+            val env = minOf(1f, p / 0.25f).let { it * it } * (if (p > 0.6f) (1f - p) / 0.4f else 1f)
             var v = 0.0
             for (h in 0 until harmonics) v += gains[h] * sin((h + 1) * phase)
+            buf[idx] += (v * env * amp).toFloat()
+        }
+    }
+
+    /** A sung note: warm "ooh"-ish harmonics with slow deep vibrato and a soft swell, as if across the room. */
+    private fun sing(buf: FloatArray, t0: Float, f: Float, durSec: Float, amp: Float, rnd: Random) {
+        val start = (t0 * RATE).toInt(); val dur = (durSec * RATE).toInt()
+        var phase = 0.0
+        for (i in 0 until dur) {
+            val idx = start + i; if (idx >= buf.size) break
+            val p = i.toFloat() / dur
+            val t = i.toFloat() / RATE
+            val vib = 1f + 0.018f * sin(2 * PI * 5.2 * t).toFloat() * minOf(1f, p * 3f)
+            phase += 2 * PI * f * vib / RATE
+            val env = (0.5f - 0.5f * kotlin.math.cos(PI.toFloat() * p)).let { it * it }
+            val v = sin(phase) + 0.5 * sin(2 * phase) + 0.2 * sin(3 * phase) + 0.1 * sin(4 * phase)
             buf[idx] += (v * env * amp).toFloat()
         }
     }

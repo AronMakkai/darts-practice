@@ -523,7 +523,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 },
                 contentAlignment = Alignment.Center
             ) {
-                Dartboard(geometry = if (hot) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
+                Dartboard(geometry = if (hot && current == 0) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
                 ThrowRing(
                     startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f,
                     accuracy = accuracy, opacity = aimOpacity.opacity, heat = if (hot) 1f else hotThrows.toFloat() / hotNeeded,
