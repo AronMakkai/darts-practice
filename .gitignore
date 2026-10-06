@@ -7,3 +7,7 @@ local.properties
 *.iml
 out/
 .DS_Store
+keystore.properties
+*.jks
+*.keystore
+*.aab
