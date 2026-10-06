@@ -27,7 +27,12 @@ private val LIZARDS = listOf(
     LizardPath(0.40f, 0.22f, 0.38f, 0.90f, 3.1f, 1.10f, Color(0xFF3F7D4E)),
     LizardPath(0.22f, 0.40f, 0.82f, 0.56f, 4.4f, 0.75f, Color(0xFF8A9A3B)),
     LizardPath(0.34f, 0.34f, 0.58f, 0.62f, 5.6f, 0.95f, Color(0xFF557A2F)),
-    LizardPath(0.16f, 0.18f, 0.94f, 0.70f, 2.4f, 0.70f, Color(0xFF4C8F3A))
+    LizardPath(0.16f, 0.18f, 0.94f, 0.70f, 2.4f, 0.70f, Color(0xFF4C8F3A)),
+    LizardPath(0.38f, 0.14f, 0.62f, 1.02f, 0.9f, 0.90f, Color(0xFF6B8E23)),
+    LizardPath(0.12f, 0.36f, 1.04f, 0.48f, 3.8f, 0.80f, Color(0xFF3F7D4E)),
+    LizardPath(0.28f, 0.26f, 0.72f, 0.86f, 5.0f, 1.05f, Color(0xFF8A9A3B)),
+    LizardPath(0.42f, 0.40f, 0.34f, 0.52f, 1.2f, 0.85f, Color(0xFF557A2F)),
+    LizardPath(0.20f, 0.10f, 0.88f, 1.10f, 4.0f, 0.65f, Color(0xFF4C8F3A))
 )
 
 /** The Lizzard's special power: lizards crawl all over the board. Purely visual; taps pass through. */
