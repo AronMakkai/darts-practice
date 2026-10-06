@@ -341,7 +341,8 @@ fun DartlessScreen(navController: NavHostController) {
                     value = accuracy,
                     enabled = true,
                     onChange = { accuracy = it },
-                    modifier = Modifier.weight(1f).height(26.dp)
+                    modifier = Modifier.weight(1f).height(26.dp),
+                    gradient = true
                 )
             }
             Text(

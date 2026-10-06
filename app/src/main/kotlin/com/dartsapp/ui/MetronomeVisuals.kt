@@ -542,7 +542,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawVectorDart(cent
  * orange to gold at the top, with a bevelled frame. Draggable when [enabled]; display-only otherwise.
  */
 @Composable
-fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier: Modifier = Modifier) {
+fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier: Modifier = Modifier, gradient: Boolean = false) {
     val shown by androidx.compose.animation.core.animateFloatAsState(
         targetValue = value.coerceIn(0f, 1f),
         animationSpec = androidx.compose.animation.core.tween(220),
@@ -572,6 +572,30 @@ fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier
         val innerW = w * 0.96f
         val innerH = h * 0.64f
         drawRect(Black, inner, Size(innerW, innerH))
+
+        if (gradient) {
+            // Accuracy style: one smooth sweep from red through yellow to white, no blocks
+            val brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                colors = listOf(Color(0xFFE0203A), Color(0xFFFF7A1A), Color(0xFFFFE23A), OffWhite),
+                startX = inner.x, endX = inner.x + innerW
+            )
+            // Dim track showing the full sweep
+            drawRect(brush, inner, Size(innerW, innerH), alpha = if (enabled) 0.18f else 0.12f)
+            val fillW = innerW * shown
+            if (fillW > 0f) {
+                drawRect(brush, inner, Size(fillW, innerH))
+                // Soft sheen along the top, and a glowing tip
+                drawRect(OffWhite.copy(alpha = 0.3f), inner, Size(fillW, innerH * 0.22f))
+                val tip = Offset(inner.x + fillW, inner.y + innerH / 2f)
+                drawCircle(OffWhite.copy(alpha = 0.35f), innerH * 0.9f, tip)
+                drawRect(OffWhite, Offset(inner.x + fillW - innerW * 0.004f, inner.y), Size(innerW * 0.008f, innerH))
+            }
+            for (q in 1..3) {
+                val x = inner.x + innerW * q / 4f
+                drawLine(Black.copy(alpha = 0.5f), Offset(x, inner.y), Offset(x, inner.y + innerH), strokeWidth = 1.5f)
+            }
+            return@Canvas
+        }
 
         val segments = 24
         val gap = innerW * 0.006f
@@ -839,7 +863,8 @@ fun HotMeter(value: Float, hot: Boolean, modifier: Modifier = Modifier) {
         }
         PowerBar(
             value = value, enabled = false, onChange = {},
-            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).fillMaxWidth().height(20.dp)
+            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).fillMaxWidth().height(20.dp),
+            gradient = true
         )
     }
 }
