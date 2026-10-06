@@ -448,11 +448,13 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         )
     }
 
+    // The swipe takes a dart out of the row: while a throw is armed, one fewer is shown resting in the hand
+    val armedNow = throwStartMs != 0L
     val inHand = when {
         matchOver || current != 0 -> 0
-        dartsInVisit >= 3 -> if (throwStartMs != 0L) 3 else 0
-        else -> 3 - dartsInVisit
-    }
+        dartsInVisit >= 3 -> if (armedNow) 2 else 0
+        else -> (3 - dartsInVisit) - (if (armedNow) 1 else 0)
+    }.coerceAtLeast(0)
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().padding(bottom = 130.dp)) {
