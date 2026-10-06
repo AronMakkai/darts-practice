@@ -40,16 +40,19 @@ enum class Opponent(
 /** Portrait of [who], flat-shaded like the coach. Fits a square. */
 @Composable
 fun OpponentHead(who: Opponent, modifier: Modifier = Modifier) {
-    if (who == Opponent.COACH) { CoachHead(modifier = modifier); return }
-    Canvas(modifier = modifier) {
-        when (who) {
-            Opponent.BEARD -> drawBeard()
-            Opponent.GRIN -> drawGrin()
-            Opponent.BLING -> drawBling()
-            Opponent.MULLET -> drawMullet()
-            Opponent.GOATEE -> drawGoatee()
-            Opponent.TACHE -> drawTache()
-            Opponent.COACH -> {}
+    if (who == Opponent.COACH) {
+        CoachHead(modifier = modifier)
+    } else {
+        Canvas(modifier = modifier) {
+            when (who) {
+                Opponent.BEARD -> drawBeard()
+                Opponent.GRIN -> drawGrin()
+                Opponent.BLING -> drawBling()
+                Opponent.MULLET -> drawMullet()
+                Opponent.GOATEE -> drawGoatee()
+                Opponent.TACHE -> drawTache()
+                Opponent.COACH -> {}
+            }
         }
     }
 }

@@ -51,46 +51,45 @@ fun TournamentScreen(navController: NavHostController) {
                 Spacer(Modifier.height(24.dp))
                 Button(onClick = { Tournament.start(); tick++ }) { Text("Draw the bracket") }
             }
-            return@Column
-        }
+        } else {
+            Bracket(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp))
 
-        Bracket(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp))
-
-        Spacer(Modifier.height(8.dp))
-        val opp = Tournament.currentOpponent()
-        when {
-            Tournament.youWon -> {
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("CHAMPION", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 6.sp, color = BrightGold, fontSize = 28.sp)
-                    Text("You beat the lot of them. The coach wants a word about that final, mind.", fontSize = 13.sp, color = PaleGold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
-                    Spacer(Modifier.height(14.dp))
-                    Button(onClick = { Tournament.start(); tick++ }) { Text("Run it again") }
-                }
-            }
-            Tournament.eliminatedIn >= 0 -> {
-                val champ = Tournament.champion
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Knocked out in the ${Tournament.rounds[Tournament.eliminatedIn].lowercase()}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Red)
-                    if (champ != null) Text("${champ.name} takes the title.", fontSize = 13.sp, color = Grey, modifier = Modifier.padding(top = 4.dp))
-                    Spacer(Modifier.height(14.dp))
-                    Button(onClick = { Tournament.start(); tick++ }) { Text("New tournament") }
-                }
-            }
-            opp != null -> {
-                val r = Tournament.round
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).background(Charcoal).padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OpponentHead(opp, modifier = Modifier.size(64.dp))
-                    Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(Tournament.rounds[r].uppercase(), fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Gold, fontSize = 12.sp)
-                        Text("vs ${opp.displayName}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OffWhite)
-                        Text("First to ${Tournament.legsPerSet(r) / 2 + 1} legs · ${opp.blurb}", fontSize = 11.sp, color = Grey, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(8.dp))
+            val opp = Tournament.currentOpponent()
+            when {
+                Tournament.youWon -> {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("CHAMPION", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 6.sp, color = BrightGold, fontSize = 28.sp)
+                        Text("You beat the lot of them. The coach wants a word about that final, mind.", fontSize = 13.sp, color = PaleGold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
+                        Spacer(Modifier.height(14.dp))
+                        Button(onClick = { Tournament.start(); tick++ }) { Text("Run it again") }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = { navController.navigate("bot501tour") }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Game on") }
+                Tournament.eliminatedIn >= 0 -> {
+                    val champ = Tournament.champion
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Knocked out in the ${Tournament.rounds[Tournament.eliminatedIn].lowercase()}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Red)
+                        if (champ != null) Text("${champ.name} takes the title.", fontSize = 13.sp, color = Grey, modifier = Modifier.padding(top = 4.dp))
+                        Spacer(Modifier.height(14.dp))
+                        Button(onClick = { Tournament.start(); tick++ }) { Text("New tournament") }
+                    }
+                }
+                opp != null -> {
+                    val r = Tournament.round
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).background(Charcoal).padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OpponentHead(opp, modifier = Modifier.size(64.dp))
+                        Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                            Text(Tournament.rounds[r].uppercase(), fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Gold, fontSize = 12.sp)
+                            Text("vs ${opp.displayName}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OffWhite)
+                            Text("First to ${Tournament.legsPerSet(r) / 2 + 1} legs · ${opp.blurb}", fontSize = 11.sp, color = Grey, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = { navController.navigate("bot501tour") }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Game on") }
+                }
             }
         }
     }
