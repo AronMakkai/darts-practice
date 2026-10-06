@@ -56,15 +56,15 @@ object Banter {
         ),
         Opponent.BLING to listOf(
             "Every one of these rings cost more than your average. Which, to be fair, isn't saying much.",
-            "That was so spectacular I'm gonna need you to never do it again.",
+            "I walked in to fireworks, a smoke machine and a brass section. You walked in. That was the difference.",
             "You missed the bull by so much the bull filed a missing persons report.",
-            "Darling, that wasn't a leg of darts. That was performance art. Bad performance art.",
-            "No cap, I've seen jewellers' scales throw more weight than that.",
-            "I came for a double-double and you gave me a double nothing. Rude.",
-            "Shine on, you absolute lamp-post. Shine on somewhere else.",
+            "Darling, that wasn't a leg of darts. That was performance art. And I'm the only one here who does performance.",
+            "No cap, my entrance had more hits than your three visits combined.",
+            "I came for a double-double and you gave me a double nothing. Rude. Unglamorous. Rude.",
             "That's the most mid thing I've seen since the bloke who tried to sell me a gold-plated spoon.",
-            "You play like a man who's been told doubles are optional. They are not optional, sweetheart.",
-            "Bless. Someone fetch this player a mirror so they can see what happened to them."
+            "This chain weighs more than your scoring average, and the chain is the lighter one I wear for weekdays.",
+            "You play like a man who's been told doubles are optional. They are not optional, sweetheart. The sequins are optional.",
+            "Bless. Someone fetch this player a mirror so they can see what happened to them. Mine's busy. I'm in it."
         ),
         Opponent.MULLET to listOf(
             "Eight pints in and I still hit more trebles than you. That's not a boast, that's a medical mystery.",
@@ -136,12 +136,12 @@ object Banter {
             "That's not a loss, that's a plot twist. Season two, I'm coming back different."
         ),
         Opponent.BLING to listOf(
-            "The lights were in my eyes. My own lights. Reflected off my own rings. Tragic.",
-            "Fine. You win. Don't get it tattooed, you'll regret it like I regret this chain.",
-            "Someone's clearly been practising, and it's rude to do it in front of me.",
+            "The lights were in my eyes. My own lights. Reflected off my own rings. Tragic. Iconic, but tragic.",
+            "Fine. You win. Don't get it tattooed, you'll regret it like I regret the third necklace.",
+            "The entrance was a ten. The exit will also be a ten. The bit in the middle we don't discuss.",
             "I was going for the spectacular. You went for the double. Boring. Effective. Boring.",
-            "Darling, that was lovely. I hated every second. Rematch, black tie.",
-            "I'll be back with more gold and fewer excuses. Probably more excuses."
+            "Darling, that was lovely. I hated every second. Rematch, black tie, I'm arriving by sedan chair.",
+            "I'll be back with more gold, a bigger walk-on and fewer excuses. Probably more excuses, in a cape."
         ),
         Opponent.MULLET to listOf(
             "Right, that's it, I'm switching to doubles. Whisky doubles. Then we'll see.",
