@@ -23,12 +23,14 @@ enum class Opponent(val displayName: String, val skill: Float, val blurb: String
     BLING("THE BLING", 0.76f, "Gold chains, gold rings, gold finishes"),
     MULLET("THE MULLET", 0.70f, "Feathered hair, leather jacket, steady pub scorer"),
     GOATEE("THE GOATEE", 0.84f, "Bleached spikes and a long goatee — ice cold on doubles"),
-    TACHE("THE TACHE", 0.88f, "Dark hair, neat moustache, never blinks — the power")
+    TACHE("THE TACHE", 0.88f, "Dark hair, neat moustache, never blinks — the power"),
+    COACH("THE COACH", 0.82f, "Your coach, cap and all — knows every route in the book")
 }
 
 /** Portrait of [who], flat-shaded like the coach. Fits a square. */
 @Composable
 fun OpponentHead(who: Opponent, modifier: Modifier = Modifier) {
+    if (who == Opponent.COACH) { CoachHead(modifier = modifier); return }
     Canvas(modifier = modifier) {
         when (who) {
             Opponent.BEARD -> drawBeard()
@@ -37,6 +39,7 @@ fun OpponentHead(who: Opponent, modifier: Modifier = Modifier) {
             Opponent.MULLET -> drawMullet()
             Opponent.GOATEE -> drawGoatee()
             Opponent.TACHE -> drawTache()
+            Opponent.COACH -> {}
         }
     }
 }

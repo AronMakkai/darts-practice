@@ -35,6 +35,7 @@ import com.dartsapp.logic.Sounds
 import com.dartsapp.logic.Announcer
 import com.dartsapp.logic.TimingPreset
 import com.dartsapp.logic.TimingPresets
+import com.dartsapp.logic.Tournament
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
@@ -86,15 +87,22 @@ private fun targetPoint(hit: Hit): Offset {
  * beat — and the bot throws with an accuracy set by the difficulty. Legs and sets as in 2-player.
  */
 @Composable
-fun Bot501Screen(navController: NavHostController) {
+fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) {
     val context = LocalContext.current
     val difficulty = remember { Settings.difficulty(context) }
     val aimOpacity = remember { Settings.aimOpacity(context) }
     var perfectTrigger by remember { mutableStateOf(0) }
     var hotThrows by remember { mutableStateOf(0) }      // consecutive on-pace throws -> ring heat
     // Opponent: a character with a base skill, scaled by the difficulty setting
-    var opponent by remember { mutableStateOf(Opponent.values()[Settings.opponentIndex(context).coerceIn(0, Opponent.values().size - 1)]) }
-    val botAccuracy = (opponent.skill * when (difficulty) { Difficulty.EASY -> 0.78f; Difficulty.NORMAL -> 1.0f; Difficulty.HARD -> 1.1f }).coerceIn(0.3f, 0.95f)
+    val tourRound = if (tournament) Tournament.round else 0
+    var opponent by remember {
+        mutableStateOf(
+            if (tournament) (Tournament.currentOpponent() ?: Opponent.MULLET)
+            else Opponent.values()[Settings.opponentIndex(context).coerceIn(0, Opponent.values().size - 1)]
+        )
+    }
+    val tourMul = if (tournament) Tournament.skillMultiplier(tourRound) else 1f
+    val botAccuracy = (opponent.skill * tourMul * when (difficulty) { Difficulty.EASY -> 0.78f; Difficulty.NORMAL -> 1.0f; Difficulty.HARD -> 1.1f }).coerceIn(0.3f, 0.96f)
     val botName = opponent.displayName
     val presets = remember { TimingPresets.load(context) }
     var presetName by remember { mutableStateOf(TimingPresets.selectedOrDefault(context, presets)) }
@@ -102,10 +110,11 @@ fun Bot501Screen(navController: NavHostController) {
     var presetMenuOpen by remember { mutableStateOf(false) }
     val model = remember { AccuracyModel() }
 
-    var setupOpen by remember { mutableStateOf(true) }
+    var setupOpen by remember { mutableStateOf(!tournament) }
     var startScore by remember { mutableStateOf(501) }
-    var legsPerSet by remember { mutableStateOf(3) }
+    var legsPerSet by remember { mutableStateOf(if (tournament) Tournament.legsPerSet(tourRound) else 3) }
     var setsToWin by remember { mutableStateOf(1) }
+    var tourReported by remember { mutableStateOf(false) }
 
     var sides by remember { mutableStateOf(listOf(Side("YOU", 501), Side(botName, 501))) }
     var current by remember { mutableStateOf(0) }
@@ -188,6 +197,7 @@ fun Bot501Screen(navController: NavHostController) {
         Announcer.gameOn()
         version++
     }
+    if (tournament) LaunchedEffect(Unit) { if (sides[0].darts == 0 && sides[1].darts == 0 && !matchOver) startMatch() }
 
     /** Handles a leg won by side [i]; returns true if the match is over. */
     fun legWon(i: Int, visitScore: Int, dartsThisLeg: Int) {
@@ -203,6 +213,7 @@ fun Bot501Screen(navController: NavHostController) {
             if (s.sets >= setsToWin) {
                 matchOver = true
                 text = if (i == 0) "YOU WIN THE MATCH!" else "$botName wins the match"
+                if (tournament && !tourReported) { tourReported = true; Tournament.recordUserResult(i == 0) }
                 popText = if (i == 0) "WINNER" else "LOST"; popHuge = true; popOrigin = panelCentre(i); popTrigger++
                 if (i == 0) Sounds.playCheckoutJingle() else Sounds.playBust()
             }
@@ -359,17 +370,17 @@ fun Bot501Screen(navController: NavHostController) {
             text = {
                 Column {
                     Text("Opponent", fontSize = 12.sp, color = Grey)
-                    for (row in Opponent.values().toList().chunked(3)) {
+                    for (row in Opponent.values().toList().chunked(4)) {
                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                             for (o in row) {
                                 val sel = o == opponent
                                 Box(
-                                    modifier = Modifier.size(68.dp)
+                                    modifier = Modifier.size(58.dp)
                                         .background(if (sel) DarkRed else Charcoal)
                                         .border(2.dp, if (sel) Gold else Color.Transparent)
                                         .clickable { opponent = o; Settings.setOpponentIndex(context, o.ordinal) },
                                     contentAlignment = Alignment.Center
-                                ) { OpponentHead(o, modifier = Modifier.size(62.dp)) }
+                                ) { OpponentHead(o, modifier = Modifier.size(52.dp)) }
                             }
                         }
                     }
@@ -396,9 +407,12 @@ fun Bot501Screen(navController: NavHostController) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().padding(bottom = 130.dp)) {
-            ScreenHeader(if (startScore == 301) "301 · 1 Player" else "501 · 1 Player", navController) {
+            ScreenHeader(
+                if (tournament) "${Tournament.rounds[tourRound.coerceIn(0, 2)]} · first to ${legsPerSet / 2 + 1}" else if (startScore == 301) "301 · 1 Player" else "501 · 1 Player",
+                navController
+            ) {
                 IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
-                TextButton(onClick = { setupOpen = true }) { Text("Match", color = Gold) }
+                if (!tournament) TextButton(onClick = { setupOpen = true }) { Text("Match", color = Gold) }
             }
             if (version < 0) Text("")
 
@@ -478,7 +492,8 @@ fun Bot501Screen(navController: NavHostController) {
         )
         DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp, bottom = 22.dp).size(width = 132.dp, height = 90.dp))
         if (matchOver) {
-            Button(onClick = { setupOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("New match") }
+            if (tournament) Button(onClick = { navController.popBackStack() }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("Back to the draw") }
+            else Button(onClick = { setupOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("New match") }
         }
 
         BigPop(trigger = popTrigger, text = popText, huge = popHuge, origin = popOrigin, modifier = Modifier.fillMaxSize())

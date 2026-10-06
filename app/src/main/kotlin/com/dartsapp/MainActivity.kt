@@ -32,6 +32,7 @@ import com.dartsapp.ui.SettingsScreen
 import com.dartsapp.ui.FiveOhOneScreen
 import com.dartsapp.ui.Bot501Screen
 import com.dartsapp.ui.SubMenuScreen
+import com.dartsapp.ui.TournamentScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,7 +61,7 @@ fun DartsApp() {
         if (!foreground) { Music.stopAll(); return }
         when (r) {
             "menu", "game", "irl", "settings" -> if (Settings.musicOn(context)) Music.startMenu() else Music.stopAll()
-            "dartless", "bot501", "x01", "valuechecker" -> if (Settings.crowdOn(context)) Music.startCrowd() else Music.stopAll()
+            "dartless", "bot501", "bot501tour", "x01", "valuechecker" -> if (Settings.crowdOn(context)) Music.startCrowd() else Music.stopAll()
             else -> Music.stopAll()
         }
     }
@@ -86,12 +87,15 @@ fun DartsApp() {
         composable("settings") { SettingsScreen(navController) }
         composable("x01") { FiveOhOneScreen(navController) }
         composable("bot501") { Bot501Screen(navController) }
+        composable("bot501tour") { Bot501Screen(navController, tournament = true) }
+        composable("tournament") { TournamentScreen(navController) }
         composable("game") {
             SubMenuScreen(
                 navController, "GAME",
                 listOf(
                     "CHECKOUT GAME" to "dartless",
                     "501  ·  1 PLAYER" to "bot501",
+                    "TOURNAMENT" to "tournament",
                     "FAST 501  ·  SOLO" to "valuechecker"
                 )
             )
