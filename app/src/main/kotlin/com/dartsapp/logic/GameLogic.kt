@@ -200,6 +200,25 @@ object CheckoutLogic {
         41 to listOf("S1 D20", "S9 D16"),
     )
 
+    /**
+     * HOT STREAK landing: the coach's dart for [remaining] — the first dart of the book route (or of
+     * the setup route above 170). If the player tapped the bed that starts another book route, that
+     * route's first dart is taken instead, so a deliberate switch of route is honoured.
+     */
+    fun guidedDart(remaining: Int, tapped: Hit?): Hit {
+        if (remaining in 2..170) {
+            val routes = allFinishes(remaining)
+            if (tapped != null && tapped.ring != Ring.MISS) {
+                routes.firstOrNull { it.first().number == tapped.number && (it.first().ring == tapped.ring || tapped.ring == Ring.SINGLE || tapped.ring == Ring.TREBLE) }
+                    ?.let { return it.first() }
+            }
+            routes.firstOrNull()?.let { return it.first() }
+            return Hit(if (remaining - 20 >= 2) 20 else 1, Ring.SINGLE)
+        }
+        val first = setupAdvice(remaining)?.route?.split(" ")?.firstOrNull() ?: "T20"
+        return parseToken(first)
+    }
+
     /** Parses a book token into a [Hit]. */
     fun parseToken(tok: String): Hit = when {
         tok == "BULL" || tok == "Bull" -> Hit(25, Ring.BULL)

@@ -232,18 +232,10 @@ fun DartlessScreen(navController: NavHostController) {
 
         val target = Board.hitTest(aim.x, aim.y, BoardGeo)
         val landing = if (hot && metronomeMode) {
-            // Land exactly on what you meant: the book dart if you tapped its bed, else the centre of the bed you tapped
-            val book = CheckoutLogic.bestFinish(remaining)?.firstOrNull()
-            val intended = when {
-                book == null -> if (target.ring == Ring.MISS) Hit(20, Ring.SINGLE) else target
-                target.ring == Ring.MISS -> book
-                target.number == book.number -> book
-                (target.ring == Ring.BULL || target.ring == Ring.OUTER_BULL) && (book.ring == Ring.BULL || book.ring == Ring.OUTER_BULL) -> book
-                else -> target
-            }
+            // Land on the coach's dart (the book route), honouring a tap that picks another book route
             hotDartsLeft--
             if (hotDartsLeft == 0) hotThrows = 0
-            boardPoint(intended, BoardGeo)
+            boardPoint(CheckoutLogic.guidedDart(remaining, target), BoardGeo)
         } else null
         val (lx, ly) = if (landing != null) landing.x to landing.y else model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, BoardGeo)
@@ -344,7 +336,7 @@ fun DartlessScreen(navController: NavHostController) {
             Text(if (hot) "HOT!" else "ACCURACY", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp,
                 color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(78.dp))
             if (metronomeMode) {
-                HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(34.dp))
+                HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(56.dp))
             } else {
                 PowerBar(
                     value = accuracy,

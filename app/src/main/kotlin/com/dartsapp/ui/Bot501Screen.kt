@@ -289,18 +289,11 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         lastTapMs = now
 
         val landing = if (hot) {
-            // Land exactly on what you meant: the book dart if you tapped its bed, else the centre of the bed you tapped
+            // Land on the coach's dart (the book route), honouring a tap that picks another book route
             val tapped = Board.hitTest(aim.x, aim.y, Geo)
-            val (book, _) = botTarget(sides[0].remaining, false)
-            val intended = when {
-                tapped.ring == Ring.MISS -> book
-                tapped.number == book.number -> book
-                tapped.ring == Ring.BULL || tapped.ring == Ring.OUTER_BULL -> if (book.ring == Ring.BULL || book.ring == Ring.OUTER_BULL) book else tapped
-                else -> tapped
-            }
             hotDartsLeft--
             if (hotDartsLeft == 0) hotThrows = 0
-            targetPoint(intended)
+            targetPoint(CheckoutLogic.guidedDart(sides[0].remaining, tapped))
         } else null
         val (lx, ly) = if (landing != null) landing.x to landing.y else model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, Geo)
@@ -482,7 +475,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             // Accuracy + preset
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(if (hot) "HOT!" else "ACCURACY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(72.dp))
-                HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(34.dp))
+                HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(56.dp))
                 Box {
                     TextButton(onClick = { presetMenuOpen = true }, contentPadding = PaddingValues(horizontal = 6.dp)) {
                         Text(preset?.name ?: "Preset", fontSize = 11.sp, color = if (preset != null) PaleGold else Gold, maxLines = 1)

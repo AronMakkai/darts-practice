@@ -806,22 +806,34 @@ fun HotMeter(value: Float, hot: Boolean, modifier: Modifier = Modifier) {
     }
     androidx.compose.foundation.layout.Box(modifier = modifier) {
         if (hot) {
-            FlameFrame(modifier = Modifier.matchParentSize().padding(bottom = 10.dp))
             Canvas(modifier = Modifier.matchParentSize()) {
                 val pulse = 0.5f + 0.5f * sin(t * 7f)
                 val barTop = size.height - 20.dp.toPx()
+                // Big soft glow behind everything
                 drawRoundRect(
-                    BrightGold.copy(alpha = 0.25f + 0.25f * pulse),
+                    Color(0xFFFF5A10).copy(alpha = 0.35f + 0.3f * pulse),
+                    topLeft = Offset(-14.dp.toPx(), barTop - 16.dp.toPx()),
+                    size = Size(size.width + 28.dp.toPx(), 20.dp.toPx() + 30.dp.toPx()),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx())
+                )
+                drawRoundRect(
+                    BrightGold.copy(alpha = 0.45f + 0.35f * pulse),
                     topLeft = Offset(-6.dp.toPx(), barTop - 6.dp.toPx()),
                     size = Size(size.width + 12.dp.toPx(), 20.dp.toPx() + 12.dp.toPx()),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx())
                 )
+            }
+            // Flames the full height of the meter box, licking well above the bar
+            FlameFrame(modifier = Modifier.matchParentSize().padding(bottom = 8.dp))
+            Canvas(modifier = Modifier.matchParentSize()) {
+                val pulse = 0.5f + 0.5f * sin(t * 7f)
+                val barTop = size.height - 20.dp.toPx()
                 drawRoundRect(
-                    Color(0xFFFF7A1A).copy(alpha = 0.5f + 0.4f * pulse),
+                    OffWhite.copy(alpha = 0.6f + 0.4f * pulse),
                     topLeft = Offset(-2.dp.toPx(), barTop - 2.dp.toPx()),
                     size = Size(size.width + 4.dp.toPx(), 20.dp.toPx() + 4.dp.toPx()),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(5.dp.toPx()),
-                    style = Stroke(width = 2.dp.toPx())
+                    style = Stroke(width = 3.dp.toPx())
                 )
             }
         }
