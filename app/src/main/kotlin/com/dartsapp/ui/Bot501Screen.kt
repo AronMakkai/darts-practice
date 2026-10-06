@@ -550,6 +550,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                         drawRect(Color.Black.copy(alpha = (1f - boardBrightness).coerceIn(0f, 1f)))
                     }
                 }
+                // CREEPY CRAWLIES: the Lizzard's lizards wander over the board on your turn
+                if (powerActive && current == 0 && opponent == Opponent.GOATEE) {
+                    LizardSwarm(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                }
                 ThrowRing(
                     startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f,
                     accuracy = accuracy, opacity = aimOpacity.opacity, heat = if (hot) 1f else hotThrows.toFloat() / hotNeeded,
