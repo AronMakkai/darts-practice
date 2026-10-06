@@ -33,6 +33,7 @@ import com.dartsapp.logic.Difficulty
 import com.dartsapp.logic.Settings
 import com.dartsapp.logic.Sounds
 import com.dartsapp.logic.Announcer
+import com.dartsapp.logic.Banter
 import com.dartsapp.logic.TimingPreset
 import com.dartsapp.logic.TimingPresets
 import com.dartsapp.logic.Tournament
@@ -106,6 +107,9 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var hotThrows by remember { mutableStateOf(0) }      // consecutive on-pace throws -> ring heat
     var hotDartsLeft by remember { mutableStateOf(0) }   // > 0 while HOT STREAK is on (fat beds)
     var hotNeeded by remember { mutableStateOf(HOT_TAPS) } // perfect darts needed for the next streak; grows each time
+    var banterKey by remember { mutableStateOf(0) }       // bumps when a match ends -> the opponent has a word
+    var banterText by remember { mutableStateOf("") }
+    var banterOpen by remember { mutableStateOf(false) }
     val hot = hotDartsLeft > 0
     // Opponent: a character with a base skill, scaled by the difficulty setting
     val tourRound = if (tournament) Tournament.round else 0
@@ -228,6 +232,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 matchOver = true
                 text = if (i == 0) "YOU WIN THE MATCH!" else "$botName wins the match"
                 if (tournament && !tourReported) { tourReported = true; Tournament.recordUserResult(i == 0) }
+                banterText = Banter.line(opponent, botWon = i == 1)
+                banterKey++
                 popText = if (i == 0) "WINNER" else "LOST"; popHuge = true; popOrigin = panelCentre(i); popTrigger++
                 if (i == 0) Sounds.playCheckoutJingle() else Sounds.playBust()
             }
@@ -396,6 +402,15 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     if (coachOpen) {
         CoachTipDialog(remaining = sides[0].remaining, playerName = "You", onDismiss = { coachOpen = false })
     }
+    // After the match: the opponent appears for a word
+    LaunchedEffect(banterKey) {
+        if (banterKey == 0) return@LaunchedEffect
+        delay(1600)
+        banterOpen = true
+    }
+    if (banterOpen) {
+        BanterDialog(opponent = opponent, text = banterText, youWon = sides[0].sets >= setsToWin, onDismiss = { banterOpen = false })
+    }
 
     if (setupOpen) {
         AlertDialog(
@@ -532,5 +547,40 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
 
         BigPop(trigger = popTrigger, text = popText, huge = popHuge, origin = popOrigin, modifier = Modifier.fillMaxSize())
         BustOverlay(trigger = bustTrigger, origin = bustOrigin, modifier = Modifier.fillMaxSize())
+    }
+}
+
+
+/** The opponent's post-match word: big portrait, name plate and a speech bubble. Tap anywhere to close. */
+@Composable
+internal fun BanterDialog(opponent: Opponent, text: String, youWon: Boolean, onDismiss: () -> Unit) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.fillMaxWidth().clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { onDismiss() },
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Speech bubble
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                    .background(OffWhite, CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .border(BorderStroke(3.dp, Black), CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .padding(16.dp)
+            ) {
+                Text(text, color = Black, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            }
+            // Bubble tail
+            androidx.compose.foundation.Canvas(modifier = Modifier.size(width = 30.dp, height = 18.dp)) {
+                val path = androidx.compose.ui.graphics.Path().apply { moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width * 0.3f, size.height); close() }
+                drawPath(path, Black)
+                val inner = androidx.compose.ui.graphics.Path().apply { moveTo(4f, 0f); lineTo(size.width - 6f, 0f); lineTo(size.width * 0.32f, size.height - 6f); close() }
+                drawPath(inner, OffWhite)
+            }
+            OpponentHead(opponent, modifier = Modifier.size(190.dp))
+            Box(modifier = Modifier.background(if (youWon) Charcoal else DarkRed).border(2.dp, Gold).padding(horizontal = 18.dp, vertical = 6.dp)) {
+                Text(opponent.displayName, fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, fontWeight = FontWeight.Black, color = Gold, fontSize = 16.sp)
+            }
+            Text(if (youWon) "sore loser" else "winner, apparently", fontSize = 11.sp, color = Grey, modifier = Modifier.padding(top = 6.dp))
+            Text("tap to continue", fontSize = 11.sp, color = Grey.copy(alpha = 0.7f), modifier = Modifier.padding(top = 14.dp))
+        }
     }
 }
