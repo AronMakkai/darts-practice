@@ -8,6 +8,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -132,6 +134,56 @@ fun BlingGlare(strength: Float, modifier: Modifier = Modifier) {
                 drawLine(Color.White.copy(alpha = a), Offset(px, py - r), Offset(px, py + r), strokeWidth = r * 0.14f, cap = StrokeCap.Round)
                 drawCircle(gold.copy(alpha = a), r * 0.22f, Offset(px, py))
             }
+        }
+    }
+}
+
+private const val DRUNK_AGSL = """
+uniform shader content;
+uniform float time;
+uniform float amp;
+uniform float2 size;
+half4 main(float2 p) {
+    float2 q = p;
+    q.x += amp * sin(p.y / size.y * 11.0 + time * 2.3);
+    q.y += amp * cos(p.x / size.x * 9.0 + time * 1.7);
+    return content.eval(q);
+}
+"""
+
+/** The wavy part of the drunk effect. Needs Android 13+, so it lives in its own class. */
+@androidx.annotation.RequiresApi(33)
+private object DrunkWaves {
+    private val shader = android.graphics.RuntimeShader(DRUNK_AGSL)
+    fun effect(time: Float, amp: Float, w: Float, h: Float): androidx.compose.ui.graphics.RenderEffect {
+        shader.setFloatUniform("time", time)
+        shader.setFloatUniform("amp", amp)
+        shader.setFloatUniform("size", w, h)
+        return android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
+    }
+}
+
+/**
+ * The Jockey's special power: you've had a pint too many. The board sways, stretches and (on
+ * Android 13+) ripples in waves. [strength] 0..1. Pass `active = false` for no effect.
+ */
+@Composable
+fun Modifier.drunk(active: Boolean, strength: Float): Modifier {
+    var t by remember { mutableStateOf(0f) }
+    LaunchedEffect(active) {
+        if (!active) return@LaunchedEffect
+        val start = withFrameNanos { it }
+        while (true) t = (withFrameNanos { it } - start) / 1_000_000_000f
+    }
+    val s = strength.coerceIn(0f, 1f)
+    return if (!active) this else this.graphicsLayer {
+        rotationZ = 5f * s * sin(t * 1.1f)
+        translationX = size.width * 0.035f * s * sin(t * 0.8f)
+        translationY = size.height * 0.02f * s * cos(t * 0.6f)
+        scaleX = 1f + 0.05f * s * sin(t * 1.7f)
+        scaleY = 1f + 0.05f * s * cos(t * 1.3f)
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            renderEffect = DrunkWaves.effect(t, size.width * 0.03f * s, size.width, size.height)
         }
     }
 }

@@ -117,6 +117,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var powerUsed by remember { mutableStateOf(false) }       // once per leg
     var boardBrightness by remember { mutableStateOf(0.25f) } // TEMP tuning value for the Viking's LIGHTS OUT
     var glareStrength by remember { mutableStateOf(0.7f) }    // TEMP tuning value for the Bling's glare
+    var wobbleStrength by remember { mutableStateOf(0.6f) }   // TEMP tuning value for the Jockey's drunk wobble
     // Opponent: a character with a base skill, scaled by the difficulty setting
     val tourRound = if (tournament) Tournament.round else 0
     var opponent by remember {
@@ -544,7 +545,9 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 },
                 contentAlignment = Alignment.Center
             ) {
-                Dartboard(geometry = if (hot && current == 0) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
+                // ONE FOR THE ROAD: the Jockey gets you drunk — the board sways and ripples on your turn
+                val drunkNow = powerActive && current == 0 && opponent == Opponent.MULLET
+                Dartboard(modifier = Modifier.drunk(drunkNow, wobbleStrength), geometry = if (hot && current == 0) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
                 // LIGHTS OUT: the Viking stands in the light on your turn. Drawn under the aim ring; taps pass through.
                 if (powerActive && current == 0 && opponent == Opponent.BEARD) {
                     androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
@@ -581,6 +584,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 if (powerActive && opponent == Opponent.BEARD) {
                     Text("BRIGHT ${(boardBrightness * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
                     Slider(value = boardBrightness, onValueChange = { boardBrightness = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
+                }
+                if (powerActive && opponent == Opponent.MULLET) {
+                    Text("WOBBLE ${(wobbleStrength * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
+                    Slider(value = wobbleStrength, onValueChange = { wobbleStrength = it }, valueRange = 0f..1f, modifier = Modifier.height(32.dp))
                 }
                 if (powerActive && opponent == Opponent.BLING) {
                     Text("GLARE ${(glareStrength * 100).toInt()}%", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = PaleGold)
