@@ -62,7 +62,7 @@ fun TournamentScreen(navController: NavHostController) {
                 Tournament.youWon -> {
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("CHAMPION", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 6.sp, color = BrightGold, fontSize = 28.sp)
-                        Text("You beat the lot of them. The Coach has seen enough — he's picking up his darts. You can now play him in 501, and he's in the next draw.", fontSize = 13.sp, color = PaleGold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
+                        Text("You beat the lot of them. The Coach has seen enough — he's picking up his darts. He's in the draw from now on.", fontSize = 13.sp, color = PaleGold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
                         Spacer(Modifier.height(14.dp))
                         Button(onClick = { Tournament.start(coachUnlocked); tick++ }) { Text("Run it again") }
                     }

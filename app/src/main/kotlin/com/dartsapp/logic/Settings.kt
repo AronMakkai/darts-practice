@@ -48,7 +48,7 @@ object Settings {
     fun announcerOn(ctx: Context) = flag(ctx, "announcer", true)
     fun setAnnouncerOn(ctx: Context, v: Boolean) = setFlag(ctx, "announcer", v)
 
-    /** The Coach is locked as an opponent until you have won a tournament. */
+    /** The Coach only plays in tournaments, and only joins the draw once you have won one. */
     fun coachUnlocked(ctx: Context): Boolean = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("coachUnlocked", false)
     fun setCoachUnlocked(ctx: Context, on: Boolean) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("coachUnlocked", on).apply() }
 
