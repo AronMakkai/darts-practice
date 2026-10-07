@@ -239,30 +239,33 @@ object Music {
     private val vowels = arrayOf(730f to 1090f, 530f to 1840f, 270f to 2290f, 570f to 840f, 300f to 870f)
 
     /**
-     * 16 s of a busy pub: a handful of near voices you can almost follow — proper syllables with
+     * 64 s of a busy pub: a handful of near voices you can almost follow — proper syllables with
      * consonant onsets, vowel colour and sentence intonation, taking turns — over a dozen distant,
      * duller voices, with the odd laugh, a whistled tune and a glass clink. No noise bed, so it
      * reads as people rather than a cabin hum.
      */
     private fun renderCrowd(): ShortArray {
-        val len = 16f
+        val len = 64f
         val n = (RATE * len).toInt()
         val buf = FloatArray(n)
         val rnd = Random(29)
 
-        // Near voices: distinct pitches, loud enough to pick out, speaking in turns
-        val near = arrayOf(105f, 125f, 150f, 195f, 230f)
-        var turnEnd = 0f
-        for (round in 0 until 9) {
-            val v = rnd.nextInt(near.size)
-            val start = turnEnd - rnd.nextFloat() * 0.3f               // slight overlap of turns
-            val phraseLen = talk(buf, start.coerceAtLeast(0f), near[v], amp = 0.05f, bright = 1f, rnd = rnd, syllablesMin = 5, syllablesMax = 14)
-            turnEnd = start + phraseLen + 0.2f + rnd.nextFloat() * 0.5f
-            if (turnEnd > len - 1f) break
+        // Near voices: distinct pitches, loud enough to pick out. Three conversations run side by side,
+        // each with its own speakers taking turns.
+        val tables = arrayOf(floatArrayOf(105f, 150f, 230f), floatArrayOf(125f, 195f, 260f), floatArrayOf(112f, 170f, 215f))
+        for ((ti, table) in tables.withIndex()) {
+            var turnEnd = ti * 0.7f
+            val amp = if (ti == 0) 0.05f else 0.038f                       // one table is closest
+            while (turnEnd < len - 1f) {
+                val v = rnd.nextInt(table.size)
+                val start = (turnEnd - rnd.nextFloat() * 0.3f).coerceAtLeast(0f)   // slight overlap of turns
+                val phraseLen = talk(buf, start, table[v], amp = amp, bright = 1f, rnd = rnd, syllablesMin = 5, syllablesMax = 14)
+                turnEnd = start + phraseLen + 0.2f + rnd.nextFloat() * (if (ti == 0) 0.5f else 1.4f)
+            }
         }
         // Distant voices: quieter, duller, overlapping freely
-        for (voice in 0 until 12) {
-            val base = 95f + rnd.nextFloat() * 150f
+        for (voice in 0 until 22) {
+            val base = 95f + rnd.nextFloat() * 170f
             var t = rnd.nextFloat() * 2f
             while (t < len) {
                 t += talk(buf, t, base, amp = 0.012f, bright = 0.35f, rnd = rnd, syllablesMin = 3, syllablesMax = 9)
@@ -270,53 +273,65 @@ object Music {
             }
         }
         // Laughter: two bursts, "ha-ha-ha-ha" rising then tailing off
-        for (k in 0 until 2) {
-            val at = 2.5f + k * 7.5f + rnd.nextFloat()
-            val f0 = if (k == 0) 170f else 240f
+        for (k in 0 until 8) {
+            val at = 2.5f + k * 7.5f + rnd.nextFloat() * 2f
+            val f0 = if (k % 2 == 0) 170f + rnd.nextFloat() * 20f else 240f + rnd.nextFloat() * 30f
             for (i in 0 until 5 + rnd.nextInt(3)) {
                 val f = f0 * (1.15f - 0.05f * i)
                 syllable(buf, at + i * 0.17f, f, vowels[0], 0.13f, 0.045f * (1f - i * 0.1f), 1f, consonant = 0.5f, rnd = rnd)
             }
         }
-        // Whistling: one quiet snatch of the house tune, far across the room
+        // Whistling: a quiet snatch of the house tune, far across the room — only now and then (about
+        // every half minute), and each time by someone else, in a different octave
         val tune = intArrayOf(0, 2, 3, 7, 3, 2, 0, -2, 0)
-        run {
-            var t = 6f + rnd.nextFloat()
-            val root = 1760f     // A6 — the same key as the menu track
+        for ((w, root) in floatArrayOf(1760f, 880f).withIndex()) {       // A6, then A5 — the menu track's key
+            var t = 9f + w * 32f + rnd.nextFloat() * 4f
             for ((i, step) in tune.withIndex()) {
                 val dur = if (i == tune.size - 1) 0.5f else 0.22f + rnd.nextFloat() * 0.12f
-                whistle(buf, t, root * 2f.pow(step / 12f), dur, 0.018f)
+                whistle(buf, t, root * 2f.pow(step / 12f), dur, if (root < 1000f) 0.024f else 0.018f)
                 t += dur * 1.05f
             }
         }
-        // Glasses clinking softly, sparingly: a few pint glasses (low ring) and wine glasses (high ring)
-        for (k in 0 until 3) {
-            val at = 0.5f + rnd.nextFloat() * (len - 1f)
-            val pint = rnd.nextFloat() < 0.5f
-            val f = if (pint) 900f + rnd.nextFloat() * 500f else 2400f + rnd.nextFloat() * 1600f
-            val start = (at * RATE).toInt(); val dur = (0.5f * RATE).toInt()
-            for (i in 0 until dur) {
-                val idx = start + i; if (idx >= n) break
-                val tt = i.toFloat() / RATE
-                val attack = minOf(1f, i / (RATE * 0.004f))
-                buf[idx] += ((sin(2 * PI * f * tt) + 0.4 * sin(2 * PI * f * 1.5 * tt) + 0.2 * sin(2 * PI * f * 2.76 * tt)) * exp(-tt * 9f) * 0.028f * attack).toFloat()
+        // Glasses clinking: pint glasses (low ring) and wine glasses (high ring). Roughly one every
+        // second and a half, unevenly spaced, each glass a little sharp or flat of the last.
+        run {
+            var at = 0.4f
+            while (at < len - 0.6f) {
+                val pint = rnd.nextFloat() < 0.55f
+                val f = (if (pint) 1150f else 3100f) * (0.94f + rnd.nextFloat() * 0.12f)
+                val loud = 0.02f + rnd.nextFloat() * 0.012f
+                // sometimes a proper "cheers": two glasses a moment apart
+                val hits = if (rnd.nextFloat() < 0.25f) 2 else 1
+                for (hNo in 0 until hits) {
+                    val ff = f * (1f + hNo * 0.035f)
+                    val start = ((at + hNo * 0.09f) * RATE).toInt(); val dur = (0.5f * RATE).toInt()
+                    for (i in 0 until dur) {
+                        val idx = start + i; if (idx >= n) break
+                        val tt = i.toFloat() / RATE
+                        val attack = minOf(1f, i / (RATE * 0.004f))
+                        buf[idx] += ((sin(2 * PI * ff * tt) + 0.4 * sin(2 * PI * ff * 1.5 * tt) + 0.2 * sin(2 * PI * ff * 2.76 * tt)) * exp(-tt * 9f) * loud * attack).toFloat()
+                    }
+                }
+                at += 0.9f + rnd.nextFloat() * 1.4f
             }
         }
         // Someone singing along in the corner: a slow pentatonic tune, lots of vibrato, far away
         run {
             val notes = intArrayOf(0, 2, 3, 7, 3, 2, 0, -2, 0, 2, 3, 2, 0)
-            var t = 1.5f
             val root = 220f   // A3 — the house tune, same key as the menu
-            for ((i, st) in notes.withIndex()) {
-                val dur = if (i % 4 == 3) 0.9f else 0.45f
-                sing(buf, t, root * 2f.pow(st / 12f), dur, 0.03f, rnd)
-                t += dur * 1.02f
-                if (t > len - 0.5f) break
+            for (verse in 0 until 2) {
+                var t = 1.5f + verse * 37f
+                for ((i, st) in notes.withIndex()) {
+                    val dur = if (i % 4 == 3) 0.9f else 0.45f
+                    sing(buf, t, root * 2f.pow(st / 12f), dur, 0.03f, rnd)
+                    t += dur * 1.02f
+                    if (t > len - 0.5f) break
+                }
             }
         }
         // A distant table cheering something: a soft, far-off "heyyy" from a few voices
-        for (k in 0 until 2) {
-            val at = 3f + k * 7f + rnd.nextFloat() * 1.5f
+        for (k in 0 until 8) {
+            val at = 3f + k * 7.6f + rnd.nextFloat() * 1.5f
             for (v in 0 until 5) {
                 val f0 = 140f + rnd.nextFloat() * 160f
                 val start = ((at + rnd.nextFloat() * 0.12f) * RATE).toInt(); val dur = ((0.6f + rnd.nextFloat() * 0.4f) * RATE).toInt()
