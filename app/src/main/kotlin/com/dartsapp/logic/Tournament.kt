@@ -4,16 +4,17 @@ import com.dartsapp.ui.Opponent
 import kotlin.random.Random
 
 /**
- * An eight-player knockout: you, the six characters and the coach. Quarter-finals, semi-finals and
+ * An eight-slot knockout: you and the six characters, plus the Coach once you have won a tournament
+ * (until then the top seed gets a bye in his place). Quarter-finals, semi-finals and
  * the final. You play your own matches in 501 vs bot; the rest of the draw is simulated from the
  * players' skill. Each round is longer (first to 2, 3, then 4 legs) and the opposition throws
  * sharper, so it gets harder as you go.
  */
 object Tournament {
     /** A player in the draw. [opponent] is null for you. */
-    class Entrant(val name: String, val opponent: Opponent?) {
-        val skill: Float get() = opponent?.skill ?: 0.8f
-        val isYou: Boolean get() = opponent == null
+    class Entrant(val name: String, val opponent: Opponent?, val bye: Boolean = false) {
+        val skill: Float get() = if (bye) 0f else opponent?.skill ?: 0.8f
+        val isYou: Boolean get() = opponent == null && !bye
     }
 
     val rounds = listOf("Quarter-final", "Semi-final", "Final")
@@ -35,12 +36,14 @@ object Tournament {
     val over: Boolean get() = eliminatedIn >= 0 || champion != null
 
     /** Draws the bracket. Seeded so your path gets harder: weakest first, strongest side kept away from you. */
-    fun start() {
-        val ops = Opponent.values().sortedBy { it.skill }       // weakest .. strongest
+    fun start(coachUnlocked: Boolean = false) {
+        val ops = Opponent.values().filter { it != Opponent.COACH }.sortedBy { it.skill }       // weakest .. strongest
         val you = Entrant("YOU", null)
         val list = ops.map { Entrant(it.displayName, it) }
-        // Your half: you vs weakest; then the next two. Far half: the four strongest.
-        val order = listOf(you, list[0], list[1], list[2], list[3], list[5], list[4], list[6])
+        // The eighth slot: the Coach if you have earned him, otherwise a bye (a bye has no skill, so it always loses)
+        val eighth = if (coachUnlocked) Entrant(Opponent.COACH.displayName, Opponent.COACH) else Entrant("BYE", null, bye = true)
+        // Your half: you vs weakest; then the next two. Far half: the strongest, with the top seed drawn against the eighth slot.
+        val order = listOf(you, list[0], list[1], list[2], list[3], list[4], list[5], eighth)
         entrants = order
         slots = arrayOf(IntArray(8) { it }, IntArray(4) { -1 }, IntArray(2) { -1 }, IntArray(1) { -1 })
         started = true

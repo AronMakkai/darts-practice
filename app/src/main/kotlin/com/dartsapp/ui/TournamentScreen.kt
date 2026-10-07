@@ -28,6 +28,8 @@ fun TournamentScreen(navController: NavHostController) {
     var tick by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) { tick++ }
     val started = Tournament.started
+    val unlockContext = androidx.compose.ui.platform.LocalContext.current
+    val coachUnlocked = com.dartsapp.logic.Settings.coachUnlocked(unlockContext)
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         ScreenHeader("Tournament", navController) {
@@ -40,16 +42,16 @@ fun TournamentScreen(navController: NavHostController) {
                 Text("EIGHT PLAYERS · ONE TROPHY", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, color = Gold, fontSize = 13.sp)
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "You, the six regulars and the coach. Quarter-final first to 2 legs, semi-final first to 3, final first to 4 — " +
+                    (if (coachUnlocked) "You, the six regulars and the Coach. " else "You and the six regulars — the top seed gets a bye. ") + "Quarter-final first to 2 legs, semi-final first to 3, final first to 4 — " +
                         "and the opposition throws sharper every round. Your matches are played in 501; the rest of the draw plays out on its own.",
                     fontSize = 14.sp, color = OffWhite, textAlign = TextAlign.Center, lineHeight = 20.sp
                 )
                 Spacer(Modifier.height(20.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for (o in Opponent.values()) OpponentHead(o, modifier = Modifier.size(40.dp))
+                    for (o in Opponent.values()) if (o != Opponent.COACH || coachUnlocked) OpponentHead(o, modifier = Modifier.size(40.dp))
                 }
                 Spacer(Modifier.height(24.dp))
-                Button(onClick = { Tournament.start(); tick++ }) { Text("Draw the bracket") }
+                Button(onClick = { Tournament.start(coachUnlocked); tick++ }) { Text("Draw the bracket") }
             }
         } else {
             Bracket(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp))
@@ -60,9 +62,9 @@ fun TournamentScreen(navController: NavHostController) {
                 Tournament.youWon -> {
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("CHAMPION", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 6.sp, color = BrightGold, fontSize = 28.sp)
-                        Text("You beat the lot of them. The coach wants a word about that final, mind.", fontSize = 13.sp, color = PaleGold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
+                        Text("You beat the lot of them. The Coach has seen enough — he's picking up his darts. You can now play him in 501, and he's in the next draw.", fontSize = 13.sp, color = PaleGold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
                         Spacer(Modifier.height(14.dp))
-                        Button(onClick = { Tournament.start(); tick++ }) { Text("Run it again") }
+                        Button(onClick = { Tournament.start(coachUnlocked); tick++ }) { Text("Run it again") }
                     }
                 }
                 Tournament.eliminatedIn >= 0 -> {
@@ -71,7 +73,7 @@ fun TournamentScreen(navController: NavHostController) {
                         Text("Knocked out in the ${Tournament.rounds[Tournament.eliminatedIn].lowercase()}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Red)
                         if (champ != null) Text("${champ.name} takes the title.", fontSize = 13.sp, color = Grey, modifier = Modifier.padding(top = 4.dp))
                         Spacer(Modifier.height(14.dp))
-                        Button(onClick = { Tournament.start(); tick++ }) { Text("New tournament") }
+                        Button(onClick = { Tournament.start(coachUnlocked); tick++ }) { Text("New tournament") }
                     }
                 }
                 opp != null -> {
@@ -140,6 +142,8 @@ private fun PlayerCell(idx: Int, winner: Boolean, loser: Boolean, pending: Boole
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         if (e == null) {
             Box(modifier = Modifier.size(22.dp).background(Charcoal), contentAlignment = Alignment.Center) { Text("?", color = Grey, fontSize = 11.sp) }
+        } else if (e.bye) {
+            Box(modifier = Modifier.size(22.dp).background(Charcoal), contentAlignment = Alignment.Center) { Text("–", color = Grey, fontSize = 11.sp) }
         } else if (e.isYou) {
             Box(modifier = Modifier.size(22.dp).background(if (loser) Charcoal else DarkRed), contentAlignment = Alignment.Center) {
                 Text("U", color = if (loser) Grey else BrightGold, fontSize = 11.sp, fontWeight = FontWeight.Black)

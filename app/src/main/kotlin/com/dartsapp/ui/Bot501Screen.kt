@@ -132,6 +132,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         mutableStateOf(
             if (tournament) (Tournament.currentOpponent() ?: Opponent.MULLET)
             else Opponent.values()[Settings.opponentIndex(context).coerceIn(0, Opponent.values().size - 1)]
+                .let { if (it == Opponent.COACH && !Settings.coachUnlocked(context)) Opponent.MULLET else it }
         )
     }
     val tourMul = if (tournament) Tournament.skillMultiplier(tourRound) else 1f
@@ -248,7 +249,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             if (s.sets >= setsToWin) {
                 matchOver = true
                 text = if (i == 0) "YOU WIN THE MATCH!" else "$botName wins the match"
-                if (tournament && !tourReported) { tourReported = true; Tournament.recordUserResult(i == 0) }
+                if (tournament && !tourReported) {
+                    tourReported = true; Tournament.recordUserResult(i == 0)
+                    if (Tournament.youWon) Settings.setCoachUnlocked(context, true)    // winning a tournament brings the Coach out to play
+                }
                 banterText = Banter.line(opponent, botWon = i == 1)
                 banterKey++
                 popText = if (i == 0) "WINNER" else "LOST"; popHuge = true; popOrigin = panelCentre(i); popTrigger++
@@ -448,7 +452,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             text = {
                 Column {
                     Text("Opponent", fontSize = 12.sp, color = Grey)
-                    for (row in Opponent.values().toList().chunked(4)) {
+                    for (row in Opponent.values().filter { it != Opponent.COACH || Settings.coachUnlocked(context) }.chunked(4)) {
                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                             for (o in row) {
                                 val sel = o == opponent
