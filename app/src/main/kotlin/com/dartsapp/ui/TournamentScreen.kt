@@ -2,6 +2,7 @@ package com.dartsapp.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -182,6 +183,7 @@ private fun PlayerCell(idx: Int, winner: Boolean, loser: Boolean, pending: Boole
 @Composable
 internal fun ChampionSplash(onIrl: () -> Unit, onDismiss: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    var page by remember { mutableStateOf(0) }     // 0 = congratulations, 1 = "for real" + the links
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
@@ -200,27 +202,32 @@ internal fun ChampionSplash(onIrl: () -> Unit, onDismiss: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
                     .background(OffWhite, androidx.compose.foundation.shape.CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
                     .border(androidx.compose.foundation.BorderStroke(3.dp, Black), androidx.compose.foundation.shape.CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { page = 1 }
                     .padding(16.dp)
             ) {
                 Text(
-                    "Congratulations, champion! You beat the lot of them — and you now have the throwing rhythm of a professional darts player.\n\n" +
-                        "So put the phone down. Go out and play darts for real: find a board near you, use the Darts IRL menu to keep score, and have a lifetime of fun.",
+                    if (page == 0) "Congratulations, champion! You beat the lot of them — and you now have the throwing rhythm of a professional darts player."
+                    else "For real, the swipe and tap timing is based on real darts, and there is a metronome function in the Darts IRL menu to explore this further. GAME ON!",
                     color = Black, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
                 )
             }
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    try {
-                        context.startActivity(
-                            android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com/search?q=dartboard+near+me"))
-                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        )
-                    } catch (e: Exception) { /* no browser on the device */ }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Find a dartboard near me") }
-            OutlinedButton(onClick = onIrl, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Open the Darts IRL menu", color = Gold) }
+            if (page == 0) {
+                TextButton(onClick = { page = 1 }, modifier = Modifier.padding(top = 10.dp)) { Text("tap to continue", color = Grey) }
+            } else {
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        try {
+                            context.startActivity(
+                                android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com/search?q=dartboard+near+me"))
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        } catch (e: Exception) { /* no browser on the device */ }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Find a dartboard near me") }
+                OutlinedButton(onClick = onIrl, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Open the Darts IRL menu", color = Gold) }
+            }
             TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 4.dp)) { Text("Back to the bracket", color = Grey) }
         }
     }
