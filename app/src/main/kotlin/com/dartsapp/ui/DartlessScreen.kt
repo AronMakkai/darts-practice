@@ -216,7 +216,7 @@ fun DartlessScreen(navController: NavHostController) {
             accuracy = (throwAcc * rhythm).coerceIn(0.2f, 1f)
             val onPace = off <= paceWindow(preset.dart, difficulty) && rhythm >= 0.999f
             val perfect = off <= paceWindow(preset.dart, difficulty)
-            if (perfect) perfectTrigger++     // dead on the beat: star pop from the bull
+            if (perfect) { perfectTrigger++; Sounds.starPop() }     // dead on the beat: star pop from the bull
             lastPerfect = perfect
             // Star criteria are more forgiving than the accuracy curve: roughly on the beat
             // (twice the window) and no long think between throws (2.5x the free pause).

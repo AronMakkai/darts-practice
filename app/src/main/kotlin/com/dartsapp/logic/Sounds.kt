@@ -89,6 +89,18 @@ object Sounds {
         }
     }
 
+    /** The star pop for a perfectly timed dart: the jingle's pop, two quick coin dings and a short sparkle. */
+    fun starPop() {
+        thread(name = "starpop") {
+            val buf = FloatArray((RATE * 0.75f).toInt())
+            addSweep(buf, startSec = 0f, durSec = 0.08f, fromHz = 620f, toHz = 90f, amp = 0.9f)
+            addDing(buf, startSec = 0.07f, freqHz = 1568f, amp = 0.42f)
+            addDing(buf, startSec = 0.15f, freqHz = 2093f, amp = 0.40f)
+            for (f in floatArrayOf(2637f, 3136f, 4186f)) addDing(buf, startSec = 0.24f, freqHz = f, amp = 0.22f, decay = 7f)
+            play(buf)
+        }
+    }
+
     /** A little "pop" followed by a cascade of coin dings and a final sparkle chord. */
     fun playCheckoutJingle() {
         thread(name = "jingle") {

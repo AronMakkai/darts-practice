@@ -307,7 +307,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         accuracy = (throwAcc * rhythm).coerceIn(0.2f, 1f)
         val off = kotlin.math.abs(elapsed - p.dart)
         val perfect = off <= paceWindow(p.dart, difficulty)
-        if (perfect) perfectTrigger++
+        if (perfect) { perfectTrigger++; Sounds.starPop() }
         timingNote = (if (hotNow) "🔥 HOT — ${hotDartsLeft} left" else if (perfect) "★ PERFECT" else if (elapsed < p.dart) "${formatSec(off)} s early" else "${formatSec(off)} s late") +
             (if (pauseSec >= 0f && rhythm < 0.999f) " · hesitated" else "") + "  →  ${(accuracy * 100).toInt()}%"
         throwStartMs = 0L
