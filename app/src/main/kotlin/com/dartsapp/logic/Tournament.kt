@@ -29,6 +29,8 @@ object Tournament {
     /** slots[r] holds the entrant index in each slot of round r (8, 4, 2) and slots[3] the champion (1). -1 = undecided. */
     var slots: Array<IntArray> = emptyArray(); private set
     var started = false; private set
+    /** True once the Coach's champion splash has been shown for this tournament. */
+    var congratulated = false
     var round = 0; private set              // the round you are currently in
     var eliminatedIn = -1; private set      // round index you lost in, or -1
     val champion: Entrant? get() = slots.getOrNull(3)?.getOrNull(0)?.takeIf { it >= 0 }?.let { entrants[it] }
@@ -47,11 +49,12 @@ object Tournament {
         entrants = order
         slots = arrayOf(IntArray(8) { it }, IntArray(4) { -1 }, IntArray(2) { -1 }, IntArray(1) { -1 })
         started = true
+        congratulated = false
         round = 0
         eliminatedIn = -1
     }
 
-    fun reset() { started = false; entrants = emptyList(); slots = emptyArray(); round = 0; eliminatedIn = -1 }
+    fun reset() { started = false; congratulated = false; entrants = emptyList(); slots = emptyArray(); round = 0; eliminatedIn = -1 }
 
     private fun youIndex() = entrants.indexOfFirst { it.isYou }
 

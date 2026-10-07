@@ -27,12 +27,26 @@ fun TournamentScreen(navController: NavHostController) {
     // Re-read the Tournament object whenever we come back to this screen
     var tick by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) { tick++ }
+    // Winning the tournament: the Coach comes out to send you off to a real board (once per tournament)
+    var champSplash by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (Tournament.youWon && !Tournament.congratulated) {
+            Tournament.congratulated = true
+            kotlinx.coroutines.delay(700)
+            champSplash = true
+        }
+    }
+    if (champSplash) {
+        ChampionSplash(onIrl = { champSplash = false; navController.navigate("irl") }, onDismiss = { champSplash = false })
+    }
     val started = Tournament.started
     val unlockContext = androidx.compose.ui.platform.LocalContext.current
     val coachUnlocked = com.dartsapp.logic.Settings.coachUnlocked(unlockContext)
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         ScreenHeader("Tournament", navController) {
+            // TEMP test button: show the champion splash without winning
+            TextButton(onClick = { champSplash = true }) { Text("Test win", color = Red, fontSize = 11.sp) }
             if (started) TextButton(onClick = { Tournament.reset(); tick++ }) { Text("New", color = Gold) }
         }
         if (tick < 0) Text("")
@@ -157,5 +171,57 @@ private fun PlayerCell(idx: Int, winner: Boolean, loser: Boolean, pending: Boole
             fontWeight = if (winner) FontWeight.Bold else FontWeight.Normal,
             modifier = Modifier.padding(start = 3.dp)
         )
+    }
+}
+
+
+/**
+ * Shown when you win the tournament: the Coach congratulates you and sends you out to play for real,
+ * with a "dartboard near me" search and a shortcut to the Darts IRL menu.
+ */
+@Composable
+internal fun ChampionSplash(onIrl: () -> Unit, onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().background(Color(0xF5101010)).verticalScroll(rememberScrollState()).padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+        ) {
+            Text("🏆", fontSize = 44.sp)
+            Text("CHAMPION", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 6.sp, color = BrightGold, fontSize = 34.sp)
+            CoachHead(modifier = Modifier.padding(vertical = 10.dp).size(230.dp))
+            Box(modifier = Modifier.background(Charcoal).border(2.dp, Gold).padding(horizontal = 18.dp, vertical = 6.dp)) {
+                Text("THE COACH", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, fontWeight = FontWeight.Black, color = Gold, fontSize = 16.sp)
+            }
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
+                    .background(OffWhite, androidx.compose.foundation.shape.CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .border(androidx.compose.foundation.BorderStroke(3.dp, Black), androidx.compose.foundation.shape.CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .padding(16.dp)
+            ) {
+                Text(
+                    "Congratulations, champion! You beat the lot of them — and you now have the throwing rhythm of a professional darts player.\n\n" +
+                        "So put the phone down. Go out and play darts for real: find a board near you, use the Darts IRL menu to keep score, and have a lifetime of fun.",
+                    color = Black, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    try {
+                        context.startActivity(
+                            android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com/search?q=dartboard+near+me"))
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    } catch (e: Exception) { /* no browser on the device */ }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Find a dartboard near me") }
+            OutlinedButton(onClick = onIrl, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Open the Darts IRL menu", color = Gold) }
+            TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 4.dp)) { Text("Back to the bracket", color = Grey) }
+        }
     }
 }
