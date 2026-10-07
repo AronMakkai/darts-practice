@@ -324,6 +324,8 @@ fun DartlessScreen(navController: NavHostController) {
             thrown = allThrown.toList(),
             aimed = allAimed.toList(),
             busts = busts,
+            showStars = true,
+            rhythmOk = if (metronomeMode) allOnBeat && judgedThrows == dartsTotal else null,
             onDismiss = { coachOpen = false; newCheckout() },
             onNext = { coachOpen = false; newCheckout() }
         )
@@ -516,7 +518,11 @@ fun DartlessScreen(navController: NavHostController) {
 
 /** Post-checkout coach: how you did it, how the book does it, and why. */
 @Composable
-internal fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: Int, onDismiss: () -> Unit, onNext: () -> Unit, nextLabel: String = "Next checkout") {
+internal fun CoachDialog(
+    start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: Int, onDismiss: () -> Unit, onNext: () -> Unit, nextLabel: String = "Next checkout",
+    showStars: Boolean = false,      // Checkout Game: the coach's star rating for the checkout
+    rhythmOk: Boolean? = null        // every dart on the beat (null = not judged, e.g. Simple mode)
+) {
     val suggestion = remember(start) { CheckoutLogic.suggest(start) }
     val optimal = suggestion?.best
     val pointers = remember(start, thrown.size) { coachPointers(start, thrown, aimed, busts, suggestion) }
@@ -552,6 +558,15 @@ internal fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts:
                         )
                     }
                 }
+                if (showStars) {
+                    val rating = remember(start, thrown.size) { coachRating(thrown, aimed, busts, optimal?.size, rhythmOk) }
+                    Spacer(Modifier.height(10.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                        for (i in 1..5) Text("★", fontSize = 40.sp, color = if (i <= rating.stars) BrightGold else Charcoal, modifier = Modifier.padding(horizontal = 2.dp))
+                    }
+                    Text(rating.verdict, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Gold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    Text(rating.breakdown, fontSize = 11.sp, color = Grey, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
+                }
                 Spacer(Modifier.height(12.dp))
                 Text("You threw", fontSize = 12.sp, color = Grey)
                 Text(thrown.joinToString("  ") { it.label }, fontSize = 16.sp, color = OffWhite, fontFamily = FontFamily.Monospace)
@@ -571,6 +586,32 @@ internal fun CoachDialog(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts:
             }
         }
     }
+}
+
+internal class CoachRating(val stars: Int, val verdict: String, val breakdown: String)
+
+/**
+ * The coach's marks out of five: one for getting it done, up to two for darts used against the book,
+ * one for no bust, one for rhythm (every dart on the beat; in Simple mode, every dart on its target).
+ */
+internal fun coachRating(thrown: List<Hit>, aimed: List<Hit>, busts: Int, bookDarts: Int?, rhythmOk: Boolean?): CoachRating {
+    val extra = if (bookDarts == null) 0 else thrown.size - bookDarts
+    val dartStars = when { extra <= 0 -> 2; extra <= 2 -> 1; else -> 0 }
+    val bustStar = if (busts == 0) 1 else 0
+    val steady = rhythmOk ?: thrown.zip(aimed).all { (hit, aim) -> hit == aim }
+    val rhythmStar = if (steady) 1 else 0
+    val stars = (1 + dartStars + bustStar + rhythmStar).coerceIn(1, 5)
+    val verdict = when (stars) {
+        5 -> "Flawless. Nothing to teach you there."
+        4 -> "Strong checkout."
+        3 -> "Decent — tidy up the details."
+        2 -> "Scrappy, but it went."
+        else -> "Got there in the end."
+    }
+    val breakdown = "Darts " + (when (dartStars) { 2 -> "on the book"; 1 -> "+$extra over the book"; else -> "+$extra over the book" }) +
+        "  ·  " + (if (busts == 0) "no bust" else "$busts bust${if (busts == 1) "" else "s"}") +
+        "  ·  " + (if (rhythmOk == null) (if (steady) "all on target" else "off target") else (if (steady) "on the beat" else "off the beat"))
+    return CoachRating(stars, verdict, breakdown)
 }
 
 private fun coachPointers(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts: Int, s: CheckoutLogic.Suggestion?): List<String> {
