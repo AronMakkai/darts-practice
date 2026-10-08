@@ -8,7 +8,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontFamily
 import kotlin.math.cos
@@ -110,8 +109,9 @@ fun SubMenuScreen(navController: NavHostController, title: String, entries: List
 }
 
 /**
- * 80s chrome lettering: a hard "horizon" gradient — blue sky at the top fading to white, then a
- * brown ground band to white at the bottom — with a dark outline and a drop shadow.
+ * 80s chrome lettering reflecting the sunset: purple-pink sky at the top fading to a hot yellow-white,
+ * a hard horizon, then magenta and orange below — with a deep purple outline, a drop shadow and a
+ * Miami neon halo (teal outside, hot pink inside).
  */
 @Composable
 private fun ChromeTitle(text: String, modifier: Modifier = Modifier) {
@@ -137,33 +137,33 @@ private fun ChromeTitle(text: String, modifier: Modifier = Modifier) {
         // Neon glow: two blurred passes, a wide soft magenta-pink halo and a tighter hot one
         paint.style = android.graphics.Paint.Style.FILL
         paint.shader = null
-        paint.maskFilter = android.graphics.BlurMaskFilter(h * 0.32f, android.graphics.BlurMaskFilter.Blur.NORMAL)
-        paint.color = android.graphics.Color.argb(170, 0xFF, 0x30, 0x90)
+        paint.maskFilter = android.graphics.BlurMaskFilter(h * 0.36f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+        paint.color = android.graphics.Color.argb(190, 0x00, 0xE5, 0xFF)
         drawContext.canvas.nativeCanvas.drawText(text, cx, baseline, paint)
-        paint.maskFilter = android.graphics.BlurMaskFilter(h * 0.12f, android.graphics.BlurMaskFilter.Blur.NORMAL)
-        paint.color = android.graphics.Color.argb(200, 0xFF, 0xB0, 0x40)
+        paint.maskFilter = android.graphics.BlurMaskFilter(h * 0.14f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+        paint.color = android.graphics.Color.argb(230, 0xFF, 0x2E, 0x97)
         drawContext.canvas.nativeCanvas.drawText(text, cx, baseline, paint)
         paint.maskFilter = null
         // Drop shadow
-        paint.color = android.graphics.Color.argb(200, 0, 0, 0)
+        paint.color = android.graphics.Color.argb(190, 0x2A, 0x06, 0x3A)
         drawContext.canvas.nativeCanvas.drawText(text, cx + h * 0.05f, baseline + h * 0.06f, paint)
         // Outline
         paint.style = android.graphics.Paint.Style.STROKE
         paint.strokeWidth = h * 0.06f
         paint.strokeJoin = android.graphics.Paint.Join.ROUND
-        paint.color = android.graphics.Color.rgb(0x10, 0x10, 0x18)
+        paint.color = android.graphics.Color.rgb(0x2A, 0x0A, 0x40)
         drawContext.canvas.nativeCanvas.drawText(text, cx, baseline, paint)
-        // Chrome fill: blue (top) -> white -> hard horizon -> brown -> white (bottom)
+        // Chrome fill reflecting the sunset: violet (top) -> pink -> yellow-white -> hard horizon -> magenta -> orange -> cream
         paint.style = android.graphics.Paint.Style.FILL
         paint.shader = android.graphics.LinearGradient(
             0f, top, 0f, bottom,
             intArrayOf(
-                android.graphics.Color.rgb(0x1E, 0x5A, 0xE8),
-                android.graphics.Color.rgb(0x9C, 0xD4, 0xFF),
-                android.graphics.Color.rgb(0xFF, 0xFF, 0xFF),
-                android.graphics.Color.rgb(0x6B, 0x3A, 0x12),
-                android.graphics.Color.rgb(0xB8, 0x7A, 0x3A),
-                android.graphics.Color.rgb(0xFF, 0xFF, 0xFF)
+                android.graphics.Color.rgb(0x6A, 0x2C, 0xD8),
+                android.graphics.Color.rgb(0xFF, 0x6F, 0xB5),
+                android.graphics.Color.rgb(0xFF, 0xF4, 0xC8),
+                android.graphics.Color.rgb(0x9C, 0x12, 0x6A),
+                android.graphics.Color.rgb(0xFF, 0x7A, 0x3D),
+                android.graphics.Color.rgb(0xFF, 0xF1, 0xD6)
             ),
             floatArrayOf(0f, 0.3f, 0.49f, 0.51f, 0.72f, 1f),
             android.graphics.Shader.TileMode.CLAMP
@@ -196,7 +196,7 @@ private fun TvFilter(modifier: Modifier = Modifier) {
         val step = 4f
         var y = 0f
         while (y < h) {
-            drawRect(Color.Black.copy(alpha = 0.42f), Offset(0f, y), Size(w, 2f))
+            drawRect(Color.Black.copy(alpha = 0.26f), Offset(0f, y), Size(w, 2f))
             y += step
         }
         // Faint RGB phosphor stripes
@@ -219,7 +219,7 @@ private fun TvFilter(modifier: Modifier = Modifier) {
         // Vignette + curved corners
         drawRect(
             androidx.compose.ui.graphics.Brush.radialGradient(
-                colors = listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = 0.7f), Color.Black.copy(alpha = 0.97f)),
+                colors = listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = 0.42f), Color.Black.copy(alpha = 0.85f)),
                 center = Offset(w / 2f, h / 2f),
                 radius = maxOf(w, h) * 0.72f
             )
@@ -238,8 +238,8 @@ private fun RetroButton(label: String, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
         shape = CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp),
-        border = BorderStroke(2.dp, Gold),
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = Black.copy(alpha = 0.55f), contentColor = PaleGold),
+        border = BorderStroke(2.dp, NeonPink),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFF2A0C3E).copy(alpha = 0.62f), contentColor = Color(0xFFFFE6F3)),
         modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp).height(58.dp)
     ) {
         Text(label, fontSize = 18.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
@@ -265,14 +265,30 @@ private fun VectorBackdrop(modifier: Modifier = Modifier) {
         val horizonY = h * 0.42f
         val vp = Offset(w / 2f, horizonY)
 
-        // Sky: flat bands (no gradients — polygons only)
-        drawRect(Black)
-        drawRect(Color(0xFF14060A), topLeft = Offset(0f, horizonY - h * 0.16f), size = Size(w, h * 0.16f))
-        drawRect(Color(0xFF2A0A12), topLeft = Offset(0f, horizonY - h * 0.07f), size = Size(w, h * 0.07f))
+        // Sunset sky: deep violet overhead through magenta and hot pink to orange and gold at the horizon
+        drawRect(
+            androidx.compose.ui.graphics.Brush.verticalGradient(
+                0f to Color(0xFF1C0B45), 0.35f to Color(0xFF5A1A7A), 0.62f to Color(0xFFC21E77),
+                0.8f to Color(0xFFFF4F6E), 0.92f to Color(0xFFFF8C42), 1f to Color(0xFFFFC65A),
+                startY = 0f, endY = horizonY
+            ),
+            topLeft = Offset.Zero, size = Size(w, horizonY)
+        )
+        // A few thin streaks of cloud lit from below
+        for (k in 0 until 4) {
+            val cy = horizonY * (0.45f + k * 0.11f)
+            val cw = w * (0.35f + 0.12f * ((k * 3) % 4))
+            val cx0 = ((k * 0.37f + t * 0.004f * (k + 1)) % 1f) * (w + cw) - cw
+            drawRoundRect(Color(0xFFFFB3C7).copy(alpha = 0.22f), Offset(cx0, cy), Size(cw, h * 0.006f), androidx.compose.ui.geometry.CornerRadius(h * 0.003f))
+        }
 
-        // Low-poly dartboard sun: 20 flat wedges
+        // Low-poly dartboard sun sinking towards the horizon, in sunset colours, with a warm glow
         val sunC = Offset(w * 0.72f, horizonY - h * 0.24f)
         val sunR = h * 0.13f
+        drawCircle(
+            androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0xFFFFE08A).copy(alpha = 0.75f), Color(0xFFFF6F91).copy(alpha = 0.25f), Color.Transparent), center = sunC, radius = sunR * 2.4f),
+            radius = sunR * 2.4f, center = sunC
+        )
         for (i in 0 until 20) {
             val a0 = Math.toRadians((i * 18 - 99).toDouble())
             val a1 = Math.toRadians(((i + 1) * 18 - 99).toDouble())
@@ -282,10 +298,14 @@ private fun VectorBackdrop(modifier: Modifier = Modifier) {
                 lineTo(sunC.x + sunR * cos(a1).toFloat(), sunC.y + sunR * sin(a1).toFloat())
                 close()
             }
-            drawPath(path, if (i % 2 == 0) Red else Color(0xFF5A0C1A))
+            drawPath(path, if (i % 2 == 0) Color(0xFFFFB13B) else Color(0xFFFF4F8B))
         }
-        drawCircle(Gold, sunR * 0.14f, sunC)
-        drawCircle(Black, sunR, sunC, style = Stroke(width = sunR * 0.05f))
+        drawCircle(Color(0xFFFFF1A8), sunR * 0.14f, sunC)
+        // Synthwave slices through the lower half of the sun
+        for (k in 0 until 5) {
+            val y = sunC.y + sunR * (0.15f + k * 0.18f)
+            drawRect(Color(0xFFFF6A6A), Offset(sunC.x - sunR, y), Size(sunR * 2f, sunR * (0.03f + k * 0.022f)))
+        }
 
         // City skyline: two depths of flat-shaded tower blocks with lit windows (Rampage-style)
         fun skyline(baseY: Float, maxH: Float, color: Color, windowColor: Color, seed: Int, count: Int, parallax: Float) {
@@ -311,14 +331,48 @@ private fun VectorBackdrop(modifier: Modifier = Modifier) {
                 i++
             }
         }
-        skyline(horizonY + h * 0.002f, h * 0.22f, Color(0xFF161622), Color(0xFF5A4A28), 1, 14, 2f)
-        skyline(horizonY + h * 0.002f, h * 0.14f, Color(0xFF26262F), Color(0xFFE8C14A), 2, 10, 6f)
+        skyline(horizonY + h * 0.002f, h * 0.22f, Color(0xFF3A1650), Color(0xFFFF8FD0), 1, 14, 2f)
+        skyline(horizonY + h * 0.002f, h * 0.14f, Color(0xFF261038), Color(0xFF6FF3FF), 2, 10, 6f)
 
-        // Horizon line
-        drawLine(Gold, Offset(0f, horizonY), Offset(w, horizonY), strokeWidth = 2f)
+        // Palm trees framing the scene, in silhouette against the sky
+        fun palm(baseX: Float, baseY: Float, height: Float, lean: Float) {
+            val dark = Color(0xFF1A0726)
+            val top = Offset(baseX + lean * height, baseY - height)
+            val trunk = Path().apply {
+                moveTo(baseX - height * 0.035f, baseY)
+                quadraticBezierTo(baseX + lean * height * 0.2f, baseY - height * 0.55f, top.x - height * 0.015f, top.y)
+                lineTo(top.x + height * 0.015f, top.y)
+                quadraticBezierTo(baseX + lean * height * 0.2f + height * 0.04f, baseY - height * 0.55f, baseX + height * 0.035f, baseY)
+                close()
+            }
+            drawPath(trunk, dark)
+            for (f in 0 until 7) {
+                val ang = Math.toRadians((-170 + f * 27 + (sin(t * 0.9f + f) * 4f)).toDouble())
+                val len = height * (0.42f + 0.08f * ((f * 5) % 3))
+                val tip = Offset(top.x + len * cos(ang).toFloat(), top.y + len * sin(ang).toFloat() + len * 0.35f)
+                val mid = Offset(top.x + len * 0.5f * cos(ang).toFloat(), top.y + len * 0.5f * sin(ang).toFloat() - len * 0.12f)
+                val frond = Path().apply {
+                    moveTo(top.x, top.y)
+                    quadraticBezierTo(mid.x, mid.y - len * 0.08f, tip.x, tip.y)
+                    quadraticBezierTo(mid.x, mid.y + len * 0.1f, top.x, top.y + len * 0.04f)
+                    close()
+                }
+                drawPath(frond, dark)
+            }
+        }
+        palm(w * 0.06f, horizonY + h * 0.03f, h * 0.3f, 0.18f)
+        palm(w * 0.93f, horizonY + h * 0.03f, h * 0.26f, -0.22f)
 
-        // Ground: perspective grid rolling towards the viewer
-        val gridColor = Color(0xFF7A1424)
+        // Horizon line: a hot neon edge
+        drawLine(Color(0xFFFF4FA3).copy(alpha = 0.5f), Offset(0f, horizonY), Offset(w, horizonY), strokeWidth = 8f)
+        drawLine(Color(0xFFFFD3EC), Offset(0f, horizonY), Offset(w, horizonY), strokeWidth = 2f)
+
+        // Ground: deep purple with a neon grid rolling towards the viewer
+        drawRect(
+            androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF3B0F52), Color(0xFF14051F)), startY = horizonY, endY = h),
+            topLeft = Offset(0f, horizonY), size = Size(w, h - horizonY)
+        )
+        val gridColor = Color(0xFFFF2E97)
         val lines = 14
         for (i in -lines..lines) {
             val x = w / 2f + i * (w * 1.6f / lines)

@@ -15,6 +15,8 @@ val PaleGold = Color(0xFFF1DC9A)
 val BrightGold = Color(0xFFFFE27A)
 val OffWhite = Color(0xFFF2F2F2)
 val Grey = Color(0xFFB0B0B0)
+val NeonPink = Color(0xFFFF4FA3)
+val NeonTeal = Color(0xFF2EF2FF)
 
 private val DartsColors = darkColorScheme(
     primary = Red,
