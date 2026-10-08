@@ -32,8 +32,13 @@ fun MainMenuScreen(navController: NavHostController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.weight(0.5f))
-            ChromeTitle("METRO", modifier = Modifier.fillMaxWidth().height(74.dp))
-            ChromeTitle("DARTS", modifier = Modifier.fillMaxWidth().height(74.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    ChromeTitle("METRO", modifier = Modifier.fillMaxWidth().height(74.dp))
+                    ChromeTitle("DARTS", modifier = Modifier.fillMaxWidth().height(74.dp))
+                }
+                MenuGirl(modifier = Modifier.width(88.dp).height(176.dp))
+            }
             Spacer(Modifier.height(30.dp))
             RetroButton("DARTS GAME") { navController.navigate("game") }
             RetroButton("DARTS IRL") { navController.navigate("irl") }
@@ -234,17 +239,7 @@ private fun TvFilter(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun RetroButton(label: String, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        shape = CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp),
-        border = BorderStroke(2.dp, NeonPink),
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFF2A0C3E).copy(alpha = 0.62f), contentColor = Color(0xFFFFE6F3)),
-        modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp).height(58.dp)
-    ) {
-        Text(label, fontSize = 18.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
-    }
-}
+private fun RetroButton(label: String, onClick: () -> Unit) = NeonSignButton(label, onClick)
 
 /**
  * Flat-shaded vector backdrop in the spirit of late-80s polygon games: a perspective grid rolling
