@@ -43,7 +43,7 @@ fun SettingsScreen(navController: NavHostController) {
                 shape = CutCornerShape(topStart = 12.dp, bottomEnd = 12.dp),
                 border = BorderStroke(2.dp, if (selected) Gold else Charcoal),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (selected) DarkRed else Black,
+                    containerColor = if (selected) DarkRed else Night,
                     contentColor = if (selected) OffWhite else Grey
                 ),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 6.dp).height(64.dp)
@@ -76,7 +76,7 @@ fun SettingsScreen(navController: NavHostController) {
                     shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
                     border = BorderStroke(2.dp, if (selected) Gold else Charcoal),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (selected) DarkRed else Black,
+                        containerColor = if (selected) DarkRed else Night,
                         contentColor = if (selected) OffWhite else Grey
                     ),
                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
@@ -100,7 +100,7 @@ fun SettingsScreen(navController: NavHostController) {
                 onClick = { paceName = p.name; TimingPresets.setSelected(context, p.name) },
                 shape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp),
                 border = BorderStroke(2.dp, if (selected) Gold else Charcoal),
-                colors = ButtonDefaults.outlinedButtonColors(containerColor = if (selected) DarkRed else Black, contentColor = if (selected) OffWhite else Grey),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = if (selected) DarkRed else Night, contentColor = if (selected) OffWhite else Grey),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 3.dp)
             ) {

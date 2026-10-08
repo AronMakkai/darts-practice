@@ -506,7 +506,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 val active = i == current && !matchOver
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)
-                        .background(if (active) Charcoal else Black)
+                        .background(if (active) Charcoal else Night)
                         .onGloballyPositioned { panelPos[i] = it.positionInRoot(); panelSize[i] = it.size }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -620,7 +620,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 OutlinedButton(
                     onClick = { if (powerActive) powerActive = false else powerSplash = true },
                     border = BorderStroke(2.dp, Red), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Black, contentColor = OffWhite),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Night, contentColor = OffWhite),
                     modifier = Modifier.height(34.dp)
                 ) { Text(if (powerActive) "POWER OFF" else "POWER", fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold) }
             }

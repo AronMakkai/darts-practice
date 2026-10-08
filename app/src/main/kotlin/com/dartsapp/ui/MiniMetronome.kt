@@ -54,7 +54,7 @@ fun MiniMetronome(
     }
 
     Row(
-        modifier = modifier.background(if (active) Charcoal else Black).padding(horizontal = 8.dp, vertical = 4.dp),
+        modifier = modifier.background(if (active) Charcoal else Night).padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         StickFigure(step = step, modifier = Modifier.width(96.dp).height(56.dp))

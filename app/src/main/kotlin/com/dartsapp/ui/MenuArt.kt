@@ -99,7 +99,7 @@ private fun DrawScope.drawMenuGirl() {
 }
 
 /**
- * Menu entry as an 80s neon sign: a pink glass tube frame with a teal inner tube, little arrow
+ * Menu entry as an 80s neon sign: a red glass tube frame with a yellow inner tube, little arrow
  * ornaments at each end, and the label glowing in neon. Flickers now and then like a real sign;
  * lights up fully while pressed.
  */
@@ -148,13 +148,13 @@ fun NeonSignButton(label: String, onClick: () -> Unit, modifier: Modifier = Modi
                 paint.color = android.graphics.Color.WHITE; paint.alpha = (200 * glow.coerceAtMost(1f)).toInt()
                 canvas.drawRoundRect(rect, rr, rr, paint)
             }
-            val pink = android.graphics.Color.rgb(0xFF, 0x4F, 0xA3)
-            val teal = android.graphics.Color.rgb(0x2E, 0xF2, 0xFF)
-            tube(5f, pink, 4.5f)
-            tube(13f, teal, 2f)
+            val red = android.graphics.Color.rgb(0xFF, 0x2A, 0x3D)
+            val yellow = android.graphics.Color.rgb(0xFF, 0xD2, 0x3F)
+            tube(5f, red, 4.5f)
+            tube(13f, yellow, 2f)
             // Arrow ornaments at each end, pointing at the label
             paint.style = android.graphics.Paint.Style.FILL
-            paint.color = teal; paint.alpha = (255 * glow.coerceAtMost(1f)).toInt()
+            paint.color = yellow; paint.alpha = (255 * glow.coerceAtMost(1f)).toInt()
             for (side in intArrayOf(-1, 1)) {
                 val cx = if (side < 0) h * 0.62f else w - h * 0.62f
                 val cy = h / 2f
@@ -171,11 +171,11 @@ fun NeonSignButton(label: String, onClick: () -> Unit, modifier: Modifier = Modi
                 textSize = 17.sp.toPx(); letterSpacing = 0.18f
             }
             val base = h / 2f + text.textSize * 0.35f
-            text.color = pink; text.alpha = (230 * glow.coerceAtMost(1f)).toInt()
+            text.color = red; text.alpha = (230 * glow.coerceAtMost(1f)).toInt()
             text.maskFilter = android.graphics.BlurMaskFilter(text.textSize * 0.35f, android.graphics.BlurMaskFilter.Blur.NORMAL)
             canvas.drawText(label, w / 2f, base, text)
             text.maskFilter = null
-            text.color = android.graphics.Color.rgb(0xFF, 0xE6, 0xF3); text.alpha = (255 * glow.coerceAtMost(1f)).toInt()
+            text.color = android.graphics.Color.rgb(0xFF, 0xF0, 0xC8); text.alpha = (255 * glow.coerceAtMost(1f)).toInt()
             canvas.drawText(label, w / 2f, base, text)
         }
     }

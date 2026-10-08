@@ -6,8 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 val Black = Color(0xFF000000)
-val NearBlack = Color(0xFF121212)
-val Charcoal = Color(0xFF1E1E1E)
+val Night = Color(0xFF1A0A28)       // game background: the deep purple of the menu's night ground
+val NearBlack = Color(0xFF231033)
+val Charcoal = Color(0xFF301A44)
 val Red = Color(0xFFC8102E)
 val DarkRed = Color(0xFF7A0A1C)
 val Gold = Color(0xFFD4AF37)
@@ -29,7 +30,7 @@ private val DartsColors = darkColorScheme(
     onSecondaryContainer = Gold,
     tertiary = Gold,
     onTertiary = Black,
-    background = Black,
+    background = Night,
     onBackground = OffWhite,
     surface = NearBlack,
     onSurface = OffWhite,

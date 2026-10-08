@@ -229,7 +229,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 4.dp)
-                    .background(if (active) Charcoal else Black)
+                    .background(if (active) Charcoal else Night)
                     .onGloballyPositioned { barPos[i] = it.positionInRoot(); barSize[i] = it.size }
                     .padding(10.dp)
             ) {
@@ -360,7 +360,7 @@ internal fun OptionRow(label: String, options: List<Int>, selected: Int, text: (
                     onClick = { onSelect(o) },
                     shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
                     border = BorderStroke(1.5.dp, if (sel) Gold else Charcoal),
-                    colors = ButtonDefaults.outlinedButtonColors(containerColor = if (sel) DarkRed else Black, contentColor = if (sel) OffWhite else Grey),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = if (sel) DarkRed else Night, contentColor = if (sel) OffWhite else Grey),
                     contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
                     modifier = Modifier.weight(1f).padding(horizontal = 2.dp).height(40.dp)
                 ) { Text(text(o), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold) }
