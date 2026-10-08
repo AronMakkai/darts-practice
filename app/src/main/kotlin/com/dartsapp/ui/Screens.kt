@@ -32,13 +32,8 @@ fun MainMenuScreen(navController: NavHostController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.weight(0.5f))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    ChromeTitle("METRO", modifier = Modifier.fillMaxWidth().height(74.dp))
-                    ChromeTitle("DARTS", modifier = Modifier.fillMaxWidth().height(74.dp))
-                }
-                MenuGirl(modifier = Modifier.width(88.dp).height(176.dp))
-            }
+            ChromeTitle("METRO", modifier = Modifier.fillMaxWidth().height(74.dp))
+            ChromeTitle("DARTS", modifier = Modifier.fillMaxWidth().height(74.dp))
             Spacer(Modifier.height(30.dp))
             RetroButton("DARTS GAME") { navController.navigate("game") }
             RetroButton("DARTS IRL") { navController.navigate("irl") }
