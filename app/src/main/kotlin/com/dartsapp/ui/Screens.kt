@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontFamily
 import kotlin.math.cos
@@ -324,34 +325,70 @@ private fun VectorBackdrop(modifier: Modifier = Modifier) {
         skyline(horizonY + h * 0.002f, h * 0.22f, Color(0xFF3A1650), Color(0xFFFF8FD0), 1, 14, 2f)
         skyline(horizonY + h * 0.002f, h * 0.14f, Color(0xFF261038), Color(0xFF6FF3FF), 2, 10, 6f)
 
-        // Palm trees framing the scene, in silhouette against the sky
-        fun palm(baseX: Float, baseY: Float, height: Float, lean: Float) {
-            val dark = Color(0xFF1A0726)
+        // Palm trees framing the scene, in silhouette against the sunset: a ringed, curving trunk lit
+        // pink on the sun side, a crown of drooping feathery fronds that sway, and a few coconuts
+        fun palm(baseX: Float, baseY: Float, height: Float, lean: Float, dark: Color, rim: Color, phase: Float) {
             val top = Offset(baseX + lean * height, baseY - height)
-            val trunk = Path().apply {
-                moveTo(baseX - height * 0.035f, baseY)
-                quadraticBezierTo(baseX + lean * height * 0.2f, baseY - height * 0.55f, top.x - height * 0.015f, top.y)
-                lineTo(top.x + height * 0.015f, top.y)
-                quadraticBezierTo(baseX + lean * height * 0.2f + height * 0.04f, baseY - height * 0.55f, baseX + height * 0.035f, baseY)
-                close()
+            val ctrl = Offset(baseX + lean * height * 0.15f, baseY - height * 0.55f)
+            fun trunkAt(u: Float): Offset {
+                val v = 1f - u
+                return Offset(v * v * baseX + 2 * v * u * ctrl.x + u * u * top.x, v * v * baseY + 2 * v * u * ctrl.y + u * u * top.y)
             }
-            drawPath(trunk, dark)
-            for (f in 0 until 7) {
-                val ang = Math.toRadians((-170 + f * 27 + (sin(t * 0.9f + f) * 4f)).toDouble())
-                val len = height * (0.42f + 0.08f * ((f * 5) % 3))
-                val tip = Offset(top.x + len * cos(ang).toFloat(), top.y + len * sin(ang).toFloat() + len * 0.35f)
-                val mid = Offset(top.x + len * 0.5f * cos(ang).toFloat(), top.y + len * 0.5f * sin(ang).toFloat() - len * 0.12f)
-                val frond = Path().apply {
-                    moveTo(top.x, top.y)
-                    quadraticBezierTo(mid.x, mid.y - len * 0.08f, tip.x, tip.y)
-                    quadraticBezierTo(mid.x, mid.y + len * 0.1f, top.x, top.y + len * 0.04f)
-                    close()
+            // Trunk: stacked segments, each a little narrower, with a darker ring at every joint
+            val segs = 14
+            for (k in 0 until segs) {
+                val u0 = k / segs.toFloat(); val u1 = (k + 1) / segs.toFloat()
+                val a = trunkAt(u0); val b = trunkAt(u1)
+                val w0 = height * (0.042f - 0.022f * u0); val w1 = height * (0.042f - 0.022f * u1)
+                val seg = Path().apply {
+                    moveTo(a.x - w0, a.y); lineTo(b.x - w1 * 1.12f, b.y); lineTo(b.x + w1 * 1.12f, b.y); lineTo(a.x + w0, a.y); close()
                 }
-                drawPath(frond, dark)
+                drawPath(seg, dark)
+                drawLine(Color.Black.copy(alpha = 0.35f), Offset(b.x - w1 * 1.1f, b.y), Offset(b.x + w1 * 1.1f, b.y), strokeWidth = height * 0.006f)
+                // rim light down the side facing the sun
+                val side = if (lean < 0f) -1f else 1f
+                drawLine(rim, Offset(a.x - side * w0 * 0.8f, a.y), Offset(b.x - side * w1 * 0.8f, b.y), strokeWidth = height * 0.006f)
             }
+            // Fronds: a curved spine with leaflets down both sides, longest near the crown
+            val fronds = 9
+            for (f in 0 until fronds) {
+                val sway = sin(t * 0.9f + f * 0.7f + phase) * 3f
+                val ang = Math.toRadians((-200 + f * (220.0 / (fronds - 1)) + sway).toDouble())
+                val len = height * (0.40f + 0.10f * ((f * 7) % 3) / 2f)
+                val droop = len * (0.55f + 0.35f * kotlin.math.abs(cos(ang)).toFloat())
+                val tip = Offset(top.x + len * cos(ang).toFloat(), top.y + len * sin(ang).toFloat() + droop)
+                val mid = Offset(top.x + len * 0.6f * cos(ang).toFloat(), top.y + len * 0.6f * sin(ang).toFloat() - len * 0.18f)
+                fun spineAt(u: Float): Offset {
+                    val v = 1f - u
+                    return Offset(v * v * top.x + 2 * v * u * mid.x + u * u * tip.x, v * v * top.y + 2 * v * u * mid.y + u * u * tip.y)
+                }
+                val leaflets = 16
+                var prev = spineAt(0f)
+                for (k in 1..leaflets) {
+                    val u = k / leaflets.toFloat()
+                    val pt = spineAt(u)
+                    drawLine(dark, prev, pt, strokeWidth = height * (0.012f * (1f - u) + 0.003f), cap = StrokeCap.Round)
+                    val dx = pt.x - prev.x; val dy = pt.y - prev.y
+                    val dl = kotlin.math.sqrt(dx * dx + dy * dy).coerceAtLeast(0.001f)
+                    val nx = -dy / dl; val ny = dx / dl
+                    val leaf = len * 0.24f * (1f - u * 0.7f)
+                    for (sgn in intArrayOf(-1, 1)) {
+                        val end = Offset(pt.x + (nx * sgn * 0.7f + dx / dl * 0.45f) * leaf, pt.y + (ny * sgn * 0.7f + dy / dl * 0.45f) * leaf + leaf * 0.55f)
+                        drawPath(Path().apply { moveTo(prev.x, prev.y); lineTo(end.x, end.y); lineTo(pt.x, pt.y); close() }, dark)
+                    }
+                    prev = pt
+                }
+            }
+            // Coconuts tucked under the crown
+            for (c in 0 until 3) drawCircle(dark, height * 0.028f, Offset(top.x + (c - 1) * height * 0.035f, top.y + height * 0.035f + (c % 2) * height * 0.015f))
+            drawCircle(rim, height * 0.008f, Offset(top.x - height * 0.03f, top.y + height * 0.03f))
         }
-        palm(w * 0.06f, horizonY + h * 0.03f, h * 0.3f, 0.18f)
-        palm(w * 0.93f, horizonY + h * 0.03f, h * 0.26f, -0.22f)
+        val palmDark = Color(0xFF1A0726)
+        val palmRim = Color(0xFFFF6FA8).copy(alpha = 0.55f)
+        // a smaller, hazier one further back, then the two framing the scene
+        palm(w * 0.70f, horizonY + h * 0.005f, h * 0.17f, -0.12f, Color(0xFF3A1650), Color(0xFFFF8FB8).copy(alpha = 0.35f), 2.1f)
+        palm(w * 0.06f, horizonY + h * 0.03f, h * 0.3f, 0.18f, palmDark, palmRim, 0f)
+        palm(w * 0.93f, horizonY + h * 0.03f, h * 0.26f, -0.22f, palmDark, palmRim, 1.3f)
 
         // Horizon line: a hot neon edge
         drawLine(Color(0xFFFF4FA3).copy(alpha = 0.5f), Offset(0f, horizonY), Offset(w, horizonY), strokeWidth = 8f)
