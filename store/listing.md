@@ -13,10 +13,10 @@ CHECKOUT GAME
 Random checkouts from 2 to 170. Hit them on the beat, in one visit, and gold bars stack up on your streak — ten become a big one. The checkouts get harder the longer you keep it going. String perfect darts together and HOT STREAK lights up: fatter trebles, doubles and bull for your next four darts.
 
 501 VS CHARACTERS
-Seven opponents, each with their own game: the Viking takes his time, the Jockey never wobbles, the Lizzard is deadly on combination finishes, the Taylor scores heavily, the Bling only wants the bull and the double-double, the Cockney scores for fun, and your Coach knows every route in the book. Legs and sets, bot strength scaled by difficulty, and a word from your opponent after every match — they are not gracious.
+Six opponents, each with their own game: the Viking takes his time, the Jockey never wobbles, the Lizzard is deadly on combination finishes, the Taylor scores heavily, the Bling only wants the bull and the double-double, and the Cockney scores for fun. Get them on the ropes and they fight dirty — every one has a special move: the Viking blocks the light, the Lizzard sets lizards loose on the board, the Jockey gets you drunk, the Bling blinds you with his jewellery, the Cockney turns the crowd on you, and the Taylor puts the big boy pants on. Legs and sets, bot strength scaled by difficulty, and a word from your opponent after every match — they are not gracious.
 
 TOURNAMENT
-Eight-player knockout: you, the six regulars and the Coach. The draw is laid out as a bracket; your matches get longer and the opposition sharper every round. Lose and the draw plays out without you. Win and lift the trophy.
+Eight-slot knockout against the regulars, laid out as a bracket; your matches get longer and the opposition sharper every round. Lose and the draw plays out without you. Win it, and someone you know rather well joins the next draw.
 
 THE COACH
 Every suggestion comes from the standard checkout table: the book route, why it is the route, and the alternative. Above 170 he keeps you off the bogey numbers and sets you up for a big finish. After every checkout he reviews what you threw against what you should have.
