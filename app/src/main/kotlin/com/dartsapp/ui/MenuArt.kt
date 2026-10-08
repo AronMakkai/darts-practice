@@ -145,7 +145,7 @@ fun NeonSignButton(label: String, onClick: () -> Unit, modifier: Modifier = Modi
                 canvas.drawRoundRect(rect, rr, rr, paint)
             }
             val red = android.graphics.Color.rgb(0xFF, 0x2A, 0x3D)
-            val yellow = android.graphics.Color.rgb(0xFF, 0xD2, 0x3F)
+            val yellow = android.graphics.Color.rgb(0xFF, 0xD9, 0x66)   // a touch towards the board's cream
             tube(5f, red, 4.5f)
             tube(13f, yellow, 2f)
             // Arrow ornaments at each end, pointing at the label
@@ -164,7 +164,7 @@ fun NeonSignButton(label: String, onClick: () -> Unit, modifier: Modifier = Modi
             val text = android.graphics.Paint().apply {
                 isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER
                 typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
-                textSize = 17.sp.toPx(); letterSpacing = 0.18f
+                textSize = 15.sp.toPx(); letterSpacing = 0.12f
             }
             val base = h / 2f + text.textSize * 0.35f
             text.color = red; text.alpha = (230 * glow.coerceAtMost(1f)).toInt()

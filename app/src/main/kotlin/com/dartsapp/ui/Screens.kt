@@ -259,7 +259,7 @@ private fun VectorBackdrop(modifier: Modifier = Modifier) {
         drawRect(
             androidx.compose.ui.graphics.Brush.verticalGradient(
                 0f to Color(0xFF1C0B45), 0.35f to Color(0xFF5A1A7A), 0.62f to Color(0xFFC21E77),
-                0.8f to Color(0xFFFF4F6E), 0.92f to Color(0xFFFF8C42), 1f to Color(0xFFFFC65A),
+                0.8f to Color(0xFFFF4F6E), 0.92f to Color(0xFFFF8C42), 1f to Color(0xFFFFCE70),
                 startY = 0f, endY = horizonY
             ),
             topLeft = Offset.Zero, size = Size(w, horizonY)

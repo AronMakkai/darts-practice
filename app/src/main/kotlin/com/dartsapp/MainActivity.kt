@@ -118,9 +118,9 @@ fun DartsApp() {
                 navController, "GAME",
                 listOf(
                     "CHECKOUT GAME" to "dartless",
-                    "501  ·  1 PLAYER" to "bot501",
+                    "1 PLAYER 501" to "bot501",
                     "TOURNAMENT" to "tournament",
-                    "FAST 501  ·  SOLO" to "valuechecker"
+                    "FAST 501" to "valuechecker"
                 ),
                 showPace = true
             )
@@ -130,7 +130,7 @@ fun DartsApp() {
                 navController, "IRL",
                 listOf(
                     "CHECKOUT" to "checkout",
-                    "501  ·  2 PLAYER" to "x01",
+                    "2 PLAYER 501" to "x01",
                     "METRONOME" to "metronome"
                 )
             )
