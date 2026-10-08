@@ -24,8 +24,9 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * The menu's 80s poster girl: flat vector, big wavy hair, black high-cut swimsuit with a neon pink
- * trim, one hand on her hip and three darts held up in the other. Fits a box about 1:2.
+ * The menu's 80s poster girl, flat vector: standing in profile facing left, head turned to camera,
+ * huge wavy hair down her back, black high-cut one-piece with a neon trim, near hand on her hip
+ * (elbow out) and three darts in the other hand. Fits a box about 1:2.
  */
 @Composable
 fun MenuGirl(modifier: Modifier = Modifier) {
@@ -34,68 +35,63 @@ fun MenuGirl(modifier: Modifier = Modifier) {
 
 private fun DrawScope.drawMenuGirl() {
     val w = size.width; val h = size.height
-    fun p(x: Float, y: Float) = Offset(w * x, h * y)
-    fun poly(c: Color, vararg pts: Float) {
+    /** Closed smooth shape through the midpoints of the control points (x, y pairs, 0..1). */
+    fun smooth(c: Color, vararg pts: Float) {
+        val n = pts.size / 2
+        fun px(i: Int) = w * pts[(i % n) * 2]
+        fun py(i: Int) = h * pts[(i % n) * 2 + 1]
         val path = Path().apply {
-            moveTo(w * pts[0], h * pts[1])
-            var i = 2
-            while (i < pts.size) { lineTo(w * pts[i], h * pts[i + 1]); i += 2 }
+            moveTo((px(0) + px(1)) / 2f, (py(0) + py(1)) / 2f)
+            for (i in 1..n) quadraticBezierTo(px(i), py(i), (px(i) + px(i + 1)) / 2f, (py(i) + py(i + 1)) / 2f)
             close()
         }
         drawPath(path, c)
     }
-    fun oval(c: Color, x: Float, y: Float, ow: Float, oh: Float) = drawOval(c, p(x, y), Size(w * ow, h * oh))
+    fun oval(c: Color, x: Float, y: Float, ow: Float, oh: Float) = drawOval(c, Offset(w * x, h * y), Size(w * ow, h * oh))
     fun limb(c: Color, x0: Float, y0: Float, x1: Float, y1: Float, thick: Float) =
-        drawLine(c, p(x0, y0), p(x1, y1), strokeWidth = h * thick, cap = StrokeCap.Round)
+        drawLine(c, Offset(w * x0, h * y0), Offset(w * x1, h * y1), strokeWidth = h * thick, cap = StrokeCap.Round)
 
-    val hair = Color(0xFF5A3420); val hairLight = Color(0xFF8C5630)
-    val skin = Color(0xFFE8A27C); val skinShade = Color(0xFFC67C5A)
-    val suit = Color(0xFF180C1E); val trim = Color(0xFFFF4FA3)
-
-    // Hair, behind everything: big 80s volume down past the shoulders
-    oval(hair, 0.36f, 0.035f, 0.28f, 0.14f)
-    oval(hair, 0.29f, 0.10f, 0.18f, 0.14f); oval(hair, 0.53f, 0.10f, 0.18f, 0.14f)
-    oval(hair, 0.27f, 0.19f, 0.17f, 0.15f); oval(hair, 0.56f, 0.19f, 0.17f, 0.15f)
-    oval(hair, 0.30f, 0.28f, 0.14f, 0.12f); oval(hair, 0.57f, 0.28f, 0.14f, 0.13f)
-    limb(hairLight, 0.33f, 0.14f, 0.30f, 0.24f, 0.008f); limb(hairLight, 0.67f, 0.15f, 0.70f, 0.25f, 0.008f)
-    limb(hairLight, 0.32f, 0.27f, 0.35f, 0.36f, 0.008f); limb(hairLight, 0.66f, 0.28f, 0.63f, 0.38f, 0.008f)
-
-    // Neck and body
-    poly(skin, 0.47f, 0.16f, 0.53f, 0.16f, 0.535f, 0.225f, 0.465f, 0.225f)
-    poly(skin, 0.37f, 0.225f, 0.63f, 0.225f, 0.61f, 0.30f, 0.575f, 0.40f, 0.625f, 0.50f, 0.375f, 0.50f, 0.425f, 0.40f, 0.39f, 0.30f)
-    // Legs: the far one in shade
-    poly(skin, 0.375f, 0.49f, 0.50f, 0.575f, 0.49f, 0.68f, 0.475f, 0.78f, 0.47f, 0.80f, 0.47f, 0.93f, 0.465f, 0.985f, 0.415f, 0.985f, 0.43f, 0.93f, 0.415f, 0.80f, 0.39f, 0.70f, 0.37f, 0.58f)
-    poly(skinShade, 0.50f, 0.575f, 0.625f, 0.49f, 0.63f, 0.58f, 0.61f, 0.70f, 0.585f, 0.80f, 0.585f, 0.93f, 0.61f, 0.985f, 0.545f, 0.985f, 0.54f, 0.93f, 0.53f, 0.80f, 0.52f, 0.68f)
-    // Swimsuit: high-cut one-piece with a V neck
-    poly(suit, 0.415f, 0.225f, 0.445f, 0.225f, 0.50f, 0.31f, 0.555f, 0.225f, 0.585f, 0.225f, 0.61f, 0.30f, 0.575f, 0.40f, 0.625f, 0.49f, 0.53f, 0.575f, 0.47f, 0.575f, 0.375f, 0.49f, 0.425f, 0.40f, 0.39f, 0.30f)
-    limb(trim, 0.42f, 0.29f, 0.445f, 0.40f, 0.005f); limb(trim, 0.445f, 0.40f, 0.41f, 0.48f, 0.005f)
-
-    // Head
-    oval(skin, 0.42f, 0.065f, 0.16f, 0.115f)
-    poly(skinShade, 0.52f, 0.07f, 0.58f, 0.10f, 0.575f, 0.15f, 0.53f, 0.18f)
-    poly(hair, 0.40f, 0.12f, 0.43f, 0.05f, 0.50f, 0.03f, 0.58f, 0.05f, 0.61f, 0.12f, 0.57f, 0.085f, 0.53f, 0.10f, 0.50f, 0.075f, 0.46f, 0.10f, 0.43f, 0.085f)
-    val eye = Color(0xFF28181E)
-    oval(eye, 0.455f, 0.112f, 0.026f, 0.009f); oval(eye, 0.519f, 0.112f, 0.026f, 0.009f)
-    limb(hair, 0.452f, 0.103f, 0.482f, 0.100f, 0.004f); limb(hair, 0.518f, 0.100f, 0.548f, 0.103f, 0.004f)
-    oval(Color(0xFFD6286E), 0.482f, 0.148f, 0.036f, 0.012f)
-
-    // Shoulders, the near arm on her hip, the far arm raised with the darts
-    oval(skin, 0.355f, 0.215f, 0.06f, 0.05f); oval(skinShade, 0.585f, 0.215f, 0.06f, 0.05f)
-    limb(skin, 0.385f, 0.245f, 0.315f, 0.36f, 0.032f); limb(skin, 0.315f, 0.36f, 0.40f, 0.455f, 0.028f)
-    limb(skinShade, 0.615f, 0.245f, 0.77f, 0.25f, 0.032f); limb(skinShade, 0.77f, 0.25f, 0.74f, 0.15f, 0.028f)
-    // Three darts fanned out of the hand: steel barrels, teal flights
-    val hand = p(0.74f, 0.14f)
-    for (deg in intArrayOf(-115, -90, -65)) {
+    smooth(Color(0xFF5C3622), 0.380f, 0.030f, 0.500f, -0.010f, 0.640f, 0.010f, 0.760f, 0.060f, 0.840f, 0.120f, 0.800f, 0.180f, 0.880f, 0.250f, 0.820f, 0.310f, 0.880f, 0.380f, 0.800f, 0.420f, 0.850f, 0.500f, 0.740f, 0.500f, 0.700f, 0.420f, 0.640f, 0.330f, 0.600f, 0.240f, 0.520f, 0.210f, 0.400f, 0.220f, 0.330f, 0.250f, 0.300f, 0.180f, 0.260f, 0.120f, 0.310f, 0.070f)  // hairBack
+    smooth(Color(0xFFC8805C), 0.470f, 0.560f, 0.600f, 0.580f, 0.585f, 0.680f, 0.560f, 0.780f, 0.565f, 0.880f, 0.575f, 0.965f, 0.590f, 0.985f, 0.530f, 0.985f, 0.525f, 0.900f, 0.515f, 0.800f, 0.500f, 0.700f)  // legFar
+    smooth(Color(0xFFECAA80), 0.440f, 0.200f, 0.560f, 0.210f, 0.585f, 0.280f, 0.565f, 0.360f, 0.560f, 0.420f, 0.605f, 0.500f, 0.615f, 0.570f, 0.570f, 0.620f, 0.480f, 0.620f, 0.400f, 0.580f, 0.400f, 0.500f, 0.410f, 0.420f, 0.380f, 0.340f, 0.360f, 0.270f, 0.400f, 0.220f)  // torso
+    smooth(Color(0xFFECAA80), 0.400f, 0.550f, 0.500f, 0.580f, 0.560f, 0.610f, 0.530f, 0.700f, 0.490f, 0.790f, 0.470f, 0.880f, 0.445f, 0.965f, 0.430f, 0.990f, 0.370f, 0.990f, 0.400f, 0.965f, 0.415f, 0.880f, 0.425f, 0.790f, 0.410f, 0.700f, 0.390f, 0.630f)  // legNear
+    smooth(Color(0xFF160C1C), 0.430f, 0.210f, 0.470f, 0.210f, 0.500f, 0.300f, 0.530f, 0.380f, 0.555f, 0.430f, 0.600f, 0.500f, 0.585f, 0.555f, 0.500f, 0.600f, 0.430f, 0.600f, 0.400f, 0.550f, 0.405f, 0.470f, 0.410f, 0.410f, 0.375f, 0.340f, 0.365f, 0.270f, 0.390f, 0.220f)  // suit
+    limb(Color(0xFFFF4FA3), 0.385f, 0.300f, 0.405f, 0.400f, 0.005f)
+    limb(Color(0xFFFF4FA3), 0.405f, 0.400f, 0.410f, 0.500f, 0.005f)
+    smooth(Color(0xFFECAA80), 0.465f, 0.175f, 0.535f, 0.175f, 0.540f, 0.210f, 0.500f, 0.228f, 0.460f, 0.215f)  // neck
+    oval(Color(0xFFECAA80), 0.405f, 0.070f, 0.170f, 0.125f)
+    smooth(Color(0xFFC8805C), 0.530f, 0.080f, 0.575f, 0.110f, 0.570f, 0.165f, 0.525f, 0.193f)  // faceShade
+    smooth(Color(0xFF5C3622), 0.390f, 0.165f, 0.390f, 0.075f, 0.460f, 0.035f, 0.560f, 0.040f, 0.620f, 0.095f, 0.615f, 0.165f, 0.585f, 0.105f, 0.540f, 0.085f, 0.490f, 0.100f, 0.440f, 0.090f, 0.415f, 0.115f)  // fringe
+    limb(Color(0xFF965C34), 0.660f, 0.080f, 0.740f, 0.200f, 0.007f)
+    limb(Color(0xFF965C34), 0.740f, 0.240f, 0.800f, 0.360f, 0.007f)
+    limb(Color(0xFF965C34), 0.640f, 0.220f, 0.700f, 0.340f, 0.007f)
+    limb(Color(0xFF965C34), 0.330f, 0.100f, 0.310f, 0.190f, 0.007f)
+    limb(Color(0xFF965C34), 0.700f, 0.400f, 0.760f, 0.480f, 0.007f)
+    limb(Color(0xFF965C34), 0.560f, 0.030f, 0.640f, 0.070f, 0.007f)
+    oval(Color(0xFF28181E), 0.448f, 0.123f, 0.028f, 0.011f)
+    oval(Color(0xFF28181E), 0.512f, 0.123f, 0.028f, 0.011f)
+    limb(Color(0xFF5C3622), 0.448f, 0.113f, 0.480f, 0.110f, 0.004f)
+    limb(Color(0xFF5C3622), 0.510f, 0.110f, 0.542f, 0.113f, 0.004f)
+    oval(Color(0xFFC83C5A), 0.474f, 0.165f, 0.036f, 0.013f)
+    oval(Color(0xFFECAA80), 0.485f, 0.205f, 0.070f, 0.050f)
+    limb(Color(0xFFECAA80), 0.520f, 0.235f, 0.660f, 0.355f, 0.030f)
+    limb(Color(0xFFECAA80), 0.660f, 0.355f, 0.575f, 0.470f, 0.026f)
+    oval(Color(0xFFECAA80), 0.550f, 0.450f, 0.050f, 0.035f)
+    limb(Color(0xFFC8805C), 0.415f, 0.240f, 0.370f, 0.350f, 0.024f)
+    limb(Color(0xFFC8805C), 0.370f, 0.350f, 0.330f, 0.450f, 0.021f)
+    // Three darts in the front hand, pointing forward: steel barrels, teal flights
+    val hx = 0.325f; val hy = 0.46f
+    for (deg in intArrayOf(150, 165, 180)) {
         val a = Math.toRadians(deg.toDouble())
         val ca = cos(a).toFloat(); val sa = sin(a).toFloat()
-        val end = Offset(hand.x + h * 0.045f * ca, hand.y + h * 0.09f * sa)
-        drawLine(Color(0xFFC8C8D2), hand, end, strokeWidth = h * 0.006f, cap = StrokeCap.Round)
+        val end = Offset(w * (hx + 0.10f * ca), h * (hy + 0.05f * sa))
+        drawLine(Color(0xFFCDCDD7), Offset(w * hx, h * hy), end, strokeWidth = h * 0.005f, cap = StrokeCap.Round)
         val pa = a + Math.PI / 2
-        val tip = Offset(end.x + h * 0.012f * ca, end.y + h * 0.025f * sa)
-        val side = Offset((h * 0.01f * cos(pa)).toFloat(), (h * 0.01f * sin(pa)).toFloat())
+        val tip = Offset(end.x + w * 0.03f * ca, end.y + h * 0.015f * sa)
+        val side = Offset(w * 0.012f * cos(pa).toFloat(), h * 0.006f * sin(pa).toFloat())
         drawPath(Path().apply { moveTo(end.x, end.y); lineTo(tip.x + side.x, tip.y + side.y); lineTo(tip.x - side.x, tip.y - side.y); close() }, NeonTeal)
     }
-    oval(skinShade, 0.72f, 0.13f, 0.04f, 0.035f)
+    oval(Color(0xFFC8805C), 0.31f, 0.445f, 0.035f, 0.028f)
 }
 
 /**

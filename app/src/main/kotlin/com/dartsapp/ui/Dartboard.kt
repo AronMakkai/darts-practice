@@ -35,11 +35,11 @@ import kotlin.math.sqrt
 
 private val BoardBlack = Color(0xFF141414)
 internal val BoardCream = Color(0xFFEDE3C4)
-private val BoardRed = Color(0xFFC8102E)
+private val BoardRed = Color(0xFFE8263F)
 private val BoardGreen = Color(0xFF0A6B36)
 private val BoardRim = Color(0xFF000000)
 private val Wire = Color(0xFFCFCFCF)
-private val GoldInt = 0xFFD4AF37.toInt()
+private val GoldInt = 0xFFFFC23F.toInt()
 
 /**
  * A full dartboard drawn with Canvas.
@@ -126,7 +126,7 @@ private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: Li
 
     // Outer rim / number ring with a thin gold edge
     drawCircle(BoardRim, radius = r * RIM_SCALE, center = center)
-    drawCircle(Color(0xFFD4AF37), radius = r * RIM_SCALE - r * 0.01f, center = center, style = Stroke(width = r * 0.015f))
+    drawCircle(Color(0xFFFFC23F), radius = r * RIM_SCALE - r * 0.01f, center = center, style = Stroke(width = r * 0.015f))
 
     fun wedge(index: Int, outer: Float, color: Color) {
         val start = -99f + index * 18f
@@ -203,7 +203,7 @@ private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: Li
                     startDeg + 18f, -18f, false
                 )
                 path.close()
-                drawPath(path, Color(0xFFD4AF37), style = Stroke(width = r * 0.025f))
+                drawPath(path, Color(0xFFFFC23F), style = Stroke(width = r * 0.025f))
             }
         }
 
@@ -259,7 +259,7 @@ private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: Li
         val newest = i == marks.lastIndex && landT < 1f
         if (!newest) {
             drawCircle(Color.Black, radius = r * 0.032f, center = pt)
-            drawCircle(Color(0xFFD4AF37), radius = r * 0.022f, center = pt)
+            drawCircle(Color(0xFFFFC23F), radius = r * 0.022f, center = pt)
         } else {
             val t = landT
             // scale: 0.35 -> 1.25 (overshoot at t≈0.55) -> 1.0
@@ -270,7 +270,7 @@ private fun DrawScope.drawBoard(g: BoardGeometry, showValues: Boolean, marks: Li
                 t < 0.6f -> Color(0xFFFFE23A)
                 else -> {
                     val k = (t - 0.6f) / 0.4f
-                    val y = Color(0xFFFFE23A); val gold = Color(0xFFD4AF37)
+                    val y = Color(0xFFFFE23A); val gold = Color(0xFFFFC23F)
                     Color(y.red + (gold.red - y.red) * k, y.green + (gold.green - y.green) * k, y.blue + (gold.blue - y.blue) * k)
                 }
             }
