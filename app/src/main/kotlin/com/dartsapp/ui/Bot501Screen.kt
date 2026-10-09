@@ -329,7 +329,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         lastTapMs = now
 
         // HOT STREAK: the beds are fat (HOT geometry) for a few darts; the throw itself is unchanged
-        val geo = if (hotNow) BoardGeometry.HOT else Geo
+        // THE PRESSURE (the Taylor): thinner trebles and doubles on your throws, for the rest of the leg
+        val geo = if (hotNow) BoardGeometry.HOT else if (powerActive && opponent == Opponent.TACHE) BoardGeometry.TIGHT else Geo
         val (lx, ly) = model.land(aim.x, aim.y, accuracy, difficulty.scatterScale)
         val hit = Board.hitTest(lx, ly, geo)
         if (hotNow) {
@@ -397,9 +398,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             val (aim, finishingDart) = botTarget(bot.remaining, opponent.flair)
             val tp = targetPoint(aim)
             val dartAcc = (botAccuracy * form * (if (finishingDart) opponent.finishing else opponent.scoring)).coerceIn(0.25f, 0.97f)
-            // BIG BOY PANTS: the Taylor throws near-perfect darts until he has drawn level
-            val pants = powerActive && opponent == Opponent.TACHE
-            val (lx, ly) = if (pants) model.land(tp.x, tp.y, 0.95f, 0.5f) else model.land(tp.x, tp.y, dartAcc, opponent.scatter)
+            val (lx, ly) = model.land(tp.x, tp.y, dartAcc, opponent.scatter)
             val hit = Board.hitTest(lx, ly, Geo)
             Sounds.thud(); marks.add(Offset(lx, ly)); thrown.add(hit)
             bot.darts++
@@ -423,7 +422,6 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 else -> {
                     bot.scored += hit.score; bot.remaining = newRem; visit += hit.score
                     message = "$botName: ${hit.label} (${hit.score})"
-                    if (pants && bot.remaining <= sides[0].remaining) { powerActive = false; message += " — level. Pants off." }
                     version++
                     delay(opponent.paceMs)
                 }
@@ -572,7 +570,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     targetValue = if (powerActive && current == 0 && opponent == Opponent.COACH) coachAngle else 0f,
                     animationSpec = androidx.compose.animation.core.tween(durationMillis = 500), label = "flip"
                 )
-                Dartboard(modifier = Modifier.drunk(drunkNow, drunkSway, drunkWave, drunkSpeed).graphicsLayer { rotationZ = flip }, geometry = if (hot && current == 0) BoardGeometry.HOT else Geo, marks = marks, onTap = { userThrow(it) })
+                Dartboard(modifier = Modifier.drunk(drunkNow, drunkSway, drunkWave, drunkSpeed).graphicsLayer { rotationZ = flip }, geometry = if (hot && current == 0) BoardGeometry.HOT else if (powerActive && current == 0 && opponent == Opponent.TACHE) BoardGeometry.TIGHT else Geo, marks = marks, onTap = { userThrow(it) })
                 // LIGHTS OUT: the Viking stands in the light on your turn. Drawn under the aim ring; taps pass through.
                 val shade by androidx.compose.animation.core.animateFloatAsState(
                     targetValue = if (powerActive && current == 0 && opponent == Opponent.BEARD) 1f else 0f,

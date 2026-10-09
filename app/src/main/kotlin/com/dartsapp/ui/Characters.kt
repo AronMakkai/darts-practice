@@ -47,8 +47,8 @@ enum class Opponent(
         powerName = "CREEPY CRAWLIES",
         powerLine = "Back home down under, mate, I used to practise with lizards crawlin' all over me board. Distractin' as. Oh, hang on \u2014 there's a couple in me goatee, lemme just..."),
     TACHE("THE TAYLOR", 0.88f, "Dark hair, neat moustache, Stoke-on-Trent through and through — the heaviest scorer in the room", scoring = 1.08f,
-        powerName = "BIG BOY PANTS",
-        powerLine = "I am 16 time Metro Darts champion.. Let me put the big boy pants on and see if you can take the pressure..."),
+        powerName = "THE PRESSURE",
+        powerLine = "Ay up, duck. Ah'm sixteen-time Metro Darts champion, me... an' that sort o' pressure meks them trebles an' doubles look proper tiny ter whoever's stood oppa-site. Gerron with it, then."),
     COACH("THE COACH", 0.82f, "Your coach — swept-back hair, big grin, that Hawaiian shirt, knows every route in the book",
         powerName = "LOOK OVER THERE",
         powerLine = "This is not going my way. But being both whimsical and charming has its perks. Look over there...")

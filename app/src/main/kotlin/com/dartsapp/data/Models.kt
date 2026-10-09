@@ -59,6 +59,13 @@ data class BoardGeometry(
             doubleIn = 0.84f
         )
 
+        /** The Taylor's pressure: trebles and doubles a bit thinner than PRACTICE (bulls unchanged). */
+        val TIGHT = BoardGeometry(
+            bullR = 0.061f, outerBullR = 0.132f,
+            trebleIn = 0.563f, trebleOut = 0.637f,
+            doubleIn = 0.925f
+        )
+
         /** Halfway between a real board and WIDE — used by Checkout Game. */
         val PRACTICE = BoardGeometry(
             bullR = 0.061f, outerBullR = 0.132f,
