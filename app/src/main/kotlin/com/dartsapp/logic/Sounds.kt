@@ -89,6 +89,36 @@ object Sounds {
         }
     }
 
+    /**
+     * The score bubble: a rising "bloop" as it blows up, then — [popAfterMs] later — a crisp pop with
+     * a little sparkle. [big] is fuller and has an extra run of dings.
+     */
+    fun bubble(popAfterMs: Long, big: Boolean) {
+        thread(name = "bubble") {
+            // Inflate: a soft sine that slides up, wobbling like a blown bubble
+            val inflate = FloatArray((RATE * 0.28f).toInt())
+            var ph = 0.0
+            for (i in inflate.indices) {
+                val p = i.toFloat() / inflate.size
+                val f = 260f + 700f * p * p + 40f * sin(2 * PI * 18 * p).toFloat()
+                ph += 2 * PI * f / RATE
+                val env = minOf(1f, p * 12f) * (1f - p)
+                inflate[i] = (sin(ph) * env * 0.5f).toFloat()
+            }
+            play(inflate)
+            Thread.sleep((popAfterMs - 20).coerceAtLeast(0L))
+            // Pop: a click of noise, a quick downward chirp, then sparkle dings
+            val buf = FloatArray((RATE * (if (big) 0.9f else 0.6f)).toInt())
+            val rnd = java.util.Random(11)
+            val click = (RATE * 0.012f).toInt()
+            for (i in 0 until click) { val e = 1f - i.toFloat() / click; buf[i] += (rnd.nextFloat() * 2f - 1f) * 0.8f * e * e }
+            addSweep(buf, startSec = 0f, durSec = 0.06f, fromHz = 2200f, toHz = 500f, amp = 0.7f)
+            val notes = if (big) floatArrayOf(2093f, 2637f, 3136f, 4186f) else floatArrayOf(2637f, 3520f)
+            for ((k, f) in notes.withIndex()) addDing(buf, startSec = 0.05f + k * 0.06f, freqHz = f, amp = 0.28f, decay = 10f)
+            play(buf)
+        }
+    }
+
     /** The star pop for a perfectly timed dart: the jingle's pop, two quick coin dings and a short sparkle. */
     fun starPop() {
         thread(name = "starpop") {

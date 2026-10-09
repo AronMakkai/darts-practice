@@ -210,7 +210,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             score >= 100 -> "TON ${if (score == 100) "" else (score - 100).toString()}".trim()
             else -> return
         }
-        popText = text; popHuge = score == 180 || (finished && score >= 100); popOrigin = panelCentre(i); popTrigger++
+        popText = text; popHuge = score == 180 || (finished && score >= 100)
+        // The bubble blows up where the last dart of the visit landed
+        popOrigin = marks.lastOrNull()?.let { boardPoint(it.x, it.y) } ?: panelCentre(i)
+        popTrigger++
         if (popHuge) Sounds.playCheckoutJingle()
         Sounds.cheer(big = popHuge)
         if (finished) Announcer.checkout(score) else Announcer.score(score)
