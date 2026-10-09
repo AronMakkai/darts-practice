@@ -64,6 +64,7 @@ fun FiveOhOneScreen(navController: NavHostController, vsBot: Boolean = false) {
     var botThrowing by remember { mutableStateOf(false) }
     var botDarts by remember { mutableStateOf("") }
     var banterOpen by remember { mutableStateOf(false) }
+    var bioOpen by remember { mutableStateOf(false) }
     var banterText by remember { mutableStateOf("") }
     val model = remember { AccuracyModel() }
     val presets = remember { TimingPresets.load(context) }
@@ -266,6 +267,8 @@ fun FiveOhOneScreen(navController: NavHostController, vsBot: Boolean = false) {
         botThrowing = false
         if (!matchOver && current == 1) applyVisit(visit, forceBust = bust)
     }
+    // IRL has no on-screen board, so his super power does not come into play here
+    if (bioOpen) OpponentBioDialog(opponent = opponent, showPower = false, onDismiss = { bioOpen = false })
     if (banterOpen) {
         BanterDialog(opponent = opponent, text = banterText, youWon = players[0].sets >= setsToWin, onDismiss = { banterOpen = false })
     }
@@ -312,7 +315,7 @@ fun FiveOhOneScreen(navController: NavHostController, vsBot: Boolean = false) {
                     .padding(10.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (vsBot && i == 1) OpponentHead(opponent, modifier = Modifier.size(34.dp).padding(end = 6.dp))
+                    if (vsBot && i == 1) OpponentHead(opponent, modifier = Modifier.size(34.dp).clickable { bioOpen = true }.padding(end = 6.dp))
                     Text(
                         p.name.uppercase(), fontSize = 18.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp, color = if (active) Gold else Grey, modifier = Modifier.weight(1f)

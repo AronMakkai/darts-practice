@@ -54,6 +54,39 @@ enum class Opponent(
         powerLine = "This is not going my way. But being both whimsical and charming has its perks. Look over there...")
 }
 
+/** Where he is from (shown on his bio card); null when he will not say. */
+val Opponent.hometown: String? get() = when (this) {
+    Opponent.BEARD -> "Sevenoaks, UK"
+    Opponent.GRIN -> "Hackney, London, UK"
+    Opponent.BLING -> "Manor Park, London, UK"
+    Opponent.MULLET -> "Scotland"
+    Opponent.GOATEE -> "New South Wales, Australia"
+    Opponent.TACHE -> "Stoke-on-Trent, UK"
+    Opponent.COACH -> null
+}
+
+/** His game in a line: the special move he plays with all the time. */
+val Opponent.specialMove: String get() = when (this) {
+    Opponent.BEARD -> "Slow and deliberate — takes his time between every dart."
+    Opponent.GRIN -> "A natural scorer — loves a ton."
+    Opponent.BLING -> "Showman — goes for the bull and double-double finishes whenever the book allows."
+    Opponent.MULLET -> "The steadiest arm in the pub — his darts barely stray, however many pints in."
+    Opponent.GOATEE -> "Combination finisher — deadly once he's on a checkout."
+    Opponent.TACHE -> "Heavy scorer — the trebles come easy to him."
+    Opponent.COACH -> "Knows every route in the book."
+}
+
+/** What his special power does to you. */
+val Opponent.powerInfo: String get() = when (this) {
+    Opponent.BEARD -> "Stands in front of the lights: the board goes dark on your throws."
+    Opponent.GRIN -> "Turns the crowd on you: heckles all over the board and a shaky aim ring — worst on a double."
+    Opponent.BLING -> "Holds his jewellery up to the lights: glare washes out the board on your throws."
+    Opponent.MULLET -> "Gets a pint in you: the board sways and ripples on your throws."
+    Opponent.GOATEE -> "Lets his lizards loose: they crawl all over the board on your throws."
+    Opponent.TACHE -> "Piles on the pressure: the trebles and doubles shrink on your throws."
+    Opponent.COACH -> "Distracts you and spins the board to a new angle after every dart."
+}
+
 /** Portrait of [who], flat-shaded like the coach. Fits a square. */
 @Composable
 fun OpponentHead(who: Opponent, modifier: Modifier = Modifier, angry: Boolean = false) {

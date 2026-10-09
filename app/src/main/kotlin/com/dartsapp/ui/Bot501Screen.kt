@@ -129,6 +129,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var powerSplash by remember { mutableStateOf(false) }
     var powerActive by remember { mutableStateOf(false) }
     var powerUsed by remember { mutableStateOf(false) }       // once per leg
+    var bioOpen by remember { mutableStateOf(false) }          // the opponent's bio card
     var coachAngle by remember { mutableStateOf(180f) }       // the Coach's board rotation; re-rolled after every dart of yours
     val boardBrightness = 0.11f                               // how much light is left under the Viking's LIGHTS OUT
     val glareStrength = 1f                                    // the Bling's glare, full strength
@@ -454,6 +455,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         BanterDialog(opponent = opponent, text = banterText, youWon = sides[0].sets >= setsToWin, onDismiss = { banterOpen = false })
     }
 
+    if (bioOpen) OpponentBioDialog(opponent = opponent, onDismiss = { bioOpen = false })
+
     if (powerSplash) {
         PowerSplash(opponent = opponent, onDismiss = { powerSplash = false; powerActive = true; coachAngle = 40f + kotlin.random.Random.nextFloat() * 280f })
     }
@@ -524,7 +527,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (i == 1) OpponentHead(opponent, modifier = Modifier.size(56.dp).padding(end = 4.dp))
+                    if (i == 1) OpponentHead(opponent, modifier = Modifier.size(56.dp).clickable { bioOpen = true }.padding(end = 4.dp))
                     Column(modifier = Modifier.width(if (i == 1) 84.dp else 96.dp)) {
                         Text(s.name, fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp, color = if (active) Gold else Grey, maxLines = 1)
                         Text(s.remaining.toString(), fontSize = 34.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = if (active) Gold else OffWhite)
@@ -669,6 +672,37 @@ internal fun PowerSplash(opponent: Opponent, onDismiss: () -> Unit) {
                 Text("\u201C" + opponent.powerLine + "\u201D", color = Black, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, lineHeight = 23.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
             Text("tap to continue", fontSize = 11.sp, color = Grey, modifier = Modifier.padding(top = 16.dp))
+        }
+    }
+}
+
+/** The opponent's bio card: portrait, hometown, his game and his special power. Tap anywhere to close. */
+@Composable
+internal fun OpponentBioDialog(opponent: Opponent, showPower: Boolean = true, onDismiss: () -> Unit) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .background(NearBlack, CutCornerShape(topStart = 16.dp, bottomEnd = 16.dp))
+                .border(BorderStroke(2.dp, Gold), CutCornerShape(topStart = 16.dp, bottomEnd = 16.dp))
+                .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { onDismiss() }
+                .padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            OpponentHead(opponent, modifier = Modifier.size(150.dp))
+            Text(opponent.displayName, fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, fontWeight = FontWeight.Black, color = Gold, fontSize = 20.sp)
+            opponent.hometown?.let { Text("📍 $it", fontSize = 13.sp, color = PaleGold, modifier = Modifier.padding(top = 2.dp)) }
+            Text(opponent.blurb, fontSize = 12.sp, color = Grey, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+            Spacer(Modifier.height(12.dp))
+            Text("SPECIAL MOVE", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey, modifier = Modifier.fillMaxWidth())
+            Text(opponent.specialMove, fontSize = 14.sp, color = OffWhite, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
+            if (showPower && opponent.powerName != null) {
+                Spacer(Modifier.height(10.dp))
+                Text("SUPER POWER", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey, modifier = Modifier.fillMaxWidth())
+                Text(opponent.powerName, fontSize = 16.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = Red, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
+                Text(opponent.powerInfo, fontSize = 14.sp, color = OffWhite, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
+                Text("Once a leg, when you're on a finish and he's 100 or more behind. Lasts the rest of the leg.", fontSize = 11.sp, color = Grey, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+            }
+            Text("tap to close", fontSize = 11.sp, color = Grey.copy(alpha = 0.7f), modifier = Modifier.padding(top = 14.dp))
         }
     }
 }
