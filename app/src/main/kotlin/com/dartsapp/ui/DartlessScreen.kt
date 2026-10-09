@@ -116,7 +116,7 @@ fun DartlessScreen(navController: NavHostController) {
     val model = remember { AccuracyModel() }
 
     // Metronome mode
-    var metronomeMode by remember { mutableStateOf(true) }   // Metronome is the default; Simple is the alternative
+    val metronomeMode = true   // always the swipe-and-tap rhythm (Simple mode removed)
     var showTip by remember { mutableStateOf(false) }
     var throwStartMs by remember { mutableStateOf(0L) }   // 0 = no throw armed
     var lastTapMs by remember { mutableStateOf(0L) }      // previous throw in this visit, 0 = none
@@ -141,7 +141,6 @@ fun DartlessScreen(navController: NavHostController) {
     val presets = remember { TimingPresets.load(context) }
     var presetName by remember { mutableStateOf(TimingPresets.selectedOrDefault(context, presets)) }
     val preset: TimingPreset? = presets.firstOrNull { it.name == presetName }
-    var presetMenuOpen by remember { mutableStateOf(false) }
 
 
     // Cue tones for an armed throw: a low tick when the ring reaches the edge, a high beep when it is
@@ -195,7 +194,7 @@ fun DartlessScreen(navController: NavHostController) {
     fun throwAt(aim: Offset) {
         if (finished) return
         val hotNow = hotDartsLeft > 0          // read the live state: the tap handler may hold a stale `hot`
-        if (metronomeMode && preset == null) { message = "Pick a timing preset first (top right)"; return }
+        if (metronomeMode && preset == null) { message = "Pick a game pace in Settings first"; return }
         val now = System.currentTimeMillis()
         if (dartsInVisit >= 3) {
             dartsInVisit = 0
@@ -373,55 +372,20 @@ fun DartlessScreen(navController: NavHostController) {
             )
         }
 
-        // Mode toggle (left) · remaining (centre) · preset picker (right)
+        // Streak (left) · remaining (centre) · the pace you are playing at (right; change it in Settings)
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Mode", fontSize = 12.sp, color = Grey)
-                OutlinedButton(
-                    onClick = {
-                        metronomeMode = !metronomeMode
-                        throwStartMs = 0L
-                        lastTapMs = 0L
-                        pauseSec = -1f
-                        timingNote = ""
-                        if (!finished) message = idleMessage()
-                    },
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(if (metronomeMode) "Metronome" else "Simple", fontSize = 13.sp, maxLines = 1, color = if (metronomeMode) Gold else OffWhite)
-                }
+                Text("STREAK", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey)
+                Text("×$streak", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Gold, maxLines = 1)
+                Text("best $best", fontSize = 11.sp, color = Grey, maxLines = 1)
             }
             Column(modifier = Modifier.weight(1.4f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Checkout $start", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(remaining.toString(), fontSize = 64.sp, fontWeight = FontWeight.Bold, color = Gold)
             }
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if (metronomeMode) "×$streak  ·  best $best" else "Preset", fontSize = 12.sp, color = if (metronomeMode) Gold else Grey, maxLines = 1)
-                    OutlinedButton(
-                        onClick = { presetMenuOpen = true },
-                        enabled = metronomeMode,
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            preset?.name ?: "Choose",
-                            fontSize = 13.sp,
-                            maxLines = 1,
-                            color = if (metronomeMode) (if (preset != null) OffWhite else Gold) else Grey
-                        )
-                    }
-                }
-                DropdownMenu(expanded = presetMenuOpen, onDismissRequest = { presetMenuOpen = false }) {
-                    if (presets.isEmpty()) {
-                        DropdownMenuItem(text = { Text("No presets — learn one in Metronome") }, onClick = { presetMenuOpen = false })
-                    }
-                    for (p in presets) {
-                        DropdownMenuItem(
-                            text = { Text(p.name) },
-                            onClick = { presetName = p.name; TimingPresets.setSelected(context, p.name); presetMenuOpen = false }
-                        )
-                    }
-                }
+            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("PACE", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey)
+                Text(preset?.name ?: "—", fontSize = 12.sp, color = OffWhite, maxLines = 2, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
             }
         }
         // Fixed-height text block so the board never moves, whatever is written above it.

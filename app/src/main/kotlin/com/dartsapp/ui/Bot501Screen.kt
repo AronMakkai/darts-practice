@@ -139,9 +139,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     val botAccuracy = (opponent.skill * tourMul * when (difficulty) { Difficulty.EASY -> 0.78f; Difficulty.NORMAL -> 1.0f; Difficulty.HARD -> 1.1f }).coerceIn(0.3f, 0.96f)
     val botName = opponent.displayName
     val presets = remember { TimingPresets.load(context) }
-    var presetName by remember { mutableStateOf(TimingPresets.selectedOrDefault(context, presets)) }
+    val presetName = remember { TimingPresets.selectedOrDefault(context, presets) }   // the pace from Settings
     val preset: TimingPreset? = presets.firstOrNull { it.name == presetName }
-    var presetMenuOpen by remember { mutableStateOf(false) }
     val model = remember { AccuracyModel() }
 
     var setupOpen by remember { mutableStateOf(!tournament) }
@@ -296,7 +295,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     fun userThrow(aim: Offset) {
         if (matchOver || current != 0) return
         val hotNow = hotDartsLeft > 0          // read the live state: the tap handler may hold a stale `hot`
-        val p = preset ?: run { message = "Pick a timing preset first"; return }
+        val p = preset ?: run { message = "Pick a game pace in Settings first"; return }
         if (throwStartMs == 0L) { message = "Swipe up from the arrow first"; return }
         val now = System.currentTimeMillis()
         if (dartsInVisit >= 3) { dartsInVisit = 0; marks.clear(); thrown.clear(); visitStart = sides[0].remaining }
@@ -532,14 +531,6 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(if (hot) "HOT!" else "ACCURACY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(72.dp))
                 HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(56.dp))
-                Box {
-                    TextButton(onClick = { presetMenuOpen = true }, contentPadding = PaddingValues(horizontal = 6.dp)) {
-                        Text(preset?.name ?: "Preset", fontSize = 11.sp, color = if (preset != null) PaleGold else Gold, maxLines = 1)
-                    }
-                    DropdownMenu(expanded = presetMenuOpen, onDismissRequest = { presetMenuOpen = false }) {
-                        for (p in presets) DropdownMenuItem(text = { Text(p.name) }, onClick = { presetName = p.name; TimingPresets.setSelected(context, p.name); presetMenuOpen = false })
-                    }
-                }
             }
 
             // Fixed-height status
