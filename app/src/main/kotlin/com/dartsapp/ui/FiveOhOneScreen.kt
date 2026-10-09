@@ -2,6 +2,8 @@ package com.dartsapp.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.material3.*
@@ -24,6 +26,10 @@ import com.dartsapp.logic.Sounds
 import com.dartsapp.logic.Announcer
 import com.dartsapp.logic.TimingPresets
 import androidx.compose.ui.platform.LocalContext
+import com.dartsapp.logic.AccuracyModel
+import com.dartsapp.logic.Banter
+import com.dartsapp.logic.Settings
+import kotlinx.coroutines.delay
 
 private class PlayerState(
     val name: String,
@@ -43,10 +49,23 @@ private class PlayerState(
 /**
  * Two-player 501 (or 301) with legs and sets. Players enter their visit score on the number pad.
  * Each player's power bar runs down from the starting score to zero.
+ *
+ * With [vsBot] you play your real board against one of the game's characters: you enter your
+ * visits, and he throws his on screen at his own pace, with his usual post-match word.
  */
 @Composable
-fun FiveOhOneScreen(navController: NavHostController) {
+fun FiveOhOneScreen(navController: NavHostController, vsBot: Boolean = false) {
     val context = LocalContext.current
+    val difficulty = remember { Settings.difficulty(context) }
+    var opponent by remember {
+        mutableStateOf(Opponent.values()[Settings.opponentIndex(context).coerceIn(0, Opponent.values().size - 1)].let { if (it == Opponent.COACH) Opponent.MULLET else it })
+    }
+    var botKey by remember { mutableStateOf(0) }          // bumps when it is the character's turn
+    var botThrowing by remember { mutableStateOf(false) }
+    var botDarts by remember { mutableStateOf("") }
+    var banterOpen by remember { mutableStateOf(false) }
+    var banterText by remember { mutableStateOf("") }
+    val model = remember { AccuracyModel() }
     val presets = remember { TimingPresets.load(context) }
     var metronomeOn by remember { mutableStateOf(false) }
     val presetNames = remember { mutableStateListOf<String?>(TimingPresets.selectedOrDefault(context, presets), TimingPresets.selectedOrDefault(context, presets)) }
@@ -95,13 +114,19 @@ fun FiveOhOneScreen(navController: NavHostController) {
         if (finished) Announcer.checkout(score) else Announcer.score(score)
     }
 
-    fun cueTurn() { if (metronomeOn && !matchOver) turnKeys[current] = turnKeys[current] + 1 }
+    fun cueTurn() {
+        if (metronomeOn && !matchOver) turnKeys[current] = turnKeys[current] + 1
+        if (vsBot && current == 1 && !matchOver) botKey++
+    }
 
     fun legsNeeded() = legsPerSet / 2 + 1
     fun setsNeeded() = setsToWin
 
     fun startMatch() {
-        players = listOf(PlayerState(name1.ifBlank { "P1" }, startScore), PlayerState(name2.ifBlank { "P2" }, startScore))
+        players = listOf(
+            PlayerState(name1.ifBlank { if (vsBot) "YOU" else "P1" }, startScore),
+            PlayerState(if (vsBot) opponent.displayName else name2.ifBlank { "P2" }, startScore)
+        )
         current = 0
         legStarter = 0
         input = ""
@@ -121,14 +146,10 @@ fun FiveOhOneScreen(navController: NavHostController) {
         cueTurn()
     }
 
-    fun submit() {
-        if (matchOver) return
-        val score = input.toIntOrNull() ?: return
-        input = ""
-        if (score > 180) { message = "Max 180 per visit"; return }
+    fun applyVisit(score: Int, forceBust: Boolean) {
         val p = players[current]
         val other = players[1 - current]
-        val newRem = p.remaining - score
+        val newRem = if (forceBust) -1 else p.remaining - score
         p.dartsMatch += 3
         p.dartsThisLeg += 3
         when {
@@ -152,6 +173,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
                         burstOrigin = panelCentre(i)
                         burstTrigger++
                         if (score < 100) Sounds.playCheckoutJingle()
+                        if (vsBot) { banterText = Banter.line(opponent, botWon = i == 1); banterOpen = true }
                     }
                 }
                 message = text
@@ -181,7 +203,27 @@ fun FiveOhOneScreen(navController: NavHostController) {
         }
     }
 
+    fun submit() {
+        if (matchOver) return
+        val score = input.toIntOrNull() ?: return
+        input = ""
+        if (score > 180) { message = "Max 180 per visit"; return }
+        applyVisit(score, forceBust = false)
+    }
+
     fun undo() {
+        if (vsBot) {
+            // Against a character: take back his last visit and yours, so it is your throw again
+            if (botThrowing || current != 0) return
+            for (who in intArrayOf(1, 0)) {
+                val pl = players[who]
+                val last = pl.visits.removeLastOrNull() ?: continue
+                pl.remaining += last; pl.scoredMatch -= last; pl.scoredThisLeg -= last
+                pl.dartsMatch -= 3; pl.dartsThisLeg -= 3
+            }
+            current = 0; message = "${players[0].name} to throw"; version++
+            return
+        }
         // Simple undo: step back one visit for the previous player (no undo across a leg end)
         val prev = 1 - current
         val p = players[prev]
@@ -194,6 +236,40 @@ fun FiveOhOneScreen(navController: NavHostController) {
         version++
     }
 
+    // The character's visit: three darts on screen at his pace, then scored like any other visit
+    LaunchedEffect(botKey) {
+        if (!vsBot || botKey == 0 || matchOver || current != 1) return@LaunchedEffect
+        botThrowing = true
+        botDarts = ""
+        val bot = players[1]
+        val accuracy = botBaseAccuracy(opponent, difficulty)
+        val form = 1f + (kotlin.random.Random.nextFloat() * 2f - 1f) * opponent.jitter
+        delay(900)
+        var rem = bot.remaining
+        var visit = 0
+        var bust = false
+        for (d in 1..3) {
+            val hit = botThrow(opponent, rem, accuracy, form, model)
+            Sounds.thud()
+            botDarts = (botDarts + " " + hit.label).trim()
+            val after = rem - hit.score
+            when {
+                after == 0 && hit.isDoubleOut -> { visit += hit.score; rem = 0 }
+                after < 2 -> bust = true
+                else -> { visit += hit.score; rem = after }
+            }
+            message = "${bot.name}: $botDarts"
+            if (rem == 0 || bust) break
+            delay(opponent.paceMs)
+        }
+        delay(700)
+        botThrowing = false
+        if (!matchOver && current == 1) applyVisit(visit, forceBust = bust)
+    }
+    if (banterOpen) {
+        BanterDialog(opponent = opponent, text = banterText, youWon = players[0].sets >= setsToWin, onDismiss = { banterOpen = false })
+    }
+
     if (coachOpen) {
         CoachTipDialog(remaining = players[current].remaining, playerName = players[current].name, onDismiss = { coachOpen = false })
     }
@@ -203,6 +279,8 @@ fun FiveOhOneScreen(navController: NavHostController) {
             name1 = name1, name2 = name2, startScore = startScore, legsPerSet = legsPerSet, setsToWin = setsToWin,
             onName1 = { name1 = it }, onName2 = { name2 = it },
             onStart = { startScore = it }, onLegs = { legsPerSet = it }, onSets = { setsToWin = it },
+            opponent = if (vsBot) opponent else null,
+            onOpponent = { opponent = it; Settings.setOpponentIndex(context, it.ordinal) },
             onBegin = { startMatch() },
             onCancel = { if (players[0].dartsMatch == 0 && players[1].dartsMatch == 0) navController.popBackStack() else setupOpen = false }
         )
@@ -210,7 +288,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
 
     Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 12.dp)) {
-        ScreenHeader(if (startScore == 301) "301" else "501", navController) {
+        ScreenHeader((if (startScore == 301) "301" else "501") + (if (vsBot) " vs ${opponent.displayName.removePrefix("THE ").lowercase().replaceFirstChar { it.uppercase() }}" else ""), navController) {
             IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
             TextButton(onClick = { metronomeOn = !metronomeOn; if (metronomeOn) cueTurn() }) {
                 Text("Metro", color = if (metronomeOn) Gold else Grey)
@@ -234,6 +312,7 @@ fun FiveOhOneScreen(navController: NavHostController) {
                     .padding(10.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (vsBot && i == 1) OpponentHead(opponent, modifier = Modifier.size(34.dp).padding(end = 6.dp))
                     Text(
                         p.name.uppercase(), fontSize = 18.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp, color = if (active) Gold else Grey, modifier = Modifier.weight(1f)
@@ -293,14 +372,14 @@ fun FiveOhOneScreen(navController: NavHostController) {
         Spacer(Modifier.weight(1f))
 
         Text(
-            if (input.isEmpty()) "Enter ${players[current].name}'s visit" else input,
+            if (vsBot && current == 1) "${players[1].name} throwing…" else if (input.isEmpty()) "Enter ${players[current].name}'s visit" else input,
             fontSize = 36.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, textAlign = TextAlign.Center,
             color = if (input.isEmpty()) Grey else OffWhite,
             modifier = Modifier.fillMaxWidth().padding(4.dp)
         )
 
         NumberPad(
-            enabled = !matchOver,
+            enabled = !matchOver && !(vsBot && current == 1),
             onDigit = { d -> if (input.length < 3) input += d },
             onBackspace = { input = input.dropLast(1) },
             onEnter = { submit() }
@@ -321,17 +400,38 @@ private fun MatchSetupDialog(
     name1: String, name2: String, startScore: Int, legsPerSet: Int, setsToWin: Int,
     onName1: (String) -> Unit, onName2: (String) -> Unit,
     onStart: (Int) -> Unit, onLegs: (Int) -> Unit, onSets: (Int) -> Unit,
-    onBegin: () -> Unit, onCancel: () -> Unit
+    onBegin: () -> Unit, onCancel: () -> Unit,
+    opponent: Opponent? = null, onOpponent: (Opponent) -> Unit = {}
 ) {
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text("MATCH SETUP", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, color = Gold) },
         text = {
             Column {
-                Row {
-                    OutlinedTextField(value = name1, onValueChange = onName1, label = { Text("Player 1") }, singleLine = true, modifier = Modifier.weight(1f))
-                    Spacer(Modifier.width(8.dp))
-                    OutlinedTextField(value = name2, onValueChange = onName2, label = { Text("Player 2") }, singleLine = true, modifier = Modifier.weight(1f))
+                if (opponent == null) {
+                    Row {
+                        OutlinedTextField(value = name1, onValueChange = onName1, label = { Text("Player 1") }, singleLine = true, modifier = Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedTextField(value = name2, onValueChange = onName2, label = { Text("Player 2") }, singleLine = true, modifier = Modifier.weight(1f))
+                    }
+                } else {
+                    // You on your real board against one of the characters
+                    Text("Opponent", fontSize = 12.sp, color = Grey)
+                    for (row in Opponent.values().filter { it != Opponent.COACH }.chunked(3)) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            for (o in row) {
+                                val sel = o == opponent
+                                Box(
+                                    modifier = Modifier.size(58.dp)
+                                        .background(if (sel) DarkRed else Charcoal)
+                                        .border(2.dp, if (sel) Gold else Color.Transparent)
+                                        .clickable { onOpponent(o) },
+                                    contentAlignment = Alignment.Center
+                                ) { OpponentHead(o, modifier = Modifier.size(52.dp)) }
+                            }
+                        }
+                    }
+                    Text(opponent.displayName + " — " + opponent.blurb, fontSize = 11.sp, color = PaleGold, maxLines = 3)
                 }
                 Spacer(Modifier.height(12.dp))
                 OptionRow("Game", listOf(301, 501), startScore, { it.toString() }, onStart)

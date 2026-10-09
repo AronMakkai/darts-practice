@@ -81,6 +81,19 @@ private fun parseDart(label: String): Hit = when {
     else -> Hit(20, Ring.TREBLE)
 }
 
+/** A character's accuracy for a match, before visit-to-visit form: base skill scaled by the difficulty setting. */
+internal fun botBaseAccuracy(opponent: Opponent, difficulty: Difficulty, multiplier: Float = 1f): Float =
+    (opponent.skill * multiplier * when (difficulty) { Difficulty.EASY -> 0.78f; Difficulty.NORMAL -> 1.0f; Difficulty.HARD -> 1.1f }).coerceIn(0.3f, 0.96f)
+
+/** One dart from [opponent] with [remaining] left: where he aims, and where it lands (same rules as 501 vs bot). */
+internal fun botThrow(opponent: Opponent, remaining: Int, accuracy: Float, form: Float, model: AccuracyModel): Hit {
+    val (aim, finishingDart) = botTarget(remaining, opponent.flair)
+    val tp = targetPoint(aim)
+    val dartAcc = (accuracy * form * (if (finishingDart) opponent.finishing else opponent.scoring)).coerceIn(0.25f, 0.97f)
+    val (lx, ly) = model.land(tp.x, tp.y, dartAcc, opponent.scatter)
+    return Board.hitTest(lx, ly, Geo)
+}
+
 /** Board coordinates (normalised) for the centre of a sector. */
 private fun targetPoint(hit: Hit): Offset {
     if (hit.ring == Ring.BULL) return Offset(0f, 0f)
