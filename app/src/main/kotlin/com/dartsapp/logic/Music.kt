@@ -291,7 +291,7 @@ object Music {
 
         // Near voices: distinct pitches, loud enough to pick out. Three conversations run side by side,
         // each with its own speakers taking turns.
-        val tables = arrayOf(floatArrayOf(105f, 150f, 230f), floatArrayOf(125f, 195f, 260f), floatArrayOf(112f, 170f, 215f))
+        val tables = arrayOf(floatArrayOf(105f, 150f, 230f), floatArrayOf(125f, 195f, 260f), floatArrayOf(112f, 170f, 215f), floatArrayOf(98f, 140f, 205f))
         for ((ti, table) in tables.withIndex()) {
             var turnEnd = ti * 0.7f
             val amp = if (ti == 0) 0.05f else 0.038f                       // one table is closest
@@ -303,7 +303,7 @@ object Music {
             }
         }
         // Distant voices: quieter, duller, overlapping freely
-        for (voice in 0 until 22) {
+        for (voice in 0 until 26) {
             val base = 95f + rnd.nextFloat() * 170f
             var t = rnd.nextFloat() * 2f
             while (t < len) {
@@ -332,7 +332,7 @@ object Music {
             }
         }
         // Glasses clinking: pint glasses (low ring) and wine glasses (high ring). Roughly one every
-        // second and a half, unevenly spaced, each glass a little sharp or flat of the last.
+        // three seconds, unevenly spaced, each glass a little sharp or flat of the last.
         run {
             var at = 0.4f
             while (at < len - 0.6f) {
@@ -351,7 +351,7 @@ object Music {
                         buf[idx] += ((sin(2 * PI * ff * tt) + 0.4 * sin(2 * PI * ff * 1.5 * tt) + 0.2 * sin(2 * PI * ff * 2.76 * tt)) * exp(-tt * 9f) * loud * attack).toFloat()
                     }
                 }
-                at += 0.9f + rnd.nextFloat() * 1.4f
+                at += 2.0f + rnd.nextFloat() * 2.6f        // about one every three seconds
             }
         }
         // Now and then (twice a loop, rarer than the menu's breaks) a few tables drum one of the tom
