@@ -31,7 +31,7 @@ enum class Opponent(
     val powerName: String? = null, // special power, played when he is being beaten (null = none yet)
     val powerLine: String = ""     // what he says on the splash screen
 ) {
-    BEARD("THE VIKING", 0.74f, "Shaggy mane, full beard, a horn of ale never far away — moves at his own glacial pace", paceMs = 1400,
+    BEARD("THE VIKING", 0.74f, "Shaggy mane, full beard, a horn of ale never far away — moves at his own glacial pace", paceMs = 3000,
         powerName = "LIGHTS OUT",
         powerLine = "This is not looking good. Let me move my large frame over here and see how that affects your view of the board..."),
     GRIN("THE COCKNEY", 0.80f, "Mop top and a cheeky smile — scores for fun",
@@ -67,7 +67,7 @@ val Opponent.hometown: String? get() = when (this) {
 
 /** His game in a line: the special move he plays with all the time. */
 val Opponent.specialMove: String get() = when (this) {
-    Opponent.BEARD -> "Slow and deliberate — takes his time between every dart."
+    Opponent.BEARD -> "Slow and deliberate — about three seconds between every dart."
     Opponent.GRIN -> "A natural scorer — loves a ton."
     Opponent.BLING -> "Showman — goes for the bull and double-double finishes whenever the book allows."
     Opponent.MULLET -> "The steadiest arm in the pub — his darts barely stray, however many pints in."
