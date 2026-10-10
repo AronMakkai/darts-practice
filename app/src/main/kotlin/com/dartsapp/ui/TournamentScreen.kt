@@ -139,7 +139,7 @@ private fun Bracket(modifier: Modifier = Modifier) {
     val slots = Tournament.slots
     val entrants = Tournament.entrants
     val titles = listOf("QF", "SF", "FINAL", "")
-    Row(modifier = modifier.height(600.dp)) {
+    Row(modifier = modifier.height(370.dp)) {
         for (r in 0..3) {
             Column(modifier = Modifier.weight(if (r == 3) 0.8f else 1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(titles[r], fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = BubbleText, fontSize = 12.sp, fontWeight = FontWeight.Bold,
@@ -159,12 +159,13 @@ private fun Bracket(modifier: Modifier = Modifier) {
                         for (pair in 0 until s.size / 2) {
                             val a = s[pair * 2]; val b = s[pair * 2 + 1]
                             val next = slots[r + 1][pair]
-                            Column(
-                                // the match still to play glows; finished ones are switched-off tubes
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp).neonFrame(if (next >= 0) NeonPink else Gold, lit = next < 0).padding(horizontal = 5.dp, vertical = 6.dp)
+                            // the two players side by side; the match still to play glows, finished ones are switched-off tubes
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp).neonFrame(if (next >= 0) NeonPink else Gold, lit = next < 0).padding(horizontal = 4.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                PlayerCell(a, winner = next >= 0 && next == a, loser = next >= 0 && next != a, pending = a < 0)
-                                PlayerCell(b, winner = next >= 0 && next == b, loser = next >= 0 && next != b, pending = b < 0)
+                                PlayerCell(a, winner = next >= 0 && next == a, loser = next >= 0 && next != a, pending = a < 0, modifier = Modifier.weight(1f))
+                                PlayerCell(b, winner = next >= 0 && next == b, loser = next >= 0 && next != b, pending = b < 0, modifier = Modifier.weight(1f))
                             }
                         }
                     }
@@ -175,11 +176,11 @@ private fun Bracket(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun PlayerCell(idx: Int, winner: Boolean, loser: Boolean, pending: Boolean) {
+private fun PlayerCell(idx: Int, winner: Boolean, loser: Boolean, pending: Boolean, modifier: Modifier = Modifier.fillMaxWidth()) {
     val e = if (idx >= 0) Tournament.entrants[idx] else null
     val color = when { winner -> BrightGold; loser -> Grey.copy(alpha = 0.5f); else -> OffWhite }
-    val head = 38.dp
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).alpha(if (loser) 0.55f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
+    val head = 32.dp
+    Column(modifier = modifier.padding(vertical = 1.dp).alpha(if (loser) 0.55f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
         if (e == null) {
             Box(modifier = Modifier.size(head).background(Charcoal), contentAlignment = Alignment.Center) { Text("?", color = Grey, fontSize = 14.sp) }
         } else if (e.bye) {
@@ -197,7 +198,7 @@ private fun PlayerCell(idx: Int, winner: Boolean, loser: Boolean, pending: Boole
         }
         Text(
             e?.name?.removePrefix("THE ") ?: "—",
-            fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            fontSize = 8.sp, fontFamily = FontFamily.Monospace, color = color, maxLines = 1, overflow = TextOverflow.Clip,
             fontWeight = if (winner) FontWeight.Black else FontWeight.Normal,
             style = if (winner) androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(color = Gold, blurRadius = 10f)) else androidx.compose.ui.text.TextStyle.Default
         )
