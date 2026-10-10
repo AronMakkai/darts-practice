@@ -131,6 +131,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var powerUsed by remember { mutableStateOf(false) }       // once per leg
     var bioOpen by remember { mutableStateOf(false) }          // the opponent's bio card
     var pickerBio by remember { mutableStateOf<Opponent?>(null) } // bio opened from the opponent picker
+    var lizardEpoch by remember { mutableStateOf(0L) }        // when the Lizzard let his lizards loose
     var coachAngle by remember { mutableStateOf(180f) }       // the Coach's board rotation; re-rolled after every dart of yours
     val boardBrightness = 0.11f                               // how much light is left under the Viking's LIGHTS OUT
     val glareStrength = 1f                                    // the Bling's glare, full strength
@@ -354,6 +355,16 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         dartsInVisit++
         val me = sides[0]
         me.darts++
+        // CREEPY CRAWLIES: a dart through a lizard still sticks in the board, but the visit is over — no score
+        if (powerActive && opponent == Opponent.GOATEE && lizardHit(lizardEpoch, lx, ly, RIM_SCALE)) {
+            me.remaining = visitStart
+            me.scored -= thrown.dropLast(1).sumOf { it.score }
+            message = "${hit.label} — straight through a lizard! NO SCORE"
+            Announcer.say("No score!")
+            Sounds.groan()
+            endUserVisit()
+            return
+        }
         val newRem = me.remaining - hit.score
         when {
             newRem == 0 && hit.isDoubleOut -> {
@@ -463,7 +474,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     pickerBio?.let { OpponentBioDialog(opponent = it, onDismiss = { pickerBio = null }) }
 
     if (powerSplash) {
-        PowerSplash(opponent = opponent, onDismiss = { powerSplash = false; powerActive = true; coachAngle = 40f + kotlin.random.Random.nextFloat() * 280f })
+        PowerSplash(opponent = opponent, onDismiss = { powerSplash = false; powerActive = true; lizardEpoch = System.currentTimeMillis(); coachAngle = 40f + kotlin.random.Random.nextFloat() * 280f })
     }
 
     if (setupOpen) {
@@ -612,7 +623,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 val nervesNow = nervesBase * when { sides[0].remaining <= 40 -> 1f; sides[0].remaining <= 170 -> 0.65f; else -> 0.35f }
                 // CREEPY CRAWLIES: the Lizzard's lizards wander over the board on your turn
                 if (powerActive && current == 0 && opponent == Opponent.GOATEE) {
-                    LizardSwarm(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                    LizardSwarm(epochMs = lizardEpoch, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
                 }
                 ThrowRing(
                     startMs = if (current == 0 && !matchOver) throwStartMs else 0L, periodSec = preset?.dart ?: 0f,

@@ -32,31 +32,56 @@ private val LIZARDS = listOf(
     LizardPath(0.12f, 0.36f, 1.04f, 0.48f, 3.8f, 0.80f, Color(0xFF3F7D4E)),
     LizardPath(0.28f, 0.26f, 0.72f, 0.86f, 5.0f, 1.05f, Color(0xFF8A9A3B)),
     LizardPath(0.42f, 0.40f, 0.34f, 0.52f, 1.2f, 0.85f, Color(0xFF557A2F)),
-    LizardPath(0.20f, 0.10f, 0.88f, 1.10f, 4.0f, 0.65f, Color(0xFF4C8F3A))
+    LizardPath(0.20f, 0.10f, 0.88f, 1.10f, 4.0f, 0.65f, Color(0xFF4C8F3A)),
+    LizardPath(0.32f, 0.20f, 0.70f, 0.95f, 2.8f, 0.90f, Color(0xFF6B8E23)),
+    LizardPath(0.18f, 0.30f, 0.96f, 0.60f, 5.3f, 0.80f, Color(0xFF3F7D4E))
 )
 
-/** The Lizzard's special power: lizards crawl all over the board. Purely visual; taps pass through. */
+private const val LIZARD_LEN = 0.312f   // body length as a fraction of the board box (20% up on the first version)
+
+/** Where lizard [l] is at time [t] (seconds), in fractions of the square board box, and which way it faces. */
+private fun lizardAt(l: LizardPath, t: Float): Pair<Offset, Float> {
+    fun pos(time: Float) = Offset(0.5f + l.rx * cos(time * l.fx + l.phase), 0.5f + l.ry * sin(time * l.fy + l.phase * 1.3f))
+    val p = pos(t); val ahead = pos(t + 0.05f)
+    return p to atan2(ahead.y - p.y, ahead.x - p.x)
+}
+
+/**
+ * True if a dart landing at board coordinates ([nx], [ny], 1.0 = board radius) hits a lizard, with
+ * the swarm released at [epochMs] (wall clock). Same positions the swarm is drawn at.
+ */
+fun lizardHit(epochMs: Long, nx: Float, ny: Float, rimScale: Float): Boolean {
+    val t = (System.currentTimeMillis() - epochMs) / 1000f
+    val fx = 0.5f + nx / (2f * rimScale); val fy = 0.5f + ny / (2f * rimScale)
+    for (l in LIZARDS) {
+        val (p, a) = lizardAt(l, t)
+        val len = LIZARD_LEN * l.scale
+        val ca = cos(a); val sa = sin(a)
+        // body from just behind the hips to the snout, about a fifth of its length wide
+        val dx = fx - p.x; val dy = fy - p.y
+        val along = (dx * ca + dy * sa).coerceIn(-0.3f * len, 0.4f * len)
+        val cx = p.x + ca * along; val cy = p.y + sa * along
+        val ddx = fx - cx; val ddy = fy - cy
+        if (ddx * ddx + ddy * ddy < (0.11f * len) * (0.11f * len)) return true
+    }
+    return false
+}
+
+/** The Lizzard's special power: lizards crawl all over the board. Released at [epochMs] (wall clock). */
 @Composable
-fun LizardSwarm(modifier: Modifier = Modifier) {
+fun LizardSwarm(epochMs: Long, modifier: Modifier = Modifier) {
     var t by remember { mutableStateOf(0f) }
-    LaunchedEffect(Unit) {
-        val start = withFrameNanos { it }
-        while (true) t = (withFrameNanos { it } - start) / 1_000_000_000f
+    LaunchedEffect(epochMs) {
+        while (true) { withFrameNanos { }; t = (System.currentTimeMillis() - epochMs) / 1000f }
     }
     Canvas(modifier = modifier) {
-        val w = size.width; val h = size.height
+        val w = size.width
         for (l in LIZARDS) {
-            fun pos(time: Float) = Offset(
-                w / 2f + w * l.rx * cos(time * l.fx + l.phase),
-                h / 2f + h * l.ry * sin(time * l.fy + l.phase * 1.3f)
-            )
-            val p = pos(t)
-            val ahead = pos(t + 0.05f)
-            val heading = Math.toDegrees(atan2((ahead.y - p.y).toDouble(), (ahead.x - p.x).toDouble())).toFloat()
+            val (p, a) = lizardAt(l, t)
             withTransform({
-                translate(p.x, p.y)
-                rotate(heading, Offset.Zero)
-            }) { drawLizard(w * 0.26f * l.scale, t * 9f + l.phase, l.tint) }
+                translate(p.x * w, p.y * size.height)
+                rotate(Math.toDegrees(a.toDouble()).toFloat(), Offset.Zero)
+            }) { drawLizard(w * LIZARD_LEN * l.scale, t * 9f + l.phase, l.tint) }
         }
     }
 }

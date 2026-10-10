@@ -82,7 +82,7 @@ val Opponent.powerInfo: String get() = when (this) {
     Opponent.GRIN -> "Turns the crowd on you: heckles all over the board and a shaky aim ring — worst on a double."
     Opponent.BLING -> "Holds his jewellery up to the lights: glare washes out the board on your throws."
     Opponent.MULLET -> "Gets a pint in you: the board sways and ripples on your throws."
-    Opponent.GOATEE -> "Lets his lizards loose: they crawl all over the board on your throws."
+    Opponent.GOATEE -> "Lets his lizards loose: they crawl all over the board on your throws — hit one and your visit is over, no score."
     Opponent.TACHE -> "Piles on the pressure: the trebles and doubles shrink on your throws."
     Opponent.COACH -> "Distracts you and spins the board to a new angle after every dart."
 }
