@@ -101,7 +101,7 @@ private fun PresetIllustration() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Preset", fontSize = 12.sp, color = Grey)
         OutlinedButton(onClick = {}, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)) {
-            Text("Littler (fast)", color = OffWhite)
+            Text("Quickfire (fast)", color = OffWhite)
         }
         Text("approach 1.5 s · dart 1.9 s · clear 3.5 s", fontSize = 11.sp, color = PaleGold, modifier = Modifier.padding(top = 6.dp))
     }

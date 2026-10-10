@@ -22,7 +22,7 @@ THE COACH
 Every suggestion comes from the standard checkout table: the book route, why it is the route, and the alternative. Above 170 he keeps you off the bogey numbers and sets you up for a big finish. After every checkout he reviews what you threw against what you should have.
 
 YOUR OWN PACE
-Play at Luke Littler's pace, Gerwyn Price's, Devon Petersen's — or record your own rhythm in the Metronome and play every game at it.
+Play at a steady, quickfire or lightning pro-style pace — or record your own rhythm in the Metronome and play every game at it.
 
 ALSO IN THE BOX
 - Fast 501 solo for quick scoring practice
