@@ -757,10 +757,13 @@ fun CoachHead(modifier: Modifier = Modifier) {
  * [huge] (180, ton-plus finishes, HOT STREAK, the match result) is a bigger bubble that lasts longer.
  */
 @Composable
-fun BigPop(trigger: Int, text: String, huge: Boolean, origin: Offset, modifier: Modifier = Modifier) {
+fun BigPop(trigger: Int, text: String, huge: Boolean, origin: Offset, modifier: Modifier = Modifier, score: Int = if (huge) 170 else 100) {
     var progress by remember { mutableStateOf(-1f) }
-    val life = if (huge) 1.9f else 1.25f          // seconds until the pop
-    val after = 0.55f                             // pop debris
+    val life = if (huge) 0.95f else 0.6f          // seconds until the pop: quick and snappy
+    val after = 0.45f                             // pop debris
+    // The higher the score, the more stars: 100 -> 4 inside / 10 out, 180 -> 12 inside / 26 out
+    val inner = 4 + ((score - 100).coerceIn(0, 80) / 10)
+    val burst = 10 + ((score - 100).coerceIn(0, 80) / 5)
     LaunchedEffect(trigger) {
         if (trigger == 0) { progress = -1f; return@LaunchedEffect }
         com.dartsapp.logic.Sounds.bubble(popAfterMs = (life * 1000).toLong(), big = huge)
@@ -791,22 +794,22 @@ fun BigPop(trigger: Int, text: String, huge: Boolean, origin: Offset, modifier: 
             val canvas = drawContext.canvas.nativeCanvas
             if (t < life) {
                 // Elastic inflate, then a gentle jelly wobble
-                val k = (t / 0.32f).coerceIn(0f, 1f)
+                val k = (t / 0.22f).coerceIn(0f, 1f)
                 val grow = if (k < 1f) 1f - exp(-6f * k) * cos(k * 11f) else 1f
-                val wob = sin(t * 9f) * 0.045f * (if (k < 1f) 1f else 1f - (t - 0.32f) / life)
+                val wob = sin(t * 14f) * 0.05f * (if (k < 1f) 1f else 1f - (t - 0.22f) / life)
                 val rx = r0 * grow * (1f + wob); val ry = r0 * grow * (1f - wob)
-                // Body: translucent, tinted pink at the rim and teal underneath (soap film)
+                // Body: translucent, warm gold in the middle deepening to the game's neon red and crimson at the rim
                 drawOval(
                     brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                        listOf(Color(0x33FFFFFF), Color(0x55FF6FB5), Color(0xAA7A4CFF), Color(0xCC2EF2FF)),
+                        listOf(Color(0x33FFFFFF), Color(0x55FFC23F), Color(0xAAFF2A45), Color(0xDDA0153E)),
                         center = Offset(cx - rx * 0.25f, cy - ry * 0.3f), radius = maxOf(rx, ry) * 1.25f
                     ),
                     topLeft = Offset(cx - rx, cy - ry), size = Size(rx * 2f, ry * 2f)
                 )
-                drawOval(Color.White.copy(alpha = 0.85f), Offset(cx - rx, cy - ry), Size(rx * 2f, ry * 2f), style = Stroke(width = r0 * 0.05f))
+                drawOval(Color(0xFFFFE066).copy(alpha = 0.9f), Offset(cx - rx, cy - ry), Size(rx * 2f, ry * 2f), style = Stroke(width = r0 * 0.05f))
                 // Stars swirling inside
                 val rnd = Random(seed)
-                for (s in 0 until (if (huge) 9 else 6)) {
+                for (s in 0 until inner) {
                     val orbit = r0 * (0.25f + 0.5f * rnd.nextFloat())
                     val a = rnd.nextFloat() * 6.283f + t * (1.2f + rnd.nextFloat()) * (if (s % 2 == 0) 1f else -1f)
                     val tw = 0.6f + 0.4f * sin(t * 8f + s)
@@ -831,13 +834,13 @@ fun BigPop(trigger: Int, text: String, huge: Boolean, origin: Offset, modifier: 
                 val fade = 1f - u
                 drawCircle(Color.White.copy(alpha = 0.8f * fade), r0 * (1f + 0.9f * u), c, style = Stroke(width = r0 * 0.08f * fade + 1f))
                 val rnd = Random(seed + 1)
-                val n = if (huge) 18 else 12
+                val n = burst
                 for (s in 0 until n) {
                     val a = s * 6.283f / n + rnd.nextFloat() * 0.4f
                     val speed = r0 * (1.4f + rnd.nextFloat() * 1.4f)
                     val p = Offset(cx + cos(a) * speed * u, cy + sin(a) * speed * u + r0 * 1.2f * u * u)
                     if (s % 2 == 0) drawStar(p, r0 * 0.16f * fade, u * 9f + s, if (s % 4 == 0) Color.White else Color(0xFFFFD966).copy(alpha = fade))
-                    else drawCircle(Color(0xFF8FF6FF).copy(alpha = fade), r0 * 0.06f * fade + 0.5f, p)
+                    else drawCircle(Color(0xFFFF2A45).copy(alpha = fade), r0 * 0.06f * fade + 0.5f, p)
                 }
                 paint.textSize = paint.textSize * (1f + 0.35f * u)
                 val a8 = (255 * fade).toInt()

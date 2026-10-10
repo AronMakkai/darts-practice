@@ -91,6 +91,7 @@ fun FiveOhOneScreen(navController: NavHostController, vsBot: Boolean = false) {
     var popTrigger by remember { mutableStateOf(0) }
     var popText by remember { mutableStateOf("") }
     var popHuge by remember { mutableStateOf(false) }
+    var popScore by remember { mutableStateOf(100) }
     var coachOpen by remember { mutableStateOf(false) }
     val barPos = remember { mutableStateListOf(Offset.Zero, Offset.Zero) }
     val barSize = remember { mutableStateListOf(IntSize.Zero, IntSize.Zero) }
@@ -107,6 +108,7 @@ fun FiveOhOneScreen(navController: NavHostController, vsBot: Boolean = false) {
             else -> return
         }
         popText = text
+        popScore = score
         popHuge = score == 180 || (finished && score >= 100)
         burstOrigin = panelCentre(i)
         popTrigger++
@@ -396,7 +398,7 @@ fun FiveOhOneScreen(navController: NavHostController, vsBot: Boolean = false) {
         }
     }
     StarBurst(trigger = burstTrigger, origin = burstOrigin, modifier = Modifier.fillMaxSize())
-    BigPop(trigger = popTrigger, text = popText, huge = popHuge, origin = burstOrigin, modifier = Modifier.fillMaxSize())
+    BigPop(trigger = popTrigger, text = popText, huge = popHuge, origin = burstOrigin, modifier = Modifier.fillMaxSize(), score = popScore)
     }
 }
 

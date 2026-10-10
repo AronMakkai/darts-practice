@@ -187,6 +187,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var popTrigger by remember { mutableStateOf(0) }
     var popText by remember { mutableStateOf("") }
     var popHuge by remember { mutableStateOf(false) }
+    var popScore by remember { mutableStateOf(100) }
     var popOrigin by remember { mutableStateOf(Offset.Zero) }
     var bustTrigger by remember { mutableStateOf(0) }
     var bustOrigin by remember { mutableStateOf(Offset.Zero) }
@@ -212,7 +213,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             score >= 100 -> "TON ${if (score == 100) "" else (score - 100).toString()}".trim()
             else -> return
         }
-        popText = text; popHuge = score == 180 || (finished && score >= 100)
+        popText = text; popHuge = score == 180 || (finished && score >= 100); popScore = score
         // The bubble blows up where the last dart of the visit landed
         popOrigin = marks.lastOrNull()?.let { boardPoint(it.x, it.y) } ?: panelCentre(i)
         popTrigger++
@@ -272,7 +273,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 }
                 banterText = Banter.line(opponent, botWon = i == 1)
                 banterKey++
-                popText = if (i == 0) "WINNER" else "LOST"; popHuge = true; popOrigin = panelCentre(i); popTrigger++
+                popText = if (i == 0) "WINNER" else "LOST"; popHuge = true; popScore = if (i == 0) 180 else 100; popOrigin = panelCentre(i); popTrigger++
                 if (i == 0) Sounds.playCheckoutJingle() else Sounds.playBust()
             }
         }
@@ -344,7 +345,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             hotThrows = if (perfect && bigBed) hotThrows + 1 else 0
             if (hotThrows >= hotNeeded) {
                 hotDartsLeft = HOT_DARTS
-                popText = "HOT STREAK!"; popHuge = true; popOrigin = panelCentre(0); popTrigger++
+                popText = "HOT STREAK!"; popHuge = true; popScore = 160; popOrigin = panelCentre(0); popTrigger++
                 Sounds.playCheckoutJingle()
             }
         }
@@ -643,7 +644,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             else Button(onClick = { setupOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("New match") }
         }
 
-        BigPop(trigger = popTrigger, text = popText, huge = popHuge, origin = popOrigin, modifier = Modifier.fillMaxSize())
+        BigPop(trigger = popTrigger, text = popText, huge = popHuge, origin = popOrigin, modifier = Modifier.fillMaxSize(), score = popScore)
         BustOverlay(trigger = bustTrigger, origin = bustOrigin, modifier = Modifier.fillMaxSize())
     }
 }
