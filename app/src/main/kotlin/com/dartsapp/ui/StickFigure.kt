@@ -44,7 +44,7 @@ private data class Pose(
 // weight forward with the upper body leaning over the front foot; the off arm hangs relaxed.
 private val STAND = Pose(0.18f, 14f, 40f, -8f, 6f, 0.45f, 6f)          // ready: side-on, dart held low
 private val WALK = Pose(0.50f, 20f, 15f, -10f, 10f, 0.9f, 4f)
-private val AIM = Pose(0.50f, 84f, 84f, -14f, 8f, 1.0f, 20f)           // upper arm at the board, forearm up, dart at the eye
+private val AIM = Pose(0.50f, 65f, 115f, -14f, 8f, 1.0f, 20f)          // elbow dropped below the shoulder, forearm upright, dart level with the middle of the head
 private val FOLLOW = Pose(0.50f, 98f, 4f, -10f, 8f, 1.0f, 26f)         // arm extended at the board, leaning into it
 private val REMOVE = Pose(0.76f, 120f, 0f, 15f, 0f, 0.3f, 8f)
 
