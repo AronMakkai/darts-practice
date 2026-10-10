@@ -414,7 +414,9 @@ fun DartlessScreen(navController: NavHostController) {
         }
 
         Box(
-            modifier = Modifier.fillMaxWidth().weight(1f, fill = false).padding(8.dp).onGloballyPositioned {
+            // A square that fits whatever height is left, so the board never spills up over the text
+            modifier = Modifier.weight(1f, fill = false).aspectRatio(1f, matchHeightConstraintsFirst = true)
+                .align(Alignment.CenterHorizontally).padding(top = 6.dp, start = 4.dp, end = 4.dp).onGloballyPositioned {
                 boardPos = it.positionInRoot()
                 boardSize = it.size
             },

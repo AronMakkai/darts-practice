@@ -530,21 +530,21 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)
                         .background(if (active) Charcoal else Night)
                         .onGloballyPositioned { panelPos[i] = it.positionInRoot(); panelSize[i] = it.size }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (i == 1) OpponentHead(opponent, modifier = Modifier.size(56.dp).clickable { bioOpen = true }.padding(end = 4.dp))
-                    Column(modifier = Modifier.width(if (i == 1) 84.dp else 96.dp)) {
-                        Text(s.name, fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp, color = if (active) Gold else Grey, maxLines = 1)
-                        Text(s.remaining.toString(), fontSize = 34.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = if (active) Gold else OffWhite)
+                    if (i == 1) OpponentHead(opponent, modifier = Modifier.size(38.dp).clickable { bioOpen = true }.padding(end = 4.dp))
+                    Column(modifier = Modifier.width(if (i == 1) 74.dp else 88.dp)) {
+                        Text(s.name, fontSize = 9.sp, lineHeight = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp, color = if (active) Gold else Grey, maxLines = 1)
+                        Text(s.remaining.toString(), fontSize = 26.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = if (active) Gold else OffWhite)
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        PowerBar(value = s.remaining.toFloat() / startScore, enabled = false, onChange = {}, modifier = Modifier.fillMaxWidth().height(18.dp), segmentColor = { frac -> if (frac * startScore < 170f) Color(0xFFFF7A1A) else BoardCream })
+                        PowerBar(value = s.remaining.toFloat() / startScore, enabled = false, onChange = {}, modifier = Modifier.fillMaxWidth().height(14.dp), segmentColor = { frac -> if (frac * startScore < 170f) Color(0xFFFF7A1A) else BoardCream })
                         Text(
                             "S ${s.sets}  L ${s.legs}   avg ${"%.1f".format(s.average)}" +
                                 (if (s.remaining in 2..170 && CheckoutLogic.isFinishable(s.remaining)) "   ${CheckoutLogic.tip(s.remaining)}" else ""),
                             fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = if (active) PaleGold else Grey, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 3.dp)
+                            modifier = Modifier.padding(top = 2.dp)
                         )
                     }
                 }
@@ -553,7 +553,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             // Accuracy + preset
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(if (hot) "HOT!" else "ACCURACY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(72.dp))
-                HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(56.dp))
+                HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(46.dp))
             }
 
             // Fixed-height status
@@ -567,7 +567,9 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             }
 
             Box(
-                modifier = Modifier.fillMaxWidth().weight(1f, fill = false).padding(8.dp).onGloballyPositioned {
+                // A square that fits whatever height is left, so the board never spills up over the text
+                modifier = Modifier.weight(1f, fill = false).aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    .align(Alignment.CenterHorizontally).padding(top = 6.dp, start = 4.dp, end = 4.dp).onGloballyPositioned {
                     boardPos = it.positionInRoot(); boardSize = it.size
                 },
                 contentAlignment = Alignment.Center
