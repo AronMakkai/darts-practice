@@ -133,14 +133,14 @@ object Music {
             "h.h.....m.m.....l.l.....hmhmlflf",
             "hmlfhmlf..h...h.mmll..ff..hhmlf."
         )
-        val tomPitch = mapOf('h' to hz(57), 'm' to hz(52), 'l' to hz(48), 'f' to hz(45))   // A3 E3 C3 A2
+        val tomPitch = mapOf('h' to hz(60), 'm' to hz(57), 'l' to hz(55), 'f' to hz(52))   // C4 A3 G3 E3
         for (k in 0 until 4) {
             // the break after melody k (the loop wraps, so the first break follows the last melody)
             val bar0 = ((4 * k + 4) % bars)
             val pattern = tomPatterns[k]
             for ((i, ch) in pattern.withIndex()) {
                 val f = tomPitch[ch] ?: continue
-                val vel = if (i % 4 == 0) 0.55f else 0.4f
+                val vel = if (i % 4 == 0) 0.38f else 0.28f
                 fmTom(buf, bar0 * beat * 4 + i * sixteenth, f, vel)
             }
         }
