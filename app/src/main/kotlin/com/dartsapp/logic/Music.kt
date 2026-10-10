@@ -75,7 +75,7 @@ object Music {
     private fun renderMenuTrack(): ShortArray {
         val bpm = 112f
         val beat = 60f / bpm
-        val bars = 8
+        val bars = 16   // four rounds of: tom break (2 bars) · melody (2 bars)
         val n = (RATE * beat * 4 * bars).toInt()
         val buf = FloatArray(n)
         val rnd = Random(7)
@@ -94,16 +94,16 @@ object Music {
         }
         // Bass: 16th-note octave pattern
         for (bar in 0 until bars) {
-            val root = roots[bar / 2]
+            val root = roots[(bar / 2) % 4]
             for (s in 0 until 16) {
                 val midi = if (s % 4 == 2) root + 12 else if (s % 8 == 7) root + 7 else root
                 pluck(buf, bar * beat * 4 + s * sixteenth, hz(midi), sixteenth * 0.9f, 0.32f, saw = true)
             }
         }
         // Pad: detuned saws, slow attack, held for two bars
-        for (c in 0 until 4) {
+        for (c in 0 until 8) {
             val start = c * beat * 8
-            for (m in triads[c]) pad(buf, start, beat * 8, hz(m), 0.07f)
+            for (m in triads[c % 4]) pad(buf, start, beat * 8, hz(m), 0.07f)
         }
         // Lead: the tune the crowd whistles (root, 2, 4, 7, 4, 2, root, -3, root), elaborated into a
         // staccato 16th-note line: each tune note stated, then echoed an octave up or down with a
@@ -115,8 +115,8 @@ object Music {
             69, 0, 71, 0,   72, 0, 76, 0,   72, 0, 71, 0,   69, 0, 67, 69,
             69, 81, 71, 0,  72, 84, 76, 0,  72, 84, 71, 0,  69, 81, 67, 69
         )
-        for (rep in 0 until 2) {
-            val start = (if (rep == 0) 2 else 6) * beat * 4
+        for (rep in 0 until 4) {
+            val start = (2 + rep * 4) * beat * 4
             for ((i, m) in riff.withIndex()) {
                 if (m == 0) continue
                 // Staccato: each note is short, with a tiny ring on the lowest and highest ones
@@ -124,9 +124,48 @@ object Music {
                 lead(buf, start + i * sixteenth, hz(m), hold, 0.2f)
             }
         }
+        // Tom breaks: between the melody phrases a snappy FM tom part answers it, a different
+        // pattern every time (h/m/l/f = high, mid, low, floor tom, tuned to the key; '.' = rest).
+        // Each break is two bars of 16ths; the last one is the big fill that brings the tune back round.
+        val tomPatterns = arrayOf(
+            "h..m..l.h..m..l.h..m..l.hhmmllff",
+            "l.l.m.h.l.l.m.h.l.l.m.h.hmlfhmlf",
+            "h.h.....m.m.....l.l.....hmhmlflf",
+            "hmlfhmlf..h...h.mmll..ff..hhmlf."
+        )
+        val tomPitch = mapOf('h' to hz(57), 'm' to hz(52), 'l' to hz(48), 'f' to hz(45))   // A3 E3 C3 A2
+        for (k in 0 until 4) {
+            // the break after melody k (the loop wraps, so the first break follows the last melody)
+            val bar0 = ((4 * k + 4) % bars)
+            val pattern = tomPatterns[k]
+            for ((i, ch) in pattern.withIndex()) {
+                val f = tomPitch[ch] ?: continue
+                val vel = if (i % 4 == 0) 0.55f else 0.4f
+                fmTom(buf, bar0 * beat * 4 + i * sixteenth, f, vel)
+            }
+        }
         // Gentle master compression by soft clipping
         for (i in buf.indices) { val v = buf[i]; buf[i] = (v / (1f + kotlin.math.abs(v) * 0.6f)) * 1.25f }
         return toPcm(buf)
+    }
+
+    /**
+     * Snappy FM tom: a sine carrier whose pitch drops fast onto [f], modulated by an inharmonic
+     * partner (1.41x) whose index dies away in a few milliseconds — the "pew" of an 80s synth tom.
+     */
+    private fun fmTom(buf: FloatArray, t0: Float, f: Float, amp: Float) {
+        val start = (t0 * RATE).toInt(); val dur = (0.32f * RATE).toInt()
+        var pc = 0.0; var pm = 0.0
+        for (i in 0 until dur) {
+            val idx = start + i; if (idx >= buf.size) break
+            val t = i.toFloat() / RATE
+            val fc = f * (1f + 0.9f * exp(-t * 38f))
+            pm += 2 * PI * fc * 1.41 / RATE
+            pc += 2 * PI * fc / RATE
+            val index = 3.2f * exp(-t * 55f)
+            val env = exp(-t * 11f) * minOf(1f, i / (RATE * 0.0015f))
+            buf[idx] += (sin(pc + index * sin(pm)) * env * amp).toFloat()
+        }
     }
 
     private fun kick(buf: FloatArray, t0: Float) {
