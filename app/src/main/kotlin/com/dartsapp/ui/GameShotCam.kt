@@ -30,11 +30,9 @@ fun rememberGameShotClock(trigger: Int): Float {
     LaunchedEffect(trigger) {
         if (trigger == 0) { t = -1f; return@LaunchedEffect }
         val start = withFrameNanos { it }
-        var thudDone = false
         while (true) {
             val s = (withFrameNanos { it } - start) / 1_000_000_000f
             t = s
-            if (!thudDone && s >= IMPACT) { thudDone = true; com.dartsapp.logic.Sounds.thud() }
             if (s > GAME_SHOT_SECONDS) { t = -1f; break }
         }
     }

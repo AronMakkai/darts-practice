@@ -537,6 +537,14 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }.coerceAtLeast(0)
 
     val camT = rememberGameShotClock(camTrigger)
+    // Once the camera is in, stars burst out of the winning spot (centred on the board by the zoom)
+    var camBurst by remember { mutableStateOf(0) }
+    LaunchedEffect(camTrigger) {
+        if (camTrigger == 0) return@LaunchedEffect
+        delay(420)
+        camBurst++
+        Sounds.starPop()
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().padding(bottom = 130.dp)) {
             ScreenHeader(
@@ -646,7 +654,6 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f).nerves(windUp, nervesNow, nervesSpeed)
                 )
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
-                GameShotDart(camT, camPoint.x, camPoint.y, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
             }
         }
 
@@ -664,6 +671,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
 
         BigPop(trigger = popTrigger, text = popText, huge = popHuge, origin = popOrigin, modifier = Modifier.fillMaxSize(), score = popScore)
         BustOverlay(trigger = bustTrigger, origin = bustOrigin, modifier = Modifier.fillMaxSize())
+        StarBurst(trigger = camBurst, origin = Offset(boardPos.x + boardSize.width / 2f, boardPos.y + boardSize.height / 2f), modifier = Modifier.fillMaxSize(), count = 70)
     }
 }
 
