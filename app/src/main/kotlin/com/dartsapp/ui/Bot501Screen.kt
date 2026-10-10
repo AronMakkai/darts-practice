@@ -657,17 +657,6 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).size(120.dp)
         )
         DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp, bottom = 22.dp).size(width = 132.dp, height = 90.dp))
-        // TEMP test control: fire the opponent's special power by hand
-        if (!matchOver && opponent.powerName != null) {
-            Column(modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 8.dp).width(118.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                OutlinedButton(
-                    onClick = { if (powerActive) powerActive = false else powerSplash = true },
-                    border = BorderStroke(2.dp, Red), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Night, contentColor = OffWhite),
-                    modifier = Modifier.height(34.dp)
-                ) { Text(if (powerActive) "POWER OFF" else "POWER", fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold) }
-            }
-        }
         if (matchOver) {
             if (tournament) Button(onClick = { navController.popBackStack() }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("Back to the draw") }
             else Button(onClick = { setupOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("New match") }

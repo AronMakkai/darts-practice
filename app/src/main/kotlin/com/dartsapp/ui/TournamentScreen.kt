@@ -51,8 +51,6 @@ fun TournamentScreen(navController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize().background(Night.copy(alpha = 0.55f)))
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         ScreenHeader("", navController) {
-            // TEMP test button: show the champion splash without winning
-            TextButton(onClick = { champSplash = true }) { Text("Test win", color = Red, fontSize = 11.sp) }
             if (started) TextButton(onClick = { Tournament.reset(); tick++ }) { Text("New", color = Gold) }
         }
         if (tick < 0) Text("")
