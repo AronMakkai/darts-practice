@@ -406,6 +406,8 @@ private fun MatchSetupDialog(
     onBegin: () -> Unit, onCancel: () -> Unit,
     opponent: Opponent? = null, onOpponent: (Opponent) -> Unit = {}
 ) {
+    var pickerBio by remember { mutableStateOf<Opponent?>(null) }      // tap the picked character again for his bio
+    pickerBio?.let { OpponentBioDialog(opponent = it, showPower = false, onDismiss = { pickerBio = null }) }
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text("MATCH SETUP", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, color = Gold) },
@@ -428,13 +430,13 @@ private fun MatchSetupDialog(
                                     modifier = Modifier.size(58.dp)
                                         .background(if (sel) DarkRed else Charcoal)
                                         .border(2.dp, if (sel) Gold else Color.Transparent)
-                                        .clickable { onOpponent(o) },
+                                        .clickable { if (sel) pickerBio = o else onOpponent(o) },
                                     contentAlignment = Alignment.Center
                                 ) { OpponentHead(o, modifier = Modifier.size(52.dp)) }
                             }
                         }
                     }
-                    Text(opponent.displayName + " — " + opponent.blurb, fontSize = 11.sp, color = PaleGold, maxLines = 3)
+                    Text(opponent.displayName + " — " + opponent.blurb + "  (tap again for his bio)", fontSize = 11.sp, color = PaleGold, maxLines = 4)
                 }
                 Spacer(Modifier.height(12.dp))
                 OptionRow("Game", listOf(301, 501), startScore, { it.toString() }, onStart)

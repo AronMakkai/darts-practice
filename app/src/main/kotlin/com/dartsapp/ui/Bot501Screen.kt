@@ -130,6 +130,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var powerActive by remember { mutableStateOf(false) }
     var powerUsed by remember { mutableStateOf(false) }       // once per leg
     var bioOpen by remember { mutableStateOf(false) }          // the opponent's bio card
+    var pickerBio by remember { mutableStateOf<Opponent?>(null) } // bio opened from the opponent picker
     var coachAngle by remember { mutableStateOf(180f) }       // the Coach's board rotation; re-rolled after every dart of yours
     val boardBrightness = 0.11f                               // how much light is left under the Viking's LIGHTS OUT
     val glareStrength = 1f                                    // the Bling's glare, full strength
@@ -456,6 +457,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
 
     if (bioOpen) OpponentBioDialog(opponent = opponent, onDismiss = { bioOpen = false })
+    pickerBio?.let { OpponentBioDialog(opponent = it, onDismiss = { pickerBio = null }) }
 
     if (powerSplash) {
         PowerSplash(opponent = opponent, onDismiss = { powerSplash = false; powerActive = true; coachAngle = 40f + kotlin.random.Random.nextFloat() * 280f })
@@ -476,13 +478,14 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                                     modifier = Modifier.size(58.dp)
                                         .background(if (sel) DarkRed else Charcoal)
                                         .border(2.dp, if (sel) Gold else Color.Transparent)
-                                        .clickable { opponent = o; Settings.setOpponentIndex(context, o.ordinal) },
+                                        // tap to pick him; tap him again for his bio
+                                        .clickable { if (sel) pickerBio = o else { opponent = o; Settings.setOpponentIndex(context, o.ordinal) } },
                                     contentAlignment = Alignment.Center
                                 ) { OpponentHead(o, modifier = Modifier.size(52.dp)) }
                             }
                         }
                     }
-                    Text(opponent.blurb, fontSize = 11.sp, color = PaleGold, maxLines = 2, modifier = Modifier.padding(bottom = 6.dp))
+                    Text(opponent.blurb + "  (tap again for his bio)", fontSize = 11.sp, color = PaleGold, maxLines = 3, modifier = Modifier.padding(bottom = 6.dp))
                     OptionRow("Game", listOf(301, 501), startScore, { it.toString() }) { startScore = it }
                     OptionRow("Legs per set", listOf(1, 3, 5, 7), legsPerSet, { "$it" }) { legsPerSet = it }
                     OptionRow("Sets to win", listOf(1, 2, 3, 5), setsToWin, { "$it" }) { setsToWin = it }
@@ -674,6 +677,14 @@ internal fun PowerSplash(opponent: Opponent, onDismiss: () -> Unit) {
             Text("tap to continue", fontSize = 11.sp, color = Grey, modifier = Modifier.padding(top = 16.dp))
         }
     }
+}
+
+/** A character portrait that opens his bio card when tapped. */
+@Composable
+internal fun OpponentHeadWithBio(opponent: Opponent, modifier: Modifier = Modifier, showPower: Boolean = true) {
+    var open by remember { mutableStateOf(false) }
+    OpponentHead(opponent, modifier = modifier.clickable { open = true })
+    if (open) OpponentBioDialog(opponent = opponent, showPower = showPower, onDismiss = { open = false })
 }
 
 /** The opponent's bio card: portrait, hometown, his game and his special power. Tap anywhere to close. */

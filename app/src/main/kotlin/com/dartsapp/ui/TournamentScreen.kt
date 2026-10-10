@@ -63,7 +63,7 @@ fun TournamentScreen(navController: NavHostController) {
                 )
                 Spacer(Modifier.height(20.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for (o in Opponent.values()) if (o != Opponent.COACH || coachUnlocked) OpponentHead(o, modifier = Modifier.size(40.dp))
+                    for (o in Opponent.values()) if (o != Opponent.COACH || coachUnlocked) OpponentHeadWithBio(o, modifier = Modifier.size(40.dp))
                 }
                 Spacer(Modifier.height(24.dp))
                 Button(onClick = { Tournament.start(coachUnlocked); tick++ }) { Text("Draw the bracket") }
@@ -97,7 +97,7 @@ fun TournamentScreen(navController: NavHostController) {
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).background(Charcoal).padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        OpponentHead(opp, modifier = Modifier.size(64.dp))
+                        OpponentHeadWithBio(opp, modifier = Modifier.size(64.dp))
                         Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
                             Text(Tournament.rounds[r].uppercase(), fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Gold, fontSize = 12.sp)
                             Text("vs ${opp.displayName}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OffWhite)
@@ -164,7 +164,7 @@ private fun PlayerCell(idx: Int, winner: Boolean, loser: Boolean, pending: Boole
                 Text("U", color = if (loser) Grey else BrightGold, fontSize = 11.sp, fontWeight = FontWeight.Black)
             }
         } else {
-            OpponentHead(e.opponent!!, modifier = Modifier.size(22.dp))
+            OpponentHeadWithBio(e.opponent!!, modifier = Modifier.size(22.dp))
         }
         Text(
             e?.name?.removePrefix("THE ") ?: "—",
