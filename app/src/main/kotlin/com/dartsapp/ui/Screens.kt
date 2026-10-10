@@ -119,7 +119,7 @@ fun SubMenuScreen(navController: NavHostController, title: String, entries: List
  * Miami neon halo (teal outside, hot pink inside).
  */
 @Composable
-private fun ChromeTitle(text: String, modifier: Modifier = Modifier) {
+internal fun ChromeTitle(text: String, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -246,7 +246,7 @@ private fun RetroButton(label: String, onClick: () -> Unit) = NeonSignButton(lab
  * towards the viewer, a horizon glow, flat mountain polygons and a big low-poly dartboard "sun".
  */
 @Composable
-private fun VectorBackdrop(modifier: Modifier = Modifier) {
+internal fun VectorBackdrop(modifier: Modifier = Modifier) {
     var t by remember { mutableStateOf(0f) }
     LaunchedEffect(Unit) {
         val start = withFrameNanos { it }

@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.cos
@@ -174,5 +175,35 @@ fun NeonSignButton(label: String, onClick: () -> Unit, modifier: Modifier = Modi
             text.color = android.graphics.Color.rgb(0xFF, 0xF0, 0xC8); text.alpha = (255 * glow.coerceAtMost(1f)).toInt()
             canvas.drawText(label, w / 2f, base, text)
         }
+    }
+}
+
+
+/**
+ * A neon-tube frame drawn behind the content: a soft glow plus a bright glass line with a white
+ * core, on a translucent purple plate. [lit] = false gives a dim, switched-off tube.
+ */
+fun Modifier.neonFrame(color: Color, lit: Boolean = true, corner: androidx.compose.ui.unit.Dp = 10.dp): Modifier = this.drawBehind {
+    val canvas = drawContext.canvas.nativeCanvas
+    val r = corner.toPx()
+    val inset = 3.dp.toPx()
+    val rect = android.graphics.RectF(inset, inset, size.width - inset, size.height - inset)
+    val p = android.graphics.Paint().apply { isAntiAlias = true }
+    p.style = android.graphics.Paint.Style.FILL
+    p.color = android.graphics.Color.argb(170, 0x1E, 0x08, 0x2C)
+    canvas.drawRoundRect(rect, r, r, p)
+    p.style = android.graphics.Paint.Style.STROKE
+    val c = android.graphics.Color.argb(255, (color.red * 255).toInt(), (color.green * 255).toInt(), (color.blue * 255).toInt())
+    if (lit) {
+        p.strokeWidth = 3.dp.toPx() * 2.4f; p.color = c; p.alpha = 110
+        p.maskFilter = android.graphics.BlurMaskFilter(3.dp.toPx() * 2f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+        canvas.drawRoundRect(rect, r, r, p)
+        p.maskFilter = null
+    }
+    p.strokeWidth = 2.dp.toPx(); p.color = c; p.alpha = if (lit) 255 else 90
+    canvas.drawRoundRect(rect, r, r, p)
+    if (lit) {
+        p.strokeWidth = 0.7.dp.toPx(); p.color = android.graphics.Color.WHITE; p.alpha = 190
+        canvas.drawRoundRect(rect, r, r, p)
     }
 }
