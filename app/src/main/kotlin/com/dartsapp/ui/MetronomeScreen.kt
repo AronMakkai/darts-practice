@@ -223,6 +223,19 @@ fun MetronomeScreen(navController: NavHostController) {
         )
     }
 
+    // A flash of light across the screen at every throw (the moment a dart step is done)
+    val flash = remember { androidx.compose.animation.core.Animatable(0f) }
+    var prevStep by remember { mutableStateOf(step) }
+    LaunchedEffect(step) {
+        val threw = prevStep.kind == Kind.DART && step != prevStep
+        prevStep = step
+        if (threw) {
+            flash.snapTo(1f)
+            flash.animateTo(0f, androidx.compose.animation.core.tween(320))
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -232,7 +245,7 @@ fun MetronomeScreen(navController: NavHostController) {
         }
 
         // Stick figure
-        StickFigure(step = step, modifier = Modifier.fillMaxWidth().height(120.dp).padding(horizontal = 16.dp))
+        StickFigure(step = step, modifier = Modifier.fillMaxWidth().height(220.dp).padding(horizontal = 8.dp))
 
         // Current step
         val isYours = step.kind != Kind.NONE && step.kind != Kind.OPPONENT
@@ -398,6 +411,12 @@ fun MetronomeScreen(navController: NavHostController) {
             )
         }
 
+    }
+    if (flash.value > 0f) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            drawRect(BrightGold.copy(alpha = 0.45f * flash.value))
+        }
+    }
     }
 }
 
