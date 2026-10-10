@@ -37,9 +37,12 @@ fun MainMenuScreen(navController: NavHostController) {
             ChromeTitle("DARTS", modifier = Modifier.fillMaxWidth().height(74.dp))
             // Title up in the sky, the signs a little lower: the gap scales with the phone's height
             Spacer(Modifier.weight(0.6f))
-            RetroButton("DARTS GAME") { navController.navigate("game") }
-            RetroButton("DARTS IRL") { navController.navigate("irl") }
-            RetroButton("SETTINGS") { navController.navigate("settings") }
+            // Lifted by the height of two signs (2 x 56 dp) from where the spacing alone would put them
+            Column(modifier = Modifier.offset(y = (-112).dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                RetroButton("DARTS GAME") { navController.navigate("game") }
+                RetroButton("DARTS IRL") { navController.navigate("irl") }
+                RetroButton("SETTINGS") { navController.navigate("settings") }
+            }
             Spacer(Modifier.weight(0.65f))
         }
         TvFilter(modifier = Modifier.fillMaxSize())
