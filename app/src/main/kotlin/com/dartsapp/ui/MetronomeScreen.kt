@@ -110,6 +110,7 @@ fun MetronomeScreen(navController: NavHostController) {
     var learning by remember { mutableStateOf(Learning()) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var presetMenuOpen by remember { mutableStateOf(false) }
+    var timingsOpen by remember { mutableStateOf(false) }      // the per-step timings, folded away by default
 
     // Show the info box automatically the first time the screen is opened.
     var showInfo by remember { mutableStateOf(!prefs.getBoolean("infoSeen", false)) }
@@ -231,13 +232,13 @@ fun MetronomeScreen(navController: NavHostController) {
         }
 
         // Stick figure
-        StickFigure(step = step, modifier = Modifier.fillMaxWidth().height(150.dp).padding(horizontal = 16.dp))
+        StickFigure(step = step, modifier = Modifier.fillMaxWidth().height(120.dp).padding(horizontal = 16.dp))
 
         // Current step
         val isYours = step.kind != Kind.NONE && step.kind != Kind.OPPONENT
         Text(
             step.label.uppercase(),
-            fontSize = 30.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = when {
                 step == Step.READY -> Grey
@@ -255,29 +256,89 @@ fun MetronomeScreen(navController: NavHostController) {
                     else "Learning  ·  round $turn  ·  ${formatSec(elapsedSec)} s"
                 }
             },
-            fontSize = 15.sp,
+            fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 2.dp)
         )
+
+        // Start / Stop, right under the figure so it is always on screen
+        if (mode != Mode.LEARNING) {
+            Button(
+                onClick = { if (mode == Mode.PLAYING) stop() else mode = Mode.PLAYING },
+                modifier = Modifier.fillMaxWidth(0.7f).padding(vertical = 6.dp).height(52.dp)
+            ) { Text(if (mode == Mode.PLAYING) "Stop" else "Start", fontSize = 22.sp, fontWeight = FontWeight.Bold) }
+        }
 
         // Learning mode: the big "done" button
         if (mode == Mode.LEARNING) {
             Button(
                 onClick = { learningStepDone() },
-                modifier = Modifier.fillMaxWidth(0.85f).padding(vertical = 10.dp).height(84.dp)
-            ) { Text(step.doneLabel, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) }
+                modifier = Modifier.fillMaxWidth(0.85f).padding(vertical = 6.dp).height(72.dp)
+            ) { Text(step.doneLabel, fontSize = 22.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) }
             Text(
                 "Play a real turn. Press the button the moment each step is finished. The clock starts at the opponent's last dart.",
-                fontSize = 13.sp, color = Grey, textAlign = TextAlign.Center,
+                fontSize = 12.sp, color = Grey, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
 
-        // Sequence list
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+        // Timing preset: picker, learn and delete on one compact card
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            colors = CardDefaults.cardColors(containerColor = Charcoal)
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("PACE", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, letterSpacing = 2.sp, color = Grey, modifier = Modifier.padding(end = 8.dp))
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedButton(
+                            onClick = { presetMenuOpen = true },
+                            enabled = mode == Mode.IDLE,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            modifier = Modifier.fillMaxWidth().height(38.dp)
+                        ) { Text(preset?.name ?: "Sliders (manual)", color = OffWhite, fontSize = 13.sp, maxLines = 1) }
+                        DropdownMenu(expanded = presetMenuOpen, onDismissRequest = { presetMenuOpen = false }) {
+                            DropdownMenuItem(text = { Text("Sliders (manual)") }, onClick = { selectPreset(null); presetMenuOpen = false })
+                            for (p in presets) {
+                                DropdownMenuItem(text = { Text(p.name) }, onClick = { selectPreset(p.name); presetMenuOpen = false })
+                            }
+                        }
+                    }
+                }
+                Text(
+                    if (mode == Mode.LEARNING) {
+                        if (learning.counts.isEmpty()) "Averages update after every press."
+                        else "So far: " + learning.toPreset("").summary()
+                    } else preset?.summary()
+                        ?: if (presets.isEmpty()) "No presets yet — press Learn my timing and play a few turns." else "Using the sliders (open Step timings).",
+                    fontSize = 12.sp, color = if (mode == Mode.LEARNING) PaleGold else Grey, modifier = Modifier.padding(top = 4.dp)
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    if (mode == Mode.LEARNING) {
+                        Button(onClick = { finishLearning() }, modifier = Modifier.height(38.dp)) { Text(if (learning.complete) "Finish & save" else "Cancel") }
+                        TextButton(onClick = { resetLearning() }, enabled = learning.counts.isNotEmpty()) { Text("Reset averages", color = Grey) }
+                    } else {
+                        TextButton(onClick = { startLearning() }, enabled = mode == Mode.IDLE) { Text("Learn my timing", color = Gold) }
+                    }
+                    if (preset != null && !preset.builtIn && mode == Mode.IDLE) {
+                        TextButton(onClick = {
+                            presets = TimingPresets.delete(context, preset.name)
+                            selectPreset(null)
+                        }) { Text("Delete", color = Grey) }
+                    }
+                }
+            }
+        }
+
+        // Step timings: folded away by default, tap to open
+        TextButton(onClick = { timingsOpen = !timingsOpen }, modifier = Modifier.padding(top = 2.dp)) {
+            Text((if (timingsOpen) "▴" else "▾") + "  STEP TIMINGS", fontSize = 12.sp, letterSpacing = 2.sp, color = Gold,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+        }
+        if (timingsOpen) Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
             for (s in if (mode == Mode.LEARNING) learnSequence else sequence) {
                 val active = s == step
                 val sub = false
@@ -286,7 +347,7 @@ fun MetronomeScreen(navController: NavHostController) {
                         .fillMaxWidth()
                         .padding(vertical = 1.dp)
                         .background(
-                            if (active) (if (s.kind == Kind.OPPONENT) DarkRed else Charcoal) else Black,
+                            if (active) (if (s.kind == Kind.OPPONENT) DarkRed else Charcoal) else Night,
                             RoundedCornerShape(8.dp)
                         )
                         .padding(start = if (sub) 28.dp else 14.dp, end = 14.dp, top = if (sub) 4.dp else 7.dp, bottom = if (sub) 4.dp else 7.dp),
@@ -314,58 +375,7 @@ fun MetronomeScreen(navController: NavHostController) {
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-
-        // Timing presets card
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-            colors = CardDefaults.cardColors(containerColor = Charcoal)
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text("Timing preset", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Gold)
-
-                Box {
-                    OutlinedButton(
-                        onClick = { presetMenuOpen = true },
-                        enabled = mode == Mode.IDLE,
-                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
-                    ) { Text(preset?.name ?: "Sliders (manual)", color = OffWhite) }
-                    DropdownMenu(expanded = presetMenuOpen, onDismissRequest = { presetMenuOpen = false }) {
-                        DropdownMenuItem(text = { Text("Sliders (manual)") }, onClick = { selectPreset(null); presetMenuOpen = false })
-                        for (p in presets) {
-                            DropdownMenuItem(text = { Text(p.name) }, onClick = { selectPreset(p.name); presetMenuOpen = false })
-                        }
-                    }
-                }
-
-                Text(
-                    if (mode == Mode.LEARNING) {
-                        if (learning.counts.isEmpty()) "Averages update after every press."
-                        else "So far: " + learning.toPreset("").summary()
-                    } else preset?.summary()
-                        ?: if (presets.isEmpty()) "No presets yet — press Learn my timing and play a few turns." else "Using the sliders below.",
-                    fontSize = 13.sp, color = if (mode == Mode.LEARNING) PaleGold else Grey, modifier = Modifier.padding(top = 6.dp)
-                )
-
-                Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    if (mode == Mode.LEARNING) {
-                        Button(onClick = { finishLearning() }) { Text(if (learning.complete) "Finish & save" else "Cancel") }
-                        TextButton(onClick = { resetLearning() }, enabled = learning.counts.isNotEmpty()) { Text("Reset averages", color = Grey) }
-                    } else {
-                        OutlinedButton(onClick = { startLearning() }, enabled = mode == Mode.IDLE) { Text("Learn my timing", color = Gold) }
-                    }
-                    if (preset != null && !preset.builtIn && mode == Mode.IDLE) {
-                        TextButton(onClick = {
-                            presets = TimingPresets.delete(context, preset.name)
-                            selectPreset(null)
-                        }) { Text("Delete", color = Grey) }
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+        if (timingsOpen) Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 6.dp)) {
             if (preset == null) {
                 Text("Seconds per dart: ${formatSec(intervalSec)} s", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 Slider(
@@ -388,14 +398,6 @@ fun MetronomeScreen(navController: NavHostController) {
             )
         }
 
-        Spacer(Modifier.height(20.dp))
-
-        if (mode != Mode.LEARNING) {
-            Button(
-                onClick = { if (mode == Mode.PLAYING) stop() else mode = Mode.PLAYING },
-                modifier = Modifier.fillMaxWidth(0.7f).height(64.dp)
-            ) { Text(if (mode == Mode.PLAYING) "Stop" else "Start", fontSize = 24.sp, fontWeight = FontWeight.Bold) }
-        }
     }
 }
 

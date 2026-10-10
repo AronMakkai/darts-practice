@@ -250,8 +250,10 @@ private fun DrawScope.drawFigure(feet: Offset, h: Float, p: Pose, dimmed: Boolea
     val upper = h * 0.14f
     val fore = h * 0.13f
     val headR = h * 0.072f
-    val alpha = if (dimmed) 0.45f else 1f
-    fun c(x: Color) = x.copy(alpha = x.alpha * alpha)
+    // Standing back (not throwing): solid but darker, faded towards the night purple — never see-through
+    fun c(x: Color): Color = if (!dimmed) x else Color(
+        x.red * 0.5f + 0.10f * 0.5f, x.green * 0.5f + 0.04f * 0.5f, x.blue * 0.5f + 0.16f * 0.5f, x.alpha
+    )
     val skin = c(Skin); val skinShade = c(SkinShade)
     val shirt = c(if (rival) Color(0xFF1E5A9E) else Shirt)
     val shirtShade = c(if (rival) Color(0xFF123A6A) else ShirtShade)
