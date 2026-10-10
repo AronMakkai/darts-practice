@@ -35,11 +35,12 @@ fun MainMenuScreen(navController: NavHostController) {
             Spacer(Modifier.weight(0.5f))
             ChromeTitle("METRO", modifier = Modifier.fillMaxWidth().height(74.dp))
             ChromeTitle("DARTS", modifier = Modifier.fillMaxWidth().height(74.dp))
-            Spacer(Modifier.height(30.dp))
+            // Title up in the sky, the signs down on the grid: the gap scales with the phone's height
+            Spacer(Modifier.weight(0.9f))
             RetroButton("DARTS GAME") { navController.navigate("game") }
             RetroButton("DARTS IRL") { navController.navigate("irl") }
             RetroButton("SETTINGS") { navController.navigate("settings") }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.weight(0.45f))
         }
         TvFilter(modifier = Modifier.fillMaxSize())
     }
@@ -61,7 +62,7 @@ fun SubMenuScreen(navController: NavHostController, title: String, entries: List
         ) {
             Spacer(Modifier.weight(0.5f))
             ChromeTitle(title, modifier = Modifier.fillMaxWidth().height(64.dp))
-            Spacer(Modifier.height(26.dp))
+            Spacer(Modifier.weight(0.7f))
             for ((label, route) in entries) {
                 RetroButton(label) { navController.navigate(route) }
             }
@@ -103,7 +104,7 @@ fun SubMenuScreen(navController: NavHostController, title: String, entries: List
             TextButton(onClick = { navController.popBackStack() }) {
                 Text("< BACK", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, color = Gold)
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.weight(0.45f))
         }
         TvFilter(modifier = Modifier.fillMaxSize())
     }
