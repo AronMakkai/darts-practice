@@ -430,6 +430,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             }
             if (done) break
         }
+        // The Cockney is the crowd's favourite: they roar his last dart whatever it scored (a ton gets its own cheer)
+        if (opponent == Opponent.GRIN && visit < 100) Sounds.cheer(big = false)
         if (!matchOver && current == 1 && sides[1].remaining > 0) {
             if (!done) { celebrate(1, visit, finished = false); message = "$botName scores $visit — your throw, swipe to pick up" }
             else message += "  ·  your throw"

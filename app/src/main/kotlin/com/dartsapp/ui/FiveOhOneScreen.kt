@@ -263,6 +263,8 @@ fun FiveOhOneScreen(navController: NavHostController, vsBot: Boolean = false) {
             if (rem == 0 || bust) break
             delay(opponent.paceMs)
         }
+        // The Cockney is the crowd's favourite: they roar his last dart whatever it scored (a ton gets its own cheer)
+        if (opponent == Opponent.GRIN && (bust || visit < 100)) Sounds.cheer(big = false)
         delay(700)
         botThrowing = false
         if (!matchOver && current == 1) applyVisit(visit, forceBust = bust)

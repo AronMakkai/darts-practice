@@ -68,7 +68,7 @@ val Opponent.hometown: String? get() = when (this) {
 /** His game in a line: the special move he plays with all the time. */
 val Opponent.specialMove: String get() = when (this) {
     Opponent.BEARD -> "Slow and deliberate — about three seconds between every dart."
-    Opponent.GRIN -> "A natural scorer — loves a ton."
+    Opponent.GRIN -> "Crowd favourite — the place roars on his last dart of every visit, whatever he scores."
     Opponent.BLING -> "Showman — goes for the bull and double-double finishes whenever the book allows."
     Opponent.MULLET -> "The steadiest arm in the pub — his darts barely stray, however many pints in."
     Opponent.GOATEE -> "Combination finisher — deadly once he's on a checkout."
