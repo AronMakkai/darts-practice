@@ -43,7 +43,7 @@ object Tournament {
         val you = Entrant("YOU", null)
         val list = ops.map { Entrant(it.displayName, it) }
         // The eighth slot: the Coach if you have earned him, otherwise a bye (a bye has no skill, so it always loses)
-        val eighth = if (coachUnlocked) Entrant(Opponent.COACH.displayName, Opponent.COACH) else Entrant("BYE", null, bye = true)
+        val eighth = if (coachUnlocked) Entrant(Opponent.COACH.displayName, Opponent.COACH) else Entrant("COACH", null, bye = true)   // the Coach, sitting this one out (a bye)
         // Your half: you vs weakest; then the next two. Far half: the strongest, with the top seed drawn against the eighth slot.
         val order = listOf(you, list[0], list[1], list[2], list[3], list[4], list[5], eighth)
         entrants = order

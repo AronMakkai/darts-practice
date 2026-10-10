@@ -354,6 +354,20 @@ object Music {
                 at += 0.9f + rnd.nextFloat() * 1.4f
             }
         }
+        // Now and then (twice a loop, rarer than the menu's breaks) a few tables drum one of the tom
+        // breaks on the tabletops, softly and dull, at the menu track's tempo
+        run {
+            val sixteenth = 60f / 112f / 4f
+            val pats = arrayOf("h..m..l.h..m..l.h..m..l.hhmmllff", "hmlfhmlf..h...h.mmll..ff..hhmlf.")
+            val pitch = mapOf('h' to 196f, 'm' to 147f, 'l' to 123f, 'f' to 98f)
+            for ((k, pat) in pats.withIndex()) {
+                val t0 = 18f + k * 30f
+                for ((i, ch) in pat.withIndex()) {
+                    val f = pitch[ch] ?: continue
+                    fmTom(buf, t0 + i * sixteenth + rnd.nextFloat() * 0.012f, f, if (i % 4 == 0) 0.07f else 0.05f)
+                }
+            }
+        }
         // Someone singing along in the corner: a slow pentatonic tune, lots of vibrato, far away
         run {
             val notes = intArrayOf(0, 2, 3, 7, 3, 2, 0, -2, 0, 2, 3, 2, 0)

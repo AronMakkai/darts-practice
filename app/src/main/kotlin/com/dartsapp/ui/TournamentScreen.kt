@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -57,7 +58,7 @@ fun TournamentScreen(navController: NavHostController) {
                 Text("EIGHT PLAYERS · ONE TROPHY", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, color = Gold, fontSize = 13.sp)
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    (if (coachUnlocked) "You, the six regulars and the Coach. " else "You and the six regulars — the top seed gets a bye. ") + "Quarter-final first to 2 legs, semi-final first to 3, final first to 4 — " +
+                    (if (coachUnlocked) "You, the six regulars and the Coach. " else "You and the six regulars — the Coach sits this one out until you have won a tournament, so the top seed gets a bye. ") + "Quarter-final first to 2 legs, semi-final first to 3, final first to 4 — " +
                         "and the opposition throws sharper every round. Your matches are played in 501; the rest of the draw plays out on its own.",
                     fontSize = 14.sp, color = OffWhite, textAlign = TextAlign.Center, lineHeight = 20.sp
                 )
@@ -158,7 +159,11 @@ private fun PlayerCell(idx: Int, winner: Boolean, loser: Boolean, pending: Boole
         if (e == null) {
             Box(modifier = Modifier.size(22.dp).background(Charcoal), contentAlignment = Alignment.Center) { Text("?", color = Grey, fontSize = 11.sp) }
         } else if (e.bye) {
-            Box(modifier = Modifier.size(22.dp).background(Charcoal), contentAlignment = Alignment.Center) { Text("–", color = Grey, fontSize = 11.sp) }
+            // The Coach, locked: a dimmed portrait with a padlock until you have won a tournament
+            Box(modifier = Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+                CoachHead(modifier = Modifier.size(22.dp).alpha(0.35f))
+                Text("🔒", fontSize = 10.sp)
+            }
         } else if (e.isYou) {
             Box(modifier = Modifier.size(22.dp).background(if (loser) Charcoal else DarkRed), contentAlignment = Alignment.Center) {
                 Text("U", color = if (loser) Grey else BrightGold, fontSize = 11.sp, fontWeight = FontWeight.Black)

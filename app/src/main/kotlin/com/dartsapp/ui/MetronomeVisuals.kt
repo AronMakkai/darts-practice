@@ -252,11 +252,11 @@ private class Spark(val angle: Float, val speed: Float, val size: Float, val spi
  * in perfect rhythm. Re-triggers whenever [trigger] changes to a new non-zero value.
  */
 @Composable
-fun StarBurst(trigger: Int, origin: Offset, modifier: Modifier = Modifier) {
+fun StarBurst(trigger: Int, origin: Offset, modifier: Modifier = Modifier, count: Int = 70) {
     var progress by remember { mutableStateOf(-1f) }   // seconds since start, -1 = idle
-    val sparks = remember(trigger) {
+    val sparks = remember(trigger, count) {
         val rnd = Random(trigger * 7919)
-        List(70) {
+        List(count) {
             Spark(
                 angle = rnd.nextFloat() * 2f * PI.toFloat(),
                 speed = 0.25f + rnd.nextFloat() * 0.9f,
@@ -751,106 +751,66 @@ fun CoachHead(modifier: Modifier = Modifier) {
 }
 
 /**
- * Score bubble, hyper-casual style: a glossy, iridescent bubble full of twinkling stars blows up
- * where the last dart landed ([origin]) with an elastic wobble, carries the score as it drifts up,
- * then POPS — a shock ring, a spray of spinning stars and droplets — with a bubbly sound to match.
- * [huge] (180, ton-plus finishes, HOT STREAK, the match result) is a bigger bubble that lasts longer.
+ * Score pop: a burst of stars out of where the last dart landed ([origin]) — more stars the higher
+ * the [score] (100 a sprinkle, 180 a shower) — and the score itself springing up in the game's
+ * sunset chrome: gold to orange to neon red, a deep purple outline and a neon red glow.
+ * [huge] (180, ton-plus finishes, HOT STREAK, the match result) is bigger and stays a little longer.
  */
 @Composable
 fun BigPop(trigger: Int, text: String, huge: Boolean, origin: Offset, modifier: Modifier = Modifier, score: Int = if (huge) 170 else 100) {
     var progress by remember { mutableStateOf(-1f) }
-    val life = if (huge) 0.95f else 0.6f          // seconds until the pop: quick and snappy
-    val after = 0.45f                             // pop debris
-    // The higher the score, the more stars: 100 -> 4 inside / 10 out, 180 -> 12 inside / 26 out
-    val inner = 4 + ((score - 100).coerceIn(0, 80) / 10)
-    val burst = 10 + ((score - 100).coerceIn(0, 80) / 5)
+    val total = if (huge) 1.5f else 1.05f
+    val stars = 12 + ((score - 100).coerceIn(0, 80) * 0.6f).toInt()     // 100 -> 12, 140 -> 36, 180 -> 60
     LaunchedEffect(trigger) {
         if (trigger == 0) { progress = -1f; return@LaunchedEffect }
-        com.dartsapp.logic.Sounds.bubble(popAfterMs = (life * 1000).toLong(), big = huge)
+        com.dartsapp.logic.Sounds.starPop()
         val start = withFrameNanos { it }
         while (true) {
             val t = (withFrameNanos { it } - start) / 1_000_000_000f
             progress = t
-            if (t > life + after) { progress = -1f; break }
+            if (t > total) { progress = -1f; break }
         }
     }
+    StarBurst(trigger = trigger, origin = origin, modifier = modifier, count = stars)
     if (progress >= 0f) {
         Canvas(modifier = modifier) {
             val w = size.width; val h = size.height
             val t = progress
-            val seed = trigger * 7919
+            val fade = if (t > total - 0.3f) ((total - t) / 0.3f).coerceIn(0f, 1f) else 1f
+            // springs up with an elastic overshoot, then drifts a touch higher
+            val k = (t / 0.25f).coerceIn(0f, 1f)
+            val scale = if (k < 1f) 1f - exp(-6f * k) * cos(k * 10f) else 1f
             val paint = android.graphics.Paint().apply {
                 isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER
-                typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-                isFakeBoldText = true
-                textSize = w * (if (huge) 0.10f else 0.068f)
+                typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
+                isFakeBoldText = true; letterSpacing = 0.04f
+                textSize = w * (if (huge) 0.115f else 0.085f) * scale.coerceAtLeast(0.01f)
             }
-            val r0 = maxOf(w * (if (huge) 0.17f else 0.11f), paint.measureText(text) * 0.62f)
-            // Drift up from the dart, kept on screen
-            val rise = w * 0.09f * minOf(t, life)
-            val cx = origin.x.coerceIn(r0 + 8f, w - r0 - 8f)
-            val cy = (origin.y - rise).coerceIn(r0 + 8f, h - r0 - 8f)
-            val c = Offset(cx, cy)
+            val half = paint.measureText(text) / 2f + 8f
+            val cx = origin.x.coerceIn(half, w - half)
+            val cy = (origin.y - h * 0.05f - h * 0.03f * t).coerceIn(paint.textSize, h - 8f)
+            val base = cy + paint.textSize * 0.36f
+            val a = (255 * fade).toInt()
             val canvas = drawContext.canvas.nativeCanvas
-            if (t < life) {
-                // Elastic inflate, then a gentle jelly wobble
-                val k = (t / 0.22f).coerceIn(0f, 1f)
-                val grow = if (k < 1f) 1f - exp(-6f * k) * cos(k * 11f) else 1f
-                val wob = sin(t * 14f) * 0.05f * (if (k < 1f) 1f else 1f - (t - 0.22f) / life)
-                val rx = r0 * grow * (1f + wob); val ry = r0 * grow * (1f - wob)
-                // Body: translucent, warm gold in the middle deepening to the game's neon red and crimson at the rim
-                drawOval(
-                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                        listOf(Color(0x33FFFFFF), Color(0x55FFC23F), Color(0xAAFF2A45), Color(0xDDA0153E)),
-                        center = Offset(cx - rx * 0.25f, cy - ry * 0.3f), radius = maxOf(rx, ry) * 1.25f
-                    ),
-                    topLeft = Offset(cx - rx, cy - ry), size = Size(rx * 2f, ry * 2f)
-                )
-                drawOval(Color(0xFFFFE066).copy(alpha = 0.9f), Offset(cx - rx, cy - ry), Size(rx * 2f, ry * 2f), style = Stroke(width = r0 * 0.05f))
-                // Stars swirling inside
-                val rnd = Random(seed)
-                for (s in 0 until inner) {
-                    val orbit = r0 * (0.25f + 0.5f * rnd.nextFloat())
-                    val a = rnd.nextFloat() * 6.283f + t * (1.2f + rnd.nextFloat()) * (if (s % 2 == 0) 1f else -1f)
-                    val tw = 0.6f + 0.4f * sin(t * 8f + s)
-                    val sp = Offset(cx + orbit * cos(a) * grow, cy + orbit * sin(a) * grow * 0.85f)
-                    drawStar(sp, r0 * 0.13f * tw * grow, t * 2f + s, if (s % 3 == 0) Color.White else Color(0xFFFFD966))
-                }
-                // Glossy highlights
-                drawOval(Color.White.copy(alpha = 0.75f), Offset(cx - rx * 0.62f, cy - ry * 0.7f), Size(rx * 0.55f, ry * 0.28f))
-                drawCircle(Color.White.copy(alpha = 0.8f), r0 * 0.07f, Offset(cx + rx * 0.5f, cy + ry * 0.48f))
-                // The score: chunky white with a deep purple outline, bouncing in with the bubble
-                val ts = paint.textSize * grow.coerceAtLeast(0.01f)
-                paint.textSize = ts
-                val base = cy + ts * 0.36f
-                paint.style = android.graphics.Paint.Style.STROKE; paint.strokeWidth = ts * 0.16f
-                paint.strokeJoin = android.graphics.Paint.Join.ROUND; paint.color = android.graphics.Color.rgb(0x2A, 0x0A, 0x40)
-                canvas.drawText(text, cx, base, paint)
-                paint.style = android.graphics.Paint.Style.FILL; paint.color = android.graphics.Color.WHITE
-                canvas.drawText(text, cx, base, paint)
-            } else {
-                // POP: shock ring, stars and droplets flying out, the score punching out and fading
-                val u = ((t - life) / after).coerceIn(0f, 1f)
-                val fade = 1f - u
-                drawCircle(Color.White.copy(alpha = 0.8f * fade), r0 * (1f + 0.9f * u), c, style = Stroke(width = r0 * 0.08f * fade + 1f))
-                val rnd = Random(seed + 1)
-                val n = burst
-                for (s in 0 until n) {
-                    val a = s * 6.283f / n + rnd.nextFloat() * 0.4f
-                    val speed = r0 * (1.4f + rnd.nextFloat() * 1.4f)
-                    val p = Offset(cx + cos(a) * speed * u, cy + sin(a) * speed * u + r0 * 1.2f * u * u)
-                    if (s % 2 == 0) drawStar(p, r0 * 0.16f * fade, u * 9f + s, if (s % 4 == 0) Color.White else Color(0xFFFFD966).copy(alpha = fade))
-                    else drawCircle(Color(0xFFFF2A45).copy(alpha = fade), r0 * 0.06f * fade + 0.5f, p)
-                }
-                paint.textSize = paint.textSize * (1f + 0.35f * u)
-                val a8 = (255 * fade).toInt()
-                val base = cy + paint.textSize * 0.36f
-                paint.style = android.graphics.Paint.Style.STROKE; paint.strokeWidth = paint.textSize * 0.16f
-                paint.strokeJoin = android.graphics.Paint.Join.ROUND; paint.color = android.graphics.Color.argb(a8, 0x2A, 0x0A, 0x40)
-                canvas.drawText(text, cx, base, paint)
-                paint.style = android.graphics.Paint.Style.FILL; paint.color = android.graphics.Color.argb(a8, 0xFF, 0xFF, 0xFF)
-                canvas.drawText(text, cx, base, paint)
-            }
+            // neon glow
+            paint.maskFilter = android.graphics.BlurMaskFilter(paint.textSize * 0.3f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+            paint.color = android.graphics.Color.argb((a * 0.9f).toInt(), 0xFF, 0x2A, 0x45)
+            canvas.drawText(text, cx, base, paint)
+            paint.maskFilter = null
+            // outline
+            paint.style = android.graphics.Paint.Style.STROKE; paint.strokeWidth = paint.textSize * 0.14f
+            paint.strokeJoin = android.graphics.Paint.Join.ROUND
+            paint.color = android.graphics.Color.argb(a, 0x2A, 0x0A, 0x40)
+            canvas.drawText(text, cx, base, paint)
+            // sunset chrome fill
+            paint.style = android.graphics.Paint.Style.FILL
+            val top = base - paint.textSize * 0.74f
+            paint.shader = android.graphics.LinearGradient(0f, top, 0f, base,
+                intArrayOf(android.graphics.Color.rgb(0xFF, 0xF4, 0xC8), android.graphics.Color.rgb(0xFF, 0xC2, 0x3F), android.graphics.Color.rgb(0xFF, 0x7A, 0x3D), android.graphics.Color.rgb(0xFF, 0x2A, 0x45)),
+                floatArrayOf(0f, 0.35f, 0.65f, 1f), android.graphics.Shader.TileMode.CLAMP)
+            paint.alpha = a
+            canvas.drawText(text, cx, base, paint)
+            paint.shader = null
         }
     }
 }
