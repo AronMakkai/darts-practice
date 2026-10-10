@@ -39,6 +39,7 @@ import com.dartsapp.logic.TimingPreset
 import com.dartsapp.logic.TimingPresets
 import com.dartsapp.logic.Tournament
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -132,6 +133,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var bioOpen by remember { mutableStateOf(false) }          // the opponent's bio card
     var pickerBio by remember { mutableStateOf<Opponent?>(null) } // bio opened from the opponent picker
     var lizardEpoch by remember { mutableStateOf(0L) }        // when the Lizzard let his lizards loose
+    var camTrigger by remember { mutableStateOf(0) }          // game-shot replay: zoom and slow-motion dart
+    var camPoint by remember { mutableStateOf(Offset.Zero) }
+    var camBusy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     var coachAngle by remember { mutableStateOf(180f) }       // the Coach's board rotation; re-rolled after every dart of yours
     val boardBrightness = 0.11f                               // how much light is left under the Viking's LIGHTS OUT
     val glareStrength = 1f                                    // the Bling's glare, full strength
@@ -305,7 +310,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
 
     fun armThrow() {
-        if (matchOver || current != 0 || preset == null) return
+        if (matchOver || current != 0 || preset == null || camBusy) return
         val now = System.currentTimeMillis()
         pauseSec = if (lastTapMs != 0L) (now - lastTapMs) / 1000f else -1f
         throwStartMs = now
@@ -313,7 +318,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
 
     fun userThrow(aim: Offset) {
-        if (matchOver || current != 0) return
+        if (matchOver || current != 0 || camBusy) return
         val hotNow = hotDartsLeft > 0          // read the live state: the tap handler may hold a stale `hot`
         val p = preset ?: run { message = "Pick a game pace in Settings first"; return }
         if (throwStartMs == 0L) { message = "Swipe up from the arrow first"; return }
@@ -370,7 +375,15 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             newRem == 0 && hit.isDoubleOut -> {
                 me.scored += hit.score; me.remaining = 0
                 val visit = thrown.sumOf { it.score }
-                legWon(0, visit, me.darts)
+                // GAME SHOT: replay the winning dart — zoom in, slow motion — then take the leg
+                camPoint = Offset(lx, ly); camTrigger++; camBusy = true
+                message = "${hit.label} — GAME SHOT!"
+                version++
+                scope.launch {
+                    delay((GAME_SHOT_SECONDS * 1000).toLong())
+                    camBusy = false
+                    legWon(0, visit, me.darts)
+                }
             }
             newRem < 0 || newRem == 1 || newRem == 0 -> {
                 me.remaining = visitStart
@@ -422,7 +435,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     bot.scored += hit.score; bot.remaining = 0; visit += hit.score
                     message = "$botName: ${hit.label} — game shot"
                     version++
-                    delay(900)
+                    camPoint = Offset(lx, ly); camTrigger++
+                    delay((GAME_SHOT_SECONDS * 1000).toLong() + 200)
                     legWon(1, visit, bot.darts)
                     done = true
                 }
@@ -522,6 +536,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         else -> (3 - dartsInVisit) - (if (armedNow) 1 else 0)
     }.coerceAtLeast(0)
 
+    val camT = rememberGameShotClock(camTrigger)
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().padding(bottom = 130.dp)) {
             ScreenHeader(
@@ -582,7 +597,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 modifier = Modifier.weight(1f, fill = false).aspectRatio(1f, matchHeightConstraintsFirst = true)
                     .align(Alignment.CenterHorizontally).padding(top = 6.dp, start = 4.dp, end = 4.dp).onGloballyPositioned {
                     boardPos = it.positionInRoot(); boardSize = it.size
-                },
+                }.gameShotCamera(camT, camPoint.x, camPoint.y),
                 contentAlignment = Alignment.Center
             ) {
                 // ONE FOR THE ROAD: the Jockey gets you drunk — the board sways and ripples on your turn
@@ -631,6 +646,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f).nerves(windUp, nervesNow, nervesSpeed)
                 )
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                GameShotDart(camT, camPoint.x, camPoint.y, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
             }
         }
 

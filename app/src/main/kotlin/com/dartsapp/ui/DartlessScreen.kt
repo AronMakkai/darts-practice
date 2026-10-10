@@ -113,6 +113,14 @@ fun DartlessScreen(navController: NavHostController) {
     val allAimed = remember { mutableStateListOf<Hit>() }
     var busts by remember { mutableStateOf(0) }
     var coachOpen by remember { mutableStateOf(false) }
+    var camTrigger by remember { mutableStateOf(0) }          // game-shot replay
+    var camPoint by remember { mutableStateOf(Offset.Zero) }
+    LaunchedEffect(camTrigger) {
+        if (camTrigger == 0) return@LaunchedEffect
+        delay((GAME_SHOT_SECONDS * 1000).toLong() + 150)
+        coachOpen = true
+    }
+    val camT = rememberGameShotClock(camTrigger)
     val model = remember { AccuracyModel() }
 
     // Metronome mode
@@ -264,7 +272,8 @@ fun DartlessScreen(navController: NavHostController) {
             newRem == 0 && hit.isDoubleOut -> {
                 remaining = 0
                 finished = true
-                coachOpen = true
+                // GAME SHOT: replay the winning dart (zoom in, slow motion), then the coach has his say
+                camPoint = Offset(lx, ly); camTrigger++
                 message = "$hitText — Checked out in $dartsTotal darts!"
                 Announcer.gameShot()
                 // Star: a clean checkout (no bust, done inside one visit) in metronome mode, with every
@@ -419,7 +428,7 @@ fun DartlessScreen(navController: NavHostController) {
                 .align(Alignment.CenterHorizontally).padding(top = 6.dp, start = 4.dp, end = 4.dp).onGloballyPositioned {
                 boardPos = it.positionInRoot()
                 boardSize = it.size
-            },
+            }.gameShotCamera(camT, camPoint.x, camPoint.y),
             contentAlignment = Alignment.Center
         ) {
             Dartboard(
@@ -438,6 +447,7 @@ fun DartlessScreen(navController: NavHostController) {
                 )
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
             }
+            GameShotDart(camT, camPoint.x, camPoint.y, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
         }
 
     }
