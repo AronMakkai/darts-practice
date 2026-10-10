@@ -671,11 +671,11 @@ internal fun PowerSplash(opponent: Opponent, onDismiss: () -> Unit) {
             }
             Box(
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-                    .background(OffWhite, CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
-                    .border(BorderStroke(3.dp, Black), CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .background(BubblePurple, CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .border(BorderStroke(3.dp, NeonPink), CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
                     .padding(16.dp)
             ) {
-                Text("\u201C" + opponent.powerLine + "\u201D", color = Black, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, lineHeight = 23.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Text("\u201C" + opponent.powerLine + "\u201D", color = BubbleText, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, lineHeight = 23.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
             Text("tap to continue", fontSize = 11.sp, color = Grey, modifier = Modifier.padding(top = 16.dp))
         }
@@ -732,18 +732,18 @@ internal fun BanterDialog(opponent: Opponent, text: String, youWon: Boolean, onD
             // Speech bubble
             Box(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                    .background(OffWhite, CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
-                    .border(BorderStroke(3.dp, Black), CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .background(BubblePurple, CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .border(BorderStroke(3.dp, NeonPink), CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
                     .padding(16.dp)
             ) {
-                Text(text, color = Black, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Text(text, color = BubbleText, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
             // Bubble tail
             androidx.compose.foundation.Canvas(modifier = Modifier.size(width = 30.dp, height = 18.dp)) {
                 val path = androidx.compose.ui.graphics.Path().apply { moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width * 0.3f, size.height); close() }
-                drawPath(path, Black)
+                drawPath(path, NeonPink)
                 val inner = androidx.compose.ui.graphics.Path().apply { moveTo(4f, 0f); lineTo(size.width - 6f, 0f); lineTo(size.width * 0.32f, size.height - 6f); close() }
-                drawPath(inner, OffWhite)
+                drawPath(inner, BubblePurple)
             }
             OpponentHead(opponent, modifier = Modifier.size(190.dp))
             Box(modifier = Modifier.background(if (youWon) Charcoal else DarkRed).border(2.dp, Gold).padding(horizontal = 18.dp, vertical = 6.dp)) {

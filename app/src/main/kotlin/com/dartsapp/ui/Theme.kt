@@ -18,6 +18,8 @@ val OffWhite = Color(0xFFF2F2F2)
 val Grey = Color(0xFFB0B0B0)
 val NeonPink = Color(0xFFFF4FA3)
 val NeonTeal = Color(0xFF2EF2FF)
+val BubblePurple = Color(0xFF2A0C3E)   // speech bubbles: deep purple with a neon pink frame
+val BubbleText = Color(0xFFFFE6F3)
 
 private val DartsColors = darkColorScheme(
     primary = Red,

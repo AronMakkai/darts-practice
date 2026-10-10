@@ -205,15 +205,15 @@ internal fun ChampionSplash(onIrl: () -> Unit, onDismiss: () -> Unit) {
             }
             Box(
                 modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
-                    .background(OffWhite, androidx.compose.foundation.shape.CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
-                    .border(androidx.compose.foundation.BorderStroke(3.dp, Black), androidx.compose.foundation.shape.CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .background(BubblePurple, androidx.compose.foundation.shape.CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
+                    .border(androidx.compose.foundation.BorderStroke(3.dp, NeonPink), androidx.compose.foundation.shape.CutCornerShape(topStart = 14.dp, bottomEnd = 14.dp))
                     .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { page = 1 }
                     .padding(16.dp)
             ) {
                 Text(
                     if (page == 0) "Congratulations, champion! You beat the lot of them — and you now have the throwing rhythm of a professional darts player."
                     else "For real, the swipe and tap timing is based on real darts, and there is a metronome function in the Darts IRL menu to explore this further. GAME ON!",
-                    color = Black, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
+                    color = BubbleText, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
                 )
             }
             if (page == 0) {
