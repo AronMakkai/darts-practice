@@ -35,12 +35,12 @@ fun MainMenuScreen(navController: NavHostController) {
             Spacer(Modifier.weight(0.5f))
             ChromeTitle("METRO", modifier = Modifier.fillMaxWidth().height(74.dp))
             ChromeTitle("DARTS", modifier = Modifier.fillMaxWidth().height(74.dp))
-            // Title up in the sky, the signs down on the grid: the gap scales with the phone's height
-            Spacer(Modifier.weight(0.9f))
+            // Title up in the sky, the signs a little lower: the gap scales with the phone's height
+            Spacer(Modifier.weight(0.6f))
             RetroButton("DARTS GAME") { navController.navigate("game") }
             RetroButton("DARTS IRL") { navController.navigate("irl") }
             RetroButton("SETTINGS") { navController.navigate("settings") }
-            Spacer(Modifier.weight(0.45f))
+            Spacer(Modifier.weight(0.65f))
         }
         TvFilter(modifier = Modifier.fillMaxSize())
     }
