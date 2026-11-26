@@ -125,6 +125,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var banterKey by remember { mutableStateOf(0) }       // bumps when a match ends -> the opponent has a word
     var banterText by remember { mutableStateOf("") }
     var banterOpen by remember { mutableStateOf(false) }
+    var rateOpen by remember { mutableStateOf(false) }       // one-off rating prompt after a few wins
     val hot = hotDartsLeft > 0
     // Opponent's special power: a splash screen, then its effect for the rest of the leg
     var powerSplash by remember { mutableStateOf(false) }
@@ -273,6 +274,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             if (s.sets >= setsToWin) {
                 matchOver = true
                 text = if (i == 0) "YOU WIN THE MATCH!" else "$botName wins the match"
+                if (i == 0) Settings.addMatchWon(context)
                 if (tournament && !tourReported) {
                     tourReported = true; Tournament.recordUserResult(i == 0)
                     if (Tournament.youWon) Settings.setCoachUnlocked(context, true)    // winning a tournament brings the Coach out to play
@@ -481,7 +483,18 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         banterOpen = true
     }
     if (banterOpen) {
-        BanterDialog(opponent = opponent, text = banterText, youWon = sides[0].sets >= setsToWin, onDismiss = { banterOpen = false })
+        BanterDialog(opponent = opponent, text = banterText, youWon = sides[0].sets >= setsToWin, onDismiss = {
+            banterOpen = false
+            // after the third match you've won, ask once (neutral, never again after Rate / No thanks)
+            if (sides[0].sets >= setsToWin && !Settings.rateAsked(context) && Settings.matchesWon(context) >= 3) rateOpen = true
+        })
+    }
+    if (rateOpen) {
+        RatePrompt(
+            onRate = { rateOpen = false; Settings.setRateAsked(context, true); AppLinks.openStorePage(context) },
+            onLater = { rateOpen = false },
+            onNever = { rateOpen = false; Settings.setRateAsked(context, true) }
+        )
     }
 
     if (bioOpen) OpponentBioDialog(opponent = opponent, onDismiss = { bioOpen = false })

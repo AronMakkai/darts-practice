@@ -41,6 +41,18 @@ object Settings {
     private fun flag(ctx: Context, key: String, def: Boolean) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(key, def)
     private fun setFlag(ctx: Context, key: String, v: Boolean) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(key, v).apply() }
 
+    /** Ask "Are you sure?" before the back button leaves the app from the main menu. */
+    fun exitConfirm(ctx: Context) = flag(ctx, "exitConfirm", true)
+    fun setExitConfirm(ctx: Context, v: Boolean) = setFlag(ctx, "exitConfirm", v)
+    /** The first-launch welcome tour has been seen (or skipped). */
+    fun welcomeSeen(ctx: Context) = flag(ctx, "welcomeSeen", false)
+    fun setWelcomeSeen(ctx: Context, v: Boolean) = setFlag(ctx, "welcomeSeen", v)
+    /** Matches won against the characters, and whether we have already asked for a rating. */
+    fun matchesWon(ctx: Context): Int = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("matchesWon", 0)
+    fun addMatchWon(ctx: Context) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("matchesWon", matchesWon(ctx) + 1).apply() }
+    fun rateAsked(ctx: Context) = flag(ctx, "rateAsked", false)
+    fun setRateAsked(ctx: Context, v: Boolean) = setFlag(ctx, "rateAsked", v)
+
     fun musicOn(ctx: Context) = flag(ctx, "music", true)
     fun setMusicOn(ctx: Context, v: Boolean) = setFlag(ctx, "music", v)
     fun crowdOn(ctx: Context) = flag(ctx, "crowd", true)

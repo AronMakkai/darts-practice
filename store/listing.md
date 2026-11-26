@@ -4,10 +4,20 @@
 Metro Darts
 
 ## Short description (80 max)
-Throw to the beat. Checkout practice, 501 vs characters, tournaments — retro style.
+Darts game & checkout trainer: 501 vs characters, tournaments, rhythm throwing.
 
 ## Full description (4000 max)
-Metro Darts is a darts game built around one idea: rhythm wins. Swipe to pick up a dart, watch the ring run out to the edge of the board and back, and tap your target the moment it returns to the bull. Throw on the beat and your darts fly true; hesitate or rush and they drift.
+Metro Darts is a darts practice game and checkout trainer with a retro 80s neon look.
+
+★ Checkout trainer — every finish from 2 to 170, with the standard checkout table
+★ 501 darts against six characters, each with a dirty super power
+★ Tournament mode — knockout bracket, legs and sets
+★ HOT STREAK — chain perfect darts for fatter trebles and doubles
+★ The Coach — rates every checkout and teaches the book route
+★ Darts metronome — learn and record your own throwing rhythm
+★ Score real darts games: 501 scorer, play a character on your own board
+
+Built around one idea: rhythm wins. Swipe to pick up a dart, watch the ring run out to the edge of the board and back, and tap your target the moment it returns to the bull. Throw on the beat and your darts fly true; hesitate or rush and they drift.
 
 CHECKOUT GAME
 Random checkouts from 2 to 170. Hit them on the beat, in one visit, and gold bars stack up on your streak — ten become a big one. The checkouts get harder the longer you keep it going. String perfect darts together and HOT STREAK lights up: fatter trebles, doubles and bull for your next four darts.

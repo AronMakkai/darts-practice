@@ -25,6 +25,22 @@ import androidx.navigation.NavHostController
 
 @Composable
 fun MainMenuScreen(navController: NavHostController) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // First launch: a short walkthrough (skippable)
+    var tourOpen by remember { mutableStateOf(!com.dartsapp.logic.Settings.welcomeSeen(context)) }
+    if (tourOpen) WelcomeTour(onDone = { tourOpen = false; com.dartsapp.logic.Settings.setWelcomeSeen(context, true) })
+    // Back on the main menu leaves the app: ask first (can be switched off in Settings)
+    var exitAsk by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = com.dartsapp.logic.Settings.exitConfirm(context)) { exitAsk = true }
+    if (exitAsk) {
+        AlertDialog(
+            onDismissRequest = { exitAsk = false },
+            title = { Text("Leave Metro Darts?") },
+            text = { Text("Are you sure you want to exit?") },
+            confirmButton = { Button(onClick = { exitAsk = false; (context as? android.app.Activity)?.finish() }) { Text("Exit") } },
+            dismissButton = { TextButton(onClick = { exitAsk = false }) { Text("Cancel", color = Grey) } }
+        )
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         VectorBackdrop(modifier = Modifier.fillMaxSize())
         Column(

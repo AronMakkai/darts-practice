@@ -126,6 +126,32 @@ fun SettingsScreen(navController: NavHostController) {
             fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
 
         Spacer(Modifier.height(16.dp))
+        Text("GENERAL", fontSize = 14.sp, fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, color = Grey,
+            modifier = Modifier.padding(start = 28.dp, bottom = 6.dp))
+        var exitConfirm by remember { mutableStateOf(Settings.exitConfirm(context)) }
+        ToggleRow("Ask before exiting", exitConfirm) { exitConfirm = it; Settings.setExitConfirm(context, it) }
+        var tourAgain by remember { mutableStateOf(false) }
+        if (tourAgain) WelcomeTour(onDone = { tourAgain = false })
+        TextButton(onClick = { tourAgain = true }, modifier = Modifier.padding(start = 20.dp)) { Text("Show the welcome tour", color = Gold) }
+
+        Spacer(Modifier.height(16.dp))
+        Text("ABOUT", fontSize = 14.sp, fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, color = Grey,
+            modifier = Modifier.padding(start = 28.dp, bottom = 6.dp))
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(
+                onClick = { Settings.setRateAsked(context, true); AppLinks.openStorePage(context) },
+                border = BorderStroke(2.dp, Gold), modifier = Modifier.weight(1f)
+            ) { Text("★ Rate Metro Darts", color = Gold) }
+            if (AppLinks.FEEDBACK_EMAIL.isNotBlank()) {
+                OutlinedButton(onClick = { AppLinks.sendFeedback(context) }, border = BorderStroke(2.dp, Charcoal), modifier = Modifier.weight(1f)) {
+                    Text("Send feedback", color = OffWhite)
+                }
+            }
+        }
+        val versionName = remember { try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (e: Exception) { "" } }
+        Text("Version $versionName", fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp))
+
+        Spacer(Modifier.height(16.dp))
         Text("RECORDS", fontSize = 14.sp, fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, color = Grey,
             modifier = Modifier.padding(start = 28.dp, bottom = 6.dp))
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), verticalAlignment = Alignment.CenterVertically) {
