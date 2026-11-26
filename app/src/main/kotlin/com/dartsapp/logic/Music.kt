@@ -196,21 +196,22 @@ object Music {
             buf[i] += hp * 0.22f * minOf(1f, p * 3f)
         }
         // "rrreeee": r-coloured onset (low F3) opening into a bright "eh", pitch rising then holding
-        voice(buf, rnd, 0.09f, 0.46f, 1.05f, { p ->
+        voice(buf, rnd, 0.09f, 0.36f, 1.05f, { p ->
             val r = (p / 0.25f).coerceIn(0f, 1f)
             val f0 = 165f + 45f * minOf(1f, p / 0.4f) - 15f * ((p - 0.6f).coerceAtLeast(0f) / 0.4f)
             floatArrayOf(f0, 420f + (580f - 420f) * r, 1250f + (1900f - 1250f) * r, 1650f + (2600f - 1650f) * r)
         }, attack = 0.05f, release = 0.15f)
-        // "shhhh": strong hiss centred around 2.5-5 kHz, swelling in then fading out
-        val sStart = (RATE * 0.5f).toInt()
+        // "SHHHHH": the star of the show — a big, long hiss around 2.5-5 kHz that comes in under the end
+        // of the vowel, swells, holds, and only fades at the very end
+        val sStart = (RATE * 0.38f).toInt()
         hp = 0f; prev = 0f; lp = 0f
         for (i in sStart until n) {
             val white = rnd.nextFloat() * 2f - 1f
             hp = 0.9f * (hp + white - prev); prev = white          // high-pass
             lp += 0.55f * (hp - lp)                                 // take the very top off
             val p = (i - sStart).toFloat() / (n - sStart)
-            val env = minOf(1f, p / 0.12f) * (1f - p).let { it * it }.coerceAtLeast(0f)
-            buf[i] += lp * 0.5f * env
+            val env = minOf(1f, p / 0.15f) * (if (p > 0.7f) ((1f - p) / 0.3f).coerceAtLeast(0f) else 1f)
+            buf[i] += lp * 1.0f * env
         }
         return buf
     }
