@@ -1,5 +1,6 @@
 package com.dartsapp.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,6 +46,7 @@ fun ValueCheckerScreen(navController: NavHostController, checkoutMode: Boolean =
     var message by remember { mutableStateOf("Poke the board — three darts a visit, double to finish") }
     var finished by remember { mutableStateOf(false) }
     var coachOpen by remember { mutableStateOf(false) }
+    var tipOpen by remember { mutableStateOf(false) }      // the Coach's advice on the current score
     val thrown = remember { mutableStateListOf<Hit>() }          // this visit
     val checkoutThrown = remember { mutableStateListOf<Hit>() }  // darts since we came within 170
     var checkoutStart by remember { mutableStateOf(0) }
@@ -115,6 +117,10 @@ fun ValueCheckerScreen(navController: NavHostController, checkoutMode: Boolean =
         )
     }
 
+    if (tipOpen) {
+        CoachTipDialog(remaining = remaining, playerName = "You", onDismiss = { tipOpen = false })
+    }
+
     val avg = if (dartsTotal == 0) 0f else scored * 3f / dartsTotal
     val inHand = if (finished) 0 else if (dartsInVisit >= 3) 0 else 3 - dartsInVisit
 
@@ -138,7 +144,7 @@ fun ValueCheckerScreen(navController: NavHostController, checkoutMode: Boolean =
                     )
                     Text(
                         (if (checkoutMode) "checkout $startScore   done $checkoutsDone   darts $dartsTotal" else "avg ${"%.1f".format(avg)}   darts $dartsTotal") +
-                            (if (remaining in 2..170 && CheckoutLogic.isFinishable(remaining)) "   ${CheckoutLogic.tip(remaining)}" else ""),
+                            (if (!checkoutMode && remaining in 2..170 && CheckoutLogic.isFinishable(remaining)) "   ${CheckoutLogic.tip(remaining)}" else ""),
                         fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = PaleGold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp)
                     )
@@ -146,12 +152,27 @@ fun ValueCheckerScreen(navController: NavHostController, checkoutMode: Boolean =
             }
 
             // Fixed-height status block so the board never moves
-            Column(modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(modifier = Modifier.fillMaxWidth().height(if (checkoutMode) 72.dp else 48.dp).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(message, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(24.dp))
                 Text(
                     "Dart ${if (dartsInVisit >= 3) 3 else dartsInVisit}/3   Visit: " + thrown.joinToString(" ") { it.label }.ifEmpty { "—" },
                     fontSize = 13.sp, color = Grey, maxLines = 1, modifier = Modifier.height(20.dp)
                 )
+                if (checkoutMode) {
+                    // The Coach's route for what's left, always on show; tap it for his full advice
+                    val route = remember(remaining) { if (remaining in 2..170) CheckoutLogic.suggest(remaining)?.let { CheckoutLogic.routeLabel(it.best) } else null }
+                    Row(
+                        modifier = Modifier.height(24.dp).clickable { tipOpen = true },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CoachHead(modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            if (finished) "Nice one." else route?.let { "Coach: $it" } ?: "Coach: ${CheckoutLogic.tip(remaining)}",
+                            fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, color = Gold, maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
 
     }
@@ -165,6 +186,8 @@ fun ValueCheckerScreen(navController: NavHostController, checkoutMode: Boolean =
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             ScreenHeader(if (checkoutMode) "Fast Checkout" else "Fast 501", navController) {
+                // The Coach: tap for his route on the current score
+                IconButton(onClick = { tipOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
                 TextButton(onClick = { reset() }) { Text("New", color = Gold) }
             }
             if (!wide) {
