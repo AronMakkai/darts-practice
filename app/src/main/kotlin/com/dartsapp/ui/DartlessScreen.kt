@@ -335,91 +335,84 @@ fun DartlessScreen(navController: NavHostController) {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(
-        // No scrolling: the board must stay put under a swipe. The board box takes whatever height is left.
-        modifier = Modifier.fillMaxSize().padding(bottom = 4.dp)
-    ) {
-        ScreenHeader("Checkout Game", navController) {
-            // The coach: tap for his route advice on the current score (same dialog as the 501 modes)
-            IconButton(onClick = { coachAdviceOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
-            TextButton(onClick = { showTutorial = true }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("?", color = Gold, fontWeight = FontWeight.Bold) }
-            if (!metronomeMode) TextButton(onClick = { showTip = !showTip }) { Text("Tip", color = if (showTip) Gold else Grey) }
-            TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
-        }
-
-        // Accuracy power bar — set by your timing in Metronome mode, draggable in Simple mode
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(if (hot) "HOT!" else "ACCURACY", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp,
-                color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(78.dp))
-            if (metronomeMode) {
-                HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(56.dp))
-            } else {
-                PowerBar(
-                    value = accuracy,
-                    enabled = true,
-                    onChange = { accuracy = it },
-                    modifier = Modifier.weight(1f).height(26.dp),
-                    gradient = true
+    // Phones: everything stacked above a screen-wide board. Big screens held sideways (tablets, an
+    // unfolded Fold): the scores and meters on the left, the board as big as the height allows on the right.
+    val conf = androidx.compose.ui.platform.LocalConfiguration.current
+    val wide = conf.screenWidthDp > conf.screenHeightDp && conf.screenWidthDp >= 600
+    // Short or narrow phones: tighter stats so the board gets the height
+    val small = !wide && (conf.screenHeightDp < 760 || conf.screenWidthDp < 400)
+    @Composable fun stats() {
+            // Accuracy power bar — set by your timing in Metronome mode, draggable in Simple mode
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(if (hot) "HOT!" else "ACCURACY", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp,
+                    color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(78.dp))
+                if (metronomeMode) {
+                    HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(if (small) 36.dp else 56.dp))
+                } else {
+                    PowerBar(
+                        value = accuracy,
+                        enabled = true,
+                        onChange = { accuracy = it },
+                        modifier = Modifier.weight(1f).height(26.dp),
+                        gradient = true
+                    )
+                }
+                Text(
+                    "${(accuracy * 100).toInt()}%",
+                    fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = Gold,
+                    textAlign = TextAlign.End, modifier = Modifier.width(48.dp)
                 )
             }
-            Text(
-                "${(accuracy * 100).toInt()}%",
-                fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = Gold,
-                textAlign = TextAlign.End, modifier = Modifier.width(48.dp)
-            )
-        }
 
-        // Streak (left) · remaining (centre) · the pace you are playing at (right; change it in Settings)
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("STREAK", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey)
-                Text("×$streak", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Gold, maxLines = 1)
-                Text("best $best", fontSize = 11.sp, color = Grey, maxLines = 1)
+            // Streak (left) · remaining (centre) · the pace you are playing at (right; change it in Settings)
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("STREAK", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey)
+                    Text("×$streak", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Gold, maxLines = 1)
+                    Text("best $best", fontSize = 11.sp, color = Grey, maxLines = 1)
+                }
+                Column(modifier = Modifier.weight(1.4f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Checkout $start", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(remaining.toString(), fontSize = if (small) 46.sp else 64.sp, lineHeight = if (small) 48.sp else 66.sp, fontWeight = FontWeight.Bold, color = Gold)
+                }
+                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("PACE", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey)
+                    Text(preset?.name ?: "—", fontSize = 12.sp, color = OffWhite, maxLines = 2, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
+                }
             }
-            Column(modifier = Modifier.weight(1.4f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Checkout $start", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(remaining.toString(), fontSize = 64.sp, fontWeight = FontWeight.Bold, color = Gold)
+            // Fixed-height text block so the board never moves, whatever is written above it.
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth().height(if (small) 72.dp else 96.dp).padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    message.ifEmpty { " " },
+                    fontSize = if (small) 14.sp else 17.sp, lineHeight = if (small) 15.sp else 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().height(if (small) 32.dp else 46.dp)
+                )
+                Text(
+                    "Dart $dartNo/3   Visit: " + thrown.joinToString(" ") { it.label }.ifEmpty { "—" },
+                    fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.height(22.dp)
+                )
+                Text(
+                    if (metronomeMode) timingNote.ifEmpty { " " } else if (showTip) tip else " ",
+                    fontSize = 13.sp, color = PaleGold, textAlign = TextAlign.Center,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.height(20.dp)
+                )
             }
-            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("PACE", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey)
-                Text(preset?.name ?: "—", fontSize = 12.sp, color = OffWhite, maxLines = 2, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        // Fixed-height text block so the board never moves, whatever is written above it.
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth().height(96.dp).padding(horizontal = 16.dp)
-        ) {
-            Text(
-                message.ifEmpty { " " },
-                fontSize = 17.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
-                maxLines = 2, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth().height(46.dp)
-            )
-            Text(
-                "Dart $dartNo/3   Visit: " + thrown.joinToString(" ") { it.label }.ifEmpty { "—" },
-                fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.height(22.dp)
-            )
-            Text(
-                if (metronomeMode) timingNote.ifEmpty { " " } else if (showTip) tip else " ",
-                fontSize = 13.sp, color = PaleGold, textAlign = TextAlign.Center,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.height(20.dp)
-            )
-        }
 
-        // The board: as wide as the screen on a phone (capped at BOARD_MAX so it is the same size on
-        // big screens), using all the height down to the bottom edge — the throw arrow and the darts in
-        // hand float over its lower corners on short phones rather than shrinking it.
-        Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+    }
+    @Composable fun board(sizing: Modifier) {
         Box(
-            modifier = Modifier.widthIn(max = BOARD_MAX).aspectRatio(1f, matchHeightConstraintsFirst = true)
-                .padding(top = 4.dp, start = 2.dp, end = 2.dp).onGloballyPositioned {
+            modifier = sizing
+                .onGloballyPositioned {
                 boardPos = it.positionInRoot()
                 boardSize = it.size
             },
@@ -442,8 +435,37 @@ fun DartlessScreen(navController: NavHostController) {
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
             }
         }
+    }
+    Column(
+        // No scrolling: the board must stay put under a swipe. The board box takes whatever height is left.
+        modifier = Modifier.fillMaxSize().padding(bottom = 4.dp)
+    ) {
+        ScreenHeader("Checkout Game", navController) {
+            // The coach: tap for his route advice on the current score (same dialog as the 501 modes)
+            IconButton(onClick = { coachAdviceOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
+            TextButton(onClick = { showTutorial = true }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("?", color = Gold, fontWeight = FontWeight.Bold) }
+            if (!metronomeMode) TextButton(onClick = { showTip = !showTip }) { Text("Tip", color = if (showTip) Gold else Grey) }
+            TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
         }
 
+        if (!wide) {
+            stats()
+            // The board: as wide as the screen on a phone (capped at BOARD_MAX so it is the same size on
+            // big screens), using all the height down to the bottom edge — the throw arrow and the darts in
+            // hand float over its lower corners on short phones rather than shrinking it.
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                board(Modifier.widthIn(max = BOARD_MAX).aspectRatio(1f, matchHeightConstraintsFirst = true))
+            }
+        } else {
+            Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                // Left: accuracy, streak, score and messages; the throw arrow sits below them
+                Column(modifier = Modifier.fillMaxWidth(0.4f).fillMaxHeight().padding(bottom = 130.dp)) { stats() }
+                // Right: the board
+                Box(modifier = Modifier.weight(1f).fillMaxHeight().padding(end = 8.dp), contentAlignment = Alignment.CenterEnd) {
+                    board(Modifier.widthIn(max = BOARD_MAX).aspectRatio(1f, matchHeightConstraintsFirst = true))
+                }
+            }
+        }
     }
 
     if (metronomeMode && streak > 0) {

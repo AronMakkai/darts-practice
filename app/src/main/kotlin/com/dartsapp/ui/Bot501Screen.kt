@@ -562,8 +562,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
     Box(modifier = Modifier.fillMaxSize()) {
       BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        // Big screens held sideways (tablets, an unfolded Fold): stats left, board centre, accuracy bar right
+        // Big screens held sideways (tablets, an unfolded Fold): scores and meters left, board right
         val wide = maxWidth > maxHeight && maxWidth >= 600.dp
+        // Short or narrow phones: slimmer meter so the board gets the height
+        val small = !wide && androidx.compose.ui.platform.LocalConfiguration.current.let { it.screenHeightDp < 760 || it.screenWidthDp < 400 }
 
         @Composable fun header() {
                 ScreenHeader(
@@ -608,7 +610,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 // Accuracy + preset
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(if (hot) "HOT!" else "ACCURACY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(72.dp))
-                    HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(46.dp))
+                    HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(if (small) 32.dp else 46.dp))
                 }
 
         }
@@ -626,7 +628,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         }
         @Composable fun board(sizing: Modifier) {
             Box(
-                modifier = sizing.padding(top = 6.dp, start = 4.dp, end = 4.dp).onGloballyPositioned {
+                modifier = sizing.padding(top = 2.dp).onGloballyPositioned {
                     boardPos = it.positionInRoot(); boardSize = it.size
                 }.gameShotCamera(camT, camPoint.x, camPoint.y),
                 contentAlignment = Alignment.Center
@@ -698,23 +700,18 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 header()
                 if (version < 0) Text("")
                 Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                    // Left: both players' scores and stats, then the status lines; the swipe zone sits below
-                    Column(modifier = Modifier.fillMaxWidth(0.34f).fillMaxHeight().padding(bottom = 130.dp)) {
+                    // Left: both players' scores and stats, the accuracy meter and the status lines;
+                    // the throw arrow and the darts in hand sit below them
+                    Column(modifier = Modifier.fillMaxWidth(0.4f).fillMaxHeight().padding(bottom = 130.dp)) {
                         panels()
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(6.dp))
+                        accuracyRow()
+                        Spacer(Modifier.height(6.dp))
                         status()
                     }
-                    // Centre: the board, as big as the height allows
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                    // Right: the board, as big as the height allows
+                    Box(modifier = Modifier.weight(1f).fillMaxHeight().padding(end = 8.dp), contentAlignment = Alignment.CenterEnd) {
                         board(Modifier.widthIn(max = BOARD_MAX).aspectRatio(1f, matchHeightConstraintsFirst = true))
-                    }
-                    // Right: the accuracy bar, standing upright
-                    Column(modifier = Modifier.width(92.dp).fillMaxHeight().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (hot) "HOT!" else "ACCURACY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp,
-                            color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal)
-                        Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp, bottom = 130.dp), contentAlignment = Alignment.Center) {
-                            HotMeter(value = accuracy, hot = hot, modifier = Modifier.width(46.dp).fillMaxHeight().standUpright())
-                        }
                     }
                 }
             }
