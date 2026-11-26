@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +56,10 @@ fun TournamentScreen(navController: NavHostController) {
         }
         if (tick < 0) Text("")
         ChromeTitle("TOURNAMENT", modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 24.dp))
+        // The prize, on a tag in the corner
+        Box(modifier = Modifier.fillMaxWidth().padding(end = 10.dp), contentAlignment = Alignment.CenterEnd) {
+            PrizeTag(modifier = Modifier.graphicsLayer { rotationZ = 6f })
+        }
 
         if (!started) {
             Column(modifier = Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -128,6 +133,40 @@ fun TournamentScreen(navController: NavHostController) {
             }
         }
     }
+    }
+}
+
+/** What the tournament winner takes home (in the game). Edit to change the tag. */
+const val PRIZE_NAME = "SL-2000 RECORD PLAYER"
+
+/** A neon price-tag style badge: a little silver turntable and "PRIZE: ..." */
+@Composable
+private fun PrizeTag(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.neonFrame(Gold, corner = 8.dp).padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.size(width = 40.dp, height = 30.dp)) {
+            val w = size.width; val h = size.height
+            // silver plinth
+            drawRoundRect(Color(0xFFB9BDC9), size = androidx.compose.ui.geometry.Size(w, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(h * 0.12f))
+            drawRoundRect(Color(0xFF7D8292), topLeft = androidx.compose.ui.geometry.Offset(0f, h * 0.86f), size = androidx.compose.ui.geometry.Size(w, h * 0.14f))
+            // platter and record
+            val c = androidx.compose.ui.geometry.Offset(w * 0.4f, h * 0.48f)
+            drawCircle(Color(0xFF0E0714), h * 0.4f, c)
+            drawCircle(Color(0xFF2A1838), h * 0.3f, c, style = androidx.compose.ui.graphics.drawscope.Stroke(width = h * 0.02f))
+            drawCircle(Color(0xFFFF4F8B), h * 0.13f, c)
+            drawCircle(Color(0xFFFFF1A8), h * 0.03f, c)
+            // tonearm
+            drawCircle(Color(0xFF5A5A6E), h * 0.08f, androidx.compose.ui.geometry.Offset(w * 0.86f, h * 0.18f))
+            drawLine(Color(0xFFEDEFF5), androidx.compose.ui.geometry.Offset(w * 0.86f, h * 0.18f), androidx.compose.ui.geometry.Offset(w * 0.6f, h * 0.62f), strokeWidth = h * 0.06f)
+            // pitch fader
+            drawLine(Color(0xFF5A5A6E), androidx.compose.ui.geometry.Offset(w * 0.9f, h * 0.45f), androidx.compose.ui.geometry.Offset(w * 0.9f, h * 0.8f), strokeWidth = h * 0.05f)
+        }
+        Column(modifier = Modifier.padding(start = 8.dp)) {
+            Text("PRIZE", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 2.sp, color = BrightGold, fontSize = 12.sp, lineHeight = 13.sp)
+            Text(PRIZE_NAME, fontFamily = FontFamily.Monospace, color = PaleGold, fontSize = 9.sp, lineHeight = 10.sp)
+        }
     }
 }
 

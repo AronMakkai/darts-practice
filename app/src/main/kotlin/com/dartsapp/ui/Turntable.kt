@@ -22,8 +22,13 @@ import kotlin.math.sin
 
 /** 33 1/3 rpm in degrees a second. */
 private const val RPM33_DEG = 200f
+/** The stylus tip, relative to the record's centre in record radii (the tonearm is drawn to it). */
+private const val TIP_X = 0.36f
+private const val TIP_Y = -0.67f
 /** Where the needle sits on the record, as a screen angle from the centre (degrees, 0 = 3 o'clock). */
-private val NEEDLE_DEG = Math.toDegrees(atan2(-0.72, 0.42)).toFloat()
+private val NEEDLE_DEG = Math.toDegrees(atan2(TIP_Y.toDouble(), TIP_X.toDouble())).toFloat()
+/** Sound comes out of the speaker a little after we ask for it: lead the needle by this much. */
+private const val AUDIO_LEAD_SEC = 0.07f
 /** How much of the record the scratch sample is pressed onto, starting at the dot. */
 private const val SAMPLE_ARC = 160f
 
@@ -52,6 +57,8 @@ fun VinylRecord(modifier: Modifier = Modifier) {
     fun reportNeedle(degPerSec: Float) {
         var u = ((angle % 360f) + 360f) % 360f
         if (u > 300f) u -= 360f          // just before the dot
+        // lead by the output delay, so the "ahh" is heard exactly as the white line meets the needle
+        u += degPerSec * AUDIO_LEAD_SEC
         Music.scratchTo((u / SAMPLE_ARC).toDouble(), (degPerSec / SAMPLE_ARC).toDouble())
     }
 
@@ -157,7 +164,8 @@ fun VinylRecord(modifier: Modifier = Modifier) {
 
         // chrome tonearm from a pivot off to the right, its headshell resting in the grooves
         val pivot = Offset(c.x + r * 1.02f, c.y - r * 0.62f)
-        val head = Offset(c.x + r * 0.42f, c.y - r * 0.72f)
+        val tip = Offset(c.x + r * TIP_X, c.y + r * TIP_Y)
+        val head = Offset(tip.x + r * 0.06f, tip.y - r * 0.05f)
         drawCircle(Color(0xFF5A5A6E), r * 0.09f, pivot)
         drawCircle(Color(0xFFD8DAE6), r * 0.06f, pivot)
         drawLine(Color(0xFF6E7084), pivot, head, strokeWidth = r * 0.04f, cap = StrokeCap.Round)
@@ -166,7 +174,7 @@ fun VinylRecord(modifier: Modifier = Modifier) {
             moveTo(head.x + r * 0.03f, head.y - r * 0.04f); lineTo(head.x - r * 0.08f, head.y - r * 0.02f)
             lineTo(head.x - r * 0.07f, head.y + r * 0.06f); lineTo(head.x + r * 0.03f, head.y + r * 0.04f); close()
         }, Color(0xFFB9BDC9))
-        drawCircle(NeonPink, r * 0.012f, Offset(head.x - r * 0.06f, head.y + r * 0.05f))
+        drawCircle(NeonPink, r * 0.012f, tip)
     }
 }
 
