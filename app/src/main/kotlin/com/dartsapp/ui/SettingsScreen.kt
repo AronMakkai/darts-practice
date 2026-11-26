@@ -126,6 +126,25 @@ fun SettingsScreen(navController: NavHostController) {
             fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
 
         Spacer(Modifier.height(16.dp))
+        Text("THROW ARROW", fontSize = 14.sp, fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, color = Grey,
+            modifier = Modifier.padding(start = 28.dp, bottom = 2.dp))
+        var throwPos by remember { mutableStateOf(Settings.throwButtonPos(context)) }
+        Slider(
+            value = throwPos,
+            onValueChange = { throwPos = it },
+            onValueChangeFinished = { Settings.setThrowButtonPos(context, throwPos) },
+            valueRange = 0f..1f,
+            colors = SliderDefaults.colors(thumbColor = Gold, activeTrackColor = Red, inactiveTrackColor = Charcoal),
+            modifier = Modifier.padding(horizontal = 28.dp)
+        )
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp)) {
+            Text("Corner", fontSize = 12.sp, color = Grey, modifier = Modifier.weight(1f))
+            Text("Near the centre", fontSize = 12.sp, color = Grey)
+        }
+        Text("Moves the swipe-to-throw arrow in from the bottom-left corner — handy on tablets and unfolded phones where the corner is a long reach.",
+            fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp))
+
+        Spacer(Modifier.height(16.dp))
         Text("GENERAL", fontSize = 14.sp, fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, color = Grey,
             modifier = Modifier.padding(start = 28.dp, bottom = 6.dp))
         var exitConfirm by remember { mutableStateOf(Settings.exitConfirm(context)) }

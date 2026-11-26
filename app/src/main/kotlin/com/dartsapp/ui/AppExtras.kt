@@ -112,3 +112,17 @@ fun RatePrompt(onRate: () -> Unit, onLater: () -> Unit, onNever: () -> Unit) {
         }
     )
 }
+
+
+/**
+ * How far in from the left edge the swipe-to-throw arrow sits, from the setting (0 = the corner,
+ * 1 = its centre lined up with the middle of the screen). Read once per screen.
+ */
+@Composable
+fun throwButtonInset(): androidx.compose.ui.unit.Dp {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val pos = remember { com.dartsapp.logic.Settings.throwButtonPos(ctx) }
+    val widthDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val maxInset = (widthDp / 2f - 60f - 8f).coerceAtLeast(0f)     // 120 dp zone, 8 dp margin
+    return (maxInset * pos).dp
+}

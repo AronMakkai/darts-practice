@@ -53,6 +53,10 @@ object Settings {
     fun rateAsked(ctx: Context) = flag(ctx, "rateAsked", false)
     fun setRateAsked(ctx: Context, v: Boolean) = setFlag(ctx, "rateAsked", v)
 
+    /** Where the swipe-to-throw arrow sits: 0 = bottom-left corner, 1 = in by the centre of the screen. */
+    fun throwButtonPos(ctx: Context): Float = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat("throwButtonPos", 0f)
+    fun setThrowButtonPos(ctx: Context, v: Float) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putFloat("throwButtonPos", v).apply() }
+
     fun musicOn(ctx: Context) = flag(ctx, "music", true)
     fun setMusicOn(ctx: Context, v: Boolean) = setFlag(ctx, "music", v)
     fun crowdOn(ctx: Context) = flag(ctx, "crowd", true)
