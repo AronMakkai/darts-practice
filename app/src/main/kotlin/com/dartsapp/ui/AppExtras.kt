@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.text.font.FontFamily
@@ -273,17 +274,25 @@ fun InTheZone(on: Boolean, modifier: Modifier = Modifier) {
             androidx.compose.animation.core.tween(1800), androidx.compose.animation.core.RepeatMode.Reverse),
         label = "pulse")
     if (k > 0f) androidx.compose.foundation.Canvas(modifier = modifier.fillMaxSize()) {
+        // An oval vignette fitted to the screen: a circle drawn in a square of the short side, then
+        // stretched to the screen's shape, so the dark closes in on all four edges, not just the corners
+        val m = minOf(size.width, size.height)
         val c = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
-        val r = kotlin.math.hypot(size.width, size.height) / 2f
-        val inner = 0.55f - 0.04f * pulse.value
-        drawRect(
-            brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                0f to Color.Transparent,
-                inner to Color.Transparent,
-                0.82f to Color(0xFF05000C).copy(alpha = 0.55f * k),
-                1f to Color(0xFF05000C).copy(alpha = 0.92f * k),
-                center = c, radius = r
+        val inner = 0.5f - 0.05f * pulse.value
+        val dark = Color(0xFF05000C)
+        scale(scaleX = size.width / m, scaleY = size.height / m, pivot = c) {
+            drawRect(
+                brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                    0f to Color.Transparent,
+                    inner to Color.Transparent,
+                    0.78f to dark.copy(alpha = 0.45f * k),
+                    0.95f to dark.copy(alpha = 0.8f * k),
+                    1f to dark.copy(alpha = 0.88f * k),
+                    center = c, radius = m / 2f
+                ),
+                topLeft = androidx.compose.ui.geometry.Offset(c.x - m, c.y - m),
+                size = androidx.compose.ui.geometry.Size(2f * m, 2f * m)
             )
-        )
+        }
     }
 }

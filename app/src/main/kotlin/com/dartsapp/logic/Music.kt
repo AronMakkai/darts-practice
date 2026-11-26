@@ -20,15 +20,12 @@ object Music {
 
     private var menuTrack: AudioTrack? = null
     private var menuPcm: ShortArray? = null
-    private var crowdTrack: AudioTrack? = null
     private var crowdPcm: ShortArray? = null
-    // IN THE ZONE: a second, muffled copy of the crowd loop runs in step with the first, and the two
-    // are crossfaded, so the room sounds like it is under water while you are in the zone
-    private var crowdWetTrack: AudioTrack? = null
-    private var crowdWetPcm: ShortArray? = null
+    // The crowd loop is streamed by its own thread rather than played as one static buffer, so it
+    // can be filtered live. IN THE ZONE fades in a steep low-pass, the room sounds under water.
+    private var crowdThread: Thread? = null
     @Volatile var muffled = false
         private set
-    @Volatile private var mix = 0f        // 0 = clear, 1 = under water
     private const val CROWD_VOL = 0.5f
     @Volatile private var menuWanted = false
     @Volatile private var crowdWanted = false
@@ -53,50 +50,67 @@ object Music {
             }
         } else { menuTrack?.let { safeStop(it) }; menuTrack = null }
         if (crowdWanted) {
-            if (crowdTrack == null) {
+            if (crowdThread?.isAlive != true) {
                 val pcm = crowdPcm ?: renderCrowd().also { crowdPcm = it }
-                val wet = crowdWetPcm ?: underwater(pcm).also { crowdWetPcm = it }
-                if (crowdWanted) {
-                    // started back to back so they stay in step
-                    crowdTrack = loop(pcm, CROWD_VOL * (1f - mix), start = false)
-                    crowdWetTrack = loop(wet, CROWD_VOL * mix * WET_GAIN, start = false)
-                    try { crowdTrack?.play(); crowdWetTrack?.play() } catch (e: Exception) { }
+                if (crowdWanted) crowdThread = thread(name = "crowd") { streamCrowd(pcm) }
+            }
+        }
+        // (when not wanted, the crowd thread sees crowdWanted == false and stops itself)
+    }
+
+    /** Plays the crowd loop for as long as it is wanted, through the live under-water filter. */
+    private fun streamCrowd(pcm: ShortArray) {
+        val minBuf = AudioTrack.getMinBufferSize(RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT).coerceAtLeast(2048)
+        val track = try {
+            AudioTrack(
+                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build(),
+                AudioFormat.Builder().setSampleRate(RATE).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build(),
+                minBuf * 2, AudioTrack.MODE_STREAM, android.media.AudioManager.AUDIO_SESSION_ID_GENERATE
+            )
+        } catch (e: Exception) { return }
+        try {
+            track.setVolume(CROWD_VOL)
+            track.play()
+            val chunk = ShortArray(1024)
+            val a = (1.0 - exp(-2.0 * PI * 380.0 / RATE)).toFloat()
+            var s1 = 0f; var s2 = 0f; var s3 = 0f; var s4 = 0f
+            var m = if (muffled) 1f else 0f            // 0 = clear, 1 = under water
+            val step = 1f / (RATE * 0.45f)              // crossfade over ~half a second
+            var pos = 0; var t = 0L
+            while (crowdWanted) {
+                val target = if (muffled) 1f else 0f
+                for (i in chunk.indices) {
+                    val x = pcm[pos] / 32768f
+                    pos++; if (pos >= pcm.size) pos = 0
+                    s1 += a * (x - s1); s2 += a * (s1 - s2); s3 += a * (s2 - s3); s4 += a * (s3 - s4)
+                    if (m < target) m = (m + step).coerceAtMost(target) else if (m > target) m = (m - step).coerceAtLeast(target)
+                    val wobble = 1f + 0.15f * sin(2.0 * PI * 0.6 * t / RATE).toFloat()
+                    t++
+                    val y = x * (1f - m) + s4 * 1.9f * wobble * m
+                    chunk[i] = (y.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
                 }
+                if (track.write(chunk, 0, chunk.size) < 0) break
             }
-        } else {
-            crowdTrack?.let { safeStop(it) }; crowdTrack = null
-            crowdWetTrack?.let { safeStop(it) }; crowdWetTrack = null
-        }
+        } catch (e: Exception) {
+        } finally { safeStop(track) }
     }
 
-    private const val WET_GAIN = 1.25f     // the filtered copy is quieter; bring it back up a bit
+    private const val WET_GAIN = 1.25f     // the filtered one-shots are quieter; bring them back up a bit
 
-    /** Turn the under-water sound on or off: the crowd crossfades over about half a second. */
-    fun setMuffled(on: Boolean) {
-        if (muffled == on) return
-        muffled = on
-        thread(name = "muffle") {
-            val from = mix; val to = if (on) 1f else 0f
-            for (i in 1..15) {
-                if (muffled != on) return@thread
-                mix = from + (to - from) * i / 15f
-                try { crowdTrack?.setVolume(CROWD_VOL * (1f - mix)); crowdWetTrack?.setVolume(CROWD_VOL * mix * WET_GAIN) } catch (e: Exception) { }
-                Thread.sleep(35)
-            }
-        }
-    }
+    /** Turn the under-water sound on or off (the crowd stream crossfades by itself). */
+    fun setMuffled(on: Boolean) { muffled = on }
 
     /**
-     * The under-water filter: a steep low-pass (four one-pole stages at ~420 Hz) that keeps the
+     * The under-water filter: a steep low-pass (four one-pole stages at ~380 Hz) that keeps the
      * body of the voices and drops the consonants, glass and whistles, with a slow wobble in level.
      */
     fun underwater(buf: FloatArray, rate: Int) {
-        val a = (1.0 - exp(-2.0 * PI * 420.0 / rate)).toFloat()
+        val a = (1.0 - exp(-2.0 * PI * 380.0 / rate)).toFloat()
         var s1 = 0f; var s2 = 0f; var s3 = 0f; var s4 = 0f
         for (i in buf.indices) {
             s1 += a * (buf[i] - s1); s2 += a * (s1 - s2); s3 += a * (s2 - s3); s4 += a * (s3 - s4)
-            val wobble = 1f + 0.12f * sin(2.0 * PI * 0.7 * i / rate).toFloat()
-            buf[i] = s4 * 1.8f * wobble
+            val wobble = 1f + 0.15f * sin(2.0 * PI * 0.6 * i / rate).toFloat()
+            buf[i] = s4 * 1.9f * wobble
         }
     }
 
