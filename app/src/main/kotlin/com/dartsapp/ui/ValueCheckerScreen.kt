@@ -189,7 +189,7 @@ fun ValueCheckerScreen(navController: NavHostController, checkoutMode: Boolean =
                         DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 10.dp).size(width = 132.dp, height = 90.dp))
                     }
                     Box(
-                        modifier = Modifier.align(Alignment.CenterVertically).padding(end = 8.dp).widthIn(max = minOf(BOARD_MAX, (conf.screenWidthDp * 0.62f).dp)).aspectRatio(1f, matchHeightConstraintsFirst = true),
+                        modifier = Modifier.align(Alignment.CenterVertically).padding(end = 8.dp).widthIn(max = landscapeBoardCap(conf.screenWidthDp.dp)).aspectRatio(1f, matchHeightConstraintsFirst = true),
                         contentAlignment = Alignment.Center
                     ) {
                         Dartboard(

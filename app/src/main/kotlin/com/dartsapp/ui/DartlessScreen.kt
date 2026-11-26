@@ -485,9 +485,9 @@ fun DartlessScreen(navController: NavHostController) {
                         )
                     }
                 }
-                // Right: the board, as big as the height allows (never more than ~60% of the width)
+                // Right: the board, as big as the height allows (at most half the width)
                 Box(modifier = Modifier.fillMaxHeight().padding(end = 8.dp), contentAlignment = Alignment.Center) {
-                    board(Modifier.widthIn(max = minOf(BOARD_MAX, (conf.screenWidthDp * 0.62f).dp)).aspectRatio(1f, matchHeightConstraintsFirst = true))
+                    board(Modifier.widthIn(max = landscapeBoardCap(conf.screenWidthDp.dp)).aspectRatio(1f, matchHeightConstraintsFirst = true))
                 }
             }
         }

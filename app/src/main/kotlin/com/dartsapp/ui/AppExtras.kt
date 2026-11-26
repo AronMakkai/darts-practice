@@ -216,6 +216,13 @@ fun throwButtonInset(): androidx.compose.ui.unit.Dp {
 val BOARD_MAX = 470.dp
 
 /**
+ * Sideways, the board shares the screen with the stats: it never takes more than half the width and
+ * stays a little smaller than upright, so on a big near-square screen (an unfolded Fold) it doesn't swamp them.
+ */
+fun landscapeBoardCap(screenWidth: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp =
+    minOf(400.dp, screenWidth * 0.5f)
+
+/**
  * On small screens (a narrow phone, or a foldable's cover screen) everything around the board —
  * scores, stats, bars, buttons, text — is drawn a bit smaller, so the board keeps its full width and
  * the rest still fits. Normal and large screens are untouched.
