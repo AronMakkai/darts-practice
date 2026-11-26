@@ -28,10 +28,15 @@ private val FastGeo = BoardGeometry.WIDE
  * Fast 501: a solo leg of 501 played by poking the board. Every double and treble value is written
  * on the board, three darts a visit, double out. The power bar counts down from 501, and the
  * checkout coach reviews the finish when you get there.
+ *
+ * Fast Checkout (checkoutMode): the same board, but every leg starts on a random checkout (2–170)
+ * instead of 501. Finish it and the coach reviews it, then the next one comes up.
  */
 @Composable
-fun ValueCheckerScreen(navController: NavHostController) {
-    val startScore = 501
+fun ValueCheckerScreen(navController: NavHostController, checkoutMode: Boolean = false) {
+    fun pickStart() = if (checkoutMode) CheckoutLogic.randomCheckout() else 501
+    var startScore by remember { mutableStateOf(pickStart()) }
+    var checkoutsDone by remember { mutableStateOf(0) }
     var remaining by remember { mutableStateOf(startScore) }
     var visitStart by remember { mutableStateOf(startScore) }
     var dartsInVisit by remember { mutableStateOf(0) }
@@ -48,6 +53,7 @@ fun ValueCheckerScreen(navController: NavHostController) {
     var starOrigin by remember { mutableStateOf(Offset.Zero) }
 
     fun reset() {
+        startScore = pickStart()
         remaining = startScore; visitStart = startScore
         dartsInVisit = 0; dartsTotal = 0; scored = 0
         finished = false; coachOpen = false
@@ -74,7 +80,8 @@ fun ValueCheckerScreen(navController: NavHostController) {
                 remaining = 0
                 finished = true
                 coachOpen = true
-                message = "Game shot! 501 in $dartsTotal darts  ·  New to play again"
+                if (checkoutMode) checkoutsDone++
+                message = if (checkoutMode) "Checked out $startScore in $dartsTotal darts!" else "Game shot! 501 in $dartsTotal darts  ·  New to play again"
                 burstTrigger++
                 Sounds.playCheckoutJingle()
                 Sounds.cheer(big = true)
@@ -103,7 +110,8 @@ fun ValueCheckerScreen(navController: NavHostController) {
             aimed = checkoutThrown.toList(),
             busts = checkoutBusts,
             onDismiss = { coachOpen = false },
-            onNext = { coachOpen = false }
+            onNext = { coachOpen = false; if (checkoutMode) reset() },
+            nextLabel = if (checkoutMode) "Next checkout" else "Close"
         )
     }
 
@@ -129,7 +137,7 @@ fun ValueCheckerScreen(navController: NavHostController) {
                         modifier = Modifier.fillMaxWidth().height(24.dp)
                     )
                     Text(
-                        "avg ${"%.1f".format(avg)}   darts $dartsTotal" +
+                        (if (checkoutMode) "checkout $startScore   done $checkoutsDone   darts $dartsTotal" else "avg ${"%.1f".format(avg)}   darts $dartsTotal") +
                             (if (remaining in 2..170 && CheckoutLogic.isFinishable(remaining)) "   ${CheckoutLogic.tip(remaining)}" else ""),
                         fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = PaleGold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp)
@@ -156,7 +164,7 @@ fun ValueCheckerScreen(navController: NavHostController) {
     }
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            ScreenHeader("Fast 501", navController) {
+            ScreenHeader(if (checkoutMode) "Fast Checkout" else "Fast 501", navController) {
                 TextButton(onClick = { reset() }) { Text("New", color = Gold) }
             }
             if (!wide) {

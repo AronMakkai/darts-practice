@@ -86,7 +86,7 @@ fun DartsApp() {
         if (!foreground) { Music.stopAll(); return }
         when (r) {
             "menu", "game", "irl", "settings" -> if (Settings.musicOn(context)) Music.startMenu() else Music.stopAll()
-            "dartless", "bot501", "bot501tour", "x01", "x01bot", "valuechecker" -> if (Settings.crowdOn(context)) Music.startCrowd() else Music.stopAll()
+            "dartless", "bot501", "bot501tour", "x01", "x01bot", "valuechecker", "fastcheckout" -> if (Settings.crowdOn(context)) Music.startCrowd() else Music.stopAll()
             else -> Music.stopAll()
         }
     }
@@ -108,6 +108,7 @@ fun DartsApp() {
         composable("checkout") { CheckoutScreen(navController) }
         composable("dartless") { CompactOnSmallScreens { DartlessScreen(navController) } }
         composable("valuechecker") { ValueCheckerScreen(navController) }
+        composable("fastcheckout") { ValueCheckerScreen(navController, checkoutMode = true) }
         composable("metronome") { MetronomeScreen(navController) }
         composable("settings") { SettingsScreen(navController) }
         composable("x01") { CompactOnSmallScreens { FiveOhOneScreen(navController) } }
@@ -122,7 +123,8 @@ fun DartsApp() {
                     "CHECKOUT GAME" to "dartless",
                     "1 PLAYER 501" to "bot501",
                     "TOURNAMENT" to "tournament",
-                    "FAST 501" to "valuechecker"
+                    "FAST 501" to "valuechecker",
+                    "FAST CHECKOUT" to "fastcheckout"
                 ),
                 showPace = true
             )
