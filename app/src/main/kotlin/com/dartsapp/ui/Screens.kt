@@ -66,7 +66,7 @@ fun MainMenuScreen(navController: NavHostController) {
         val recR = minOf(conf.screenWidthDp * 0.34f, conf.screenHeightDp * 0.19f).dp
         VinylRecord(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(recR))
         // ...and its fader, in the corner beside it
-        CutButton(modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 10.dp).size(minOf(64f, recR.value * 0.55f).dp))
+        ScratchButton(modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 10.dp).size(minOf(64f, recR.value * 0.55f).dp))
         TvFilter(modifier = Modifier.fillMaxSize())
     }
 }

@@ -96,26 +96,18 @@ object Music {
         } finally { safeStop(track) }
     }
 
-    // ---- the record on the main menu: the menu tune plays on as normal, and dragging the record
-    // scratches a sample over the top of it, like a DJ cutting a vocal over the beat ----------------
+    // ---- the record on the main menu: the menu tune plays on as normal, and the record carries a
+    // scratch sample on a short arc. The SCRATCH button is the fader: hold it and you hear the needle
+    // reading the record, whether your hand is working it or it is just spinning round ------------
 
-    @Volatile private var scratching = false
-    @Volatile private var scratchTarget = 0.0     // 0..1: how far through the sample the needle sits
-    @Volatile private var faderOpen = true        // the CUT button closes it while held
+    @Volatile private var scratchTarget = 0.0     // where the needle sits: 0..1 through the sample (outside = blank groove)
+    @Volatile private var faderOpen = false       // open while the SCRATCH button is held
     private var scratchPcm: FloatArray? = null
 
-    /**
-     * The sample is pressed onto a short arc of the record, starting at the dot on the label. The
-     * screen tells us where the needle sits in it ([frac] 0..1, clamped: before the dot or past the
-     * end of the arc is silent groove) whenever the record moves under a finger.
-     */
-    fun scratchStart(frac: Double) { scratchTarget = frac; scratching = true; cueTo = frac }
+    /** The record's position under the needle, sent every frame ([frac] 0..1 is the sample, the rest is blank). */
     fun scratchTo(frac: Double) { scratchTarget = frac }
-    /** Finger up: the scratch stops. */
-    fun scratchEnd() { scratching = false }
-    /** The fader: closed while the CUT button is held, for chirps and transformer cuts. */
+    /** The fader: open while the SCRATCH button is held. */
     fun setFader(open: Boolean) { faderOpen = open }
-    @Volatile private var cueTo = -1.0
 
     /**
      * The scratch sample: the classic "AHHH... YEAHHH!" vocal. A big shouted open "ahhh" with the pitch
@@ -124,7 +116,7 @@ object Music {
      * it chirps and squeals when it is cut back and forth.
      */
     private fun renderScratchSample(): FloatArray {
-        val len = 1.75f
+        val len = 0.95f
         val n = (RATE * len).toInt()
         val buf = FloatArray(n)
         val rnd = Random(77)
@@ -158,11 +150,11 @@ object Music {
             }
         }
         // "AHHH": a breathy "h" onset then the open vowel, pitch falling from 190 to 130
-        voice(0.02f, 0.62f, 1f, { p ->
+        voice(0.01f, 0.36f, 1f, { p ->
             floatArrayOf(190f - 60f * p, 780f, 1200f - 80f * p, 2500f)
         }, attack = 0.06f, release = 0.3f)
         // "YEAHHH": ee -> eh -> ah, the pitch lifting then falling away
-        voice(0.78f, 0.92f, 1.05f, { p ->
+        voice(0.42f, 0.52f, 1.05f, { p ->
             val y = (p / 0.22f).coerceIn(0f, 1f)                  // the "y" glide
             val e = ((p - 0.22f) / 0.35f).coerceIn(0f, 1f)        // "eh" opening to "ah"
             val f1 = 290f + (560f - 290f) * y + (760f - 560f) * e
@@ -189,33 +181,34 @@ object Music {
             val n = pcm.size
             val chunk = ShortArray(256)                  // small chunks: the scratch follows the finger closely
             var pos = 0                                  // the tune: always straight through
-            var sPos = 0.0                               // the scratch sample: wherever the hand puts it
-            var v = 0.0                                  // scratch speed (samples per sample, negative = back)
-            var gate = 0f                                // scratch is only heard while the record moves
-            var fader = 1f
+            var sPos = scratchTarget                     // the needle, in fractions of the sample (outside 0..1 = blank groove)
+            var lastTarget = sPos
+            var v = 0.0                                  // record speed under the needle, per output sample
+            var gate = 0f                                // smooths the sample in and out at the arc's ends
+            var fader = 0f
             val last = (smp.size - 2).toDouble()
+            val perSample = 1.0 / last                   // one sample's step, in fractions
             while (menuWanted) {
-                val sc = scratching
-                // finger just went down: the needle is wherever the record already is
-                val cue = cueTo
-                if (cue >= 0.0) { sPos = cue * last; v = 0.0; cueTo = -1.0 }
+                val target = scratchTarget
+                // the record went once round (or the menu was away): jump rather than whizz across the sample
+                if (kotlin.math.abs(target - lastTarget) > 0.5) { sPos += target - lastTarget }
+                lastTarget = target
                 val fTarget = if (faderOpen) 1f else 0f
                 for (i in chunk.indices) {
                     var out = pcm[pos] / 32768f
                     pos++; if (pos >= n) pos = 0
-                    if (sc) {
-                        val want = ((scratchTarget * last - sPos) / (RATE * 0.03)).coerceIn(-5.0, 5.0)
-                        v += (want - v) * 0.02
-                    } else v *= 0.995
-                    val np = sPos + v
-                    // past either end of the arc the needle is in silent groove
-                    val inGroove = np > 0.0 && np < last
-                    sPos = np.coerceIn(0.0, last)
-                    val g = if (!inGroove) 0f else (kotlin.math.abs(v) * 4.0).coerceAtMost(1.0).toFloat() * (if (sc) 1f else 0.6f)
+                    // the needle chases where the record has got to (~30 ms behind), so the pitch slides
+                    val want = ((target - sPos) / (RATE * 0.03)).coerceIn(-6.0 * perSample, 6.0 * perSample)
+                    v += (want - v) * 0.02
+                    sPos += v
+                    val inGroove = sPos > 0.0 && sPos < 1.0
+                    val speed = kotlin.math.abs(v / perSample)
+                    val g = if (!inGroove) 0f else (speed * 4.0).coerceAtMost(1.0).toFloat()
                     gate += (g - gate) * 0.01f
                     fader += (fTarget - fader) * 0.05f          // a crisp cut, not a click
-                    if (gate > 0.001f) {
-                        val i0 = sPos.toInt(); val f = (sPos - i0).toFloat()
+                    if (gate > 0.001f && fader > 0.001f) {
+                        val x = sPos.coerceIn(0.0, 1.0) * last
+                        val i0 = x.toInt(); val f = (x - i0).toFloat()
                         out += (smp[i0] + (smp[i0 + 1] - smp[i0]) * f) * gate * fader * 1.4f
                     }
                     chunk[i] = (out.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
