@@ -65,7 +65,7 @@ val Opponent.hometown: String? get() = when (this) {
     Opponent.COACH -> null
 }
 
-/** His game in a line: the special move he plays with all the time. */
+/** His game in a line: the playing style he plays with all the time. */
 val Opponent.specialMove: String get() = when (this) {
     Opponent.BEARD -> "Slow and deliberate — about three seconds between every dart."
     Opponent.GRIN -> "Crowd favourite — the place roars on his last dart of every visit, whatever he scores."

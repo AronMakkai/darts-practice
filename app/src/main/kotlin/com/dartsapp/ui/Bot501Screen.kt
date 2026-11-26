@@ -794,7 +794,7 @@ internal fun OpponentBioDialog(opponent: Opponent, showPower: Boolean = true, on
             opponent.hometown?.let { Text("📍 $it", fontSize = 13.sp, color = PaleGold, modifier = Modifier.padding(top = 2.dp)) }
             Text(opponent.blurb, fontSize = 12.sp, color = Grey, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
             Spacer(Modifier.height(12.dp))
-            Text("SPECIAL MOVE", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey, modifier = Modifier.fillMaxWidth())
+            Text("PLAYING STYLE", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey, modifier = Modifier.fillMaxWidth())
             Text(opponent.specialMove, fontSize = 14.sp, color = OffWhite, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
             if (showPower && opponent.powerName != null) {
                 Spacer(Modifier.height(10.dp))
