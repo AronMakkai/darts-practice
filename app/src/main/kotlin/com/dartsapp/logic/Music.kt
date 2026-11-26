@@ -211,7 +211,7 @@ object Music {
             lp += 0.55f * (hp - lp)                                 // take the very top off
             val p = (i - sStart).toFloat() / (n - sStart)
             val env = minOf(1f, p / 0.15f) * (if (p > 0.7f) ((1f - p) / 0.3f).coerceAtLeast(0f) else 1f)
-            buf[i] += lp * 1.0f * env
+            buf[i] += lp * 0.75f * env         // about twice as loud as the vowel, short of clipping
         }
         return buf
     }
