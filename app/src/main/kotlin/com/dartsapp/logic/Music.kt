@@ -111,45 +111,58 @@ object Music {
     fun scratchEnd() { scratching = false }
 
     /**
-     * The scratch sample: the classic "ffff–aaaah" vocal stab. A breathy "f", then a big, raspy, open
-     * "ah" with lots of harmonics so it chirps and squeals when cut back and forth.
+     * The scratch sample: the classic "AHHH... YEAHHH!" vocal. A big shouted open "ahhh" with the pitch
+     * falling away, a breath, then "yeahhh" sliding from "ee" through "eh" to an open "ah", lifting
+     * and then dropping off. A raspy glottal buzz with lots of harmonics and a bit of breath in it, so
+     * it chirps and squeals when it is cut back and forth.
      */
     private fun renderScratchSample(): FloatArray {
-        val len = 1.3f
+        val len = 1.75f
         val n = (RATE * len).toInt()
         val buf = FloatArray(n)
         val rnd = Random(77)
-        // "fff": bright hiss, swelling
-        val fLen = (RATE * 0.16f).toInt()
-        var hp = 0f; var prev = 0f
-        for (i in 0 until fLen) {
-            val white = rnd.nextFloat() * 2f - 1f
-            hp = 0.85f * (hp + white - prev); prev = white
-            val p = i.toFloat() / fLen
-            buf[i] = hp * 0.35f * (p * p)
-        }
-        // "aaah": 160 Hz glottal buzz through an open-vowel formant set, falling a little at the end
-        val start = fLen
-        val dur = n - start
-        val f1 = 760f; val f2 = 1150f; val f3 = 2500f
-        var phase = 0.0
-        for (i in 0 until dur) {
-            val p = i.toFloat() / dur
-            val f0 = 160f * (1f - 0.12f * p * p)
-            phase += 2 * PI * f0 / RATE
-            var v = 0.0
-            var hN = 1
-            while (hN <= 24) {
-                val fh = f0 * hN
-                if (fh > RATE / 2.2f) break
-                val g = 1f / (1f + ((fh - f1) / 120f).let { it * it }) + 0.7f / (1f + ((fh - f2) / 160f).let { it * it }) +
-                    0.35f / (1f + ((fh - f3) / 260f).let { it * it }) + 0.04f
-                v += g / kotlin.math.sqrt(hN.toFloat()) * sin(hN * phase)
-                hN++
+        // one sung syllable with formants and pitch moving over it: fn(p) gives (f0, F1, F2, F3) at 0..1
+        fun voice(t0: Float, durSec: Float, amp: Float, shape: (Float) -> FloatArray, attack: Float, release: Float) {
+            val start = (t0 * RATE).toInt(); val dur = (durSec * RATE).toInt()
+            var phase = 0.0
+            var lp = 0f
+            for (i in 0 until dur) {
+                val idx = start + i; if (idx >= n) break
+                val p = i.toFloat() / dur
+                val (f0, f1, f2, f3) = shape(p).let { arrayOf(it[0], it[1], it[2], it[3]) }
+                // a little rough vibrato in the shout
+                val wob = 1f + 0.012f * sin(2 * PI * 6.0 * i / RATE).toFloat() + 0.006f * (rnd.nextFloat() - 0.5f)
+                phase += 2 * PI * f0 * wob / RATE
+                var v = 0.0
+                var h = 1
+                while (h <= 30) {
+                    val fh = f0 * h
+                    if (fh > RATE / 2.2f) break
+                    val g = 1f / (1f + ((fh - f1) / 110f).let { it * it }) + 0.8f / (1f + ((fh - f2) / 150f).let { it * it }) +
+                        0.4f / (1f + ((fh - f3) / 250f).let { it * it }) + 0.03f
+                    v += g / kotlin.math.sqrt(h.toFloat()) * sin(h * phase)
+                    h++
+                }
+                // breath through the formants: noise, roughly band-limited
+                val white = rnd.nextFloat() * 2f - 1f
+                lp += 0.35f * (white - lp)
+                val env = minOf(1f, p / attack) * (if (p > 1f - release) ((1f - p) / release).coerceAtLeast(0f) else 1f)
+                buf[idx] += ((v * 0.2 + lp * 0.05) * env * amp).toFloat()
             }
-            val env = minOf(1f, p / 0.04f) * (if (p > 0.8f) (1f - p) / 0.2f else 1f)
-            buf[start + i] = (v * env * 0.22f).toFloat()
         }
+        // "AHHH": a breathy "h" onset then the open vowel, pitch falling from 190 to 130
+        voice(0.02f, 0.62f, 1f, { p ->
+            floatArrayOf(190f - 60f * p, 780f, 1200f - 80f * p, 2500f)
+        }, attack = 0.06f, release = 0.3f)
+        // "YEAHHH": ee -> eh -> ah, the pitch lifting then falling away
+        voice(0.78f, 0.92f, 1.05f, { p ->
+            val y = (p / 0.22f).coerceIn(0f, 1f)                  // the "y" glide
+            val e = ((p - 0.22f) / 0.35f).coerceIn(0f, 1f)        // "eh" opening to "ah"
+            val f1 = 290f + (560f - 290f) * y + (760f - 560f) * e
+            val f2 = 2250f + (1850f - 2250f) * y + (1300f - 1850f) * e
+            val f0 = if (p < 0.35f) 150f + 70f * (p / 0.35f) else 220f - 85f * ((p - 0.35f) / 0.65f)
+            floatArrayOf(f0, f1, f2, 2600f)
+        }, attack = 0.04f, release = 0.35f)
         return buf
     }
 

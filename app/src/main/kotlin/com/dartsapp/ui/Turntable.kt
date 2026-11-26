@@ -28,7 +28,7 @@ private const val RPM33_DEG = 200f
  * chrome tonearm rests on it, and the rim glows neon pink like the signs.
  *
  * Put a finger on it and drag round to scratch: the record follows your hand (backwards too) and a
- * "ffff-aaah" vocal stab is cut over the top of the tune, which keeps playing underneath. Let go and
+ * classic "ahhh... yeahhh!" vocal is cut over the top of the tune, which keeps playing underneath. Let go and
  * the motor brings the record back up to speed.
  */
 @Composable
