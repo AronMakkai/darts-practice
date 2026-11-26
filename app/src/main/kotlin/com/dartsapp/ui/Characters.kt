@@ -402,13 +402,13 @@ private fun DrawScope.drawTache() {
 
 /** The player's own character: name on the scoreboard and his bio card. */
 const val PLAYER_NAME = "DOUBLE TROUBLE"
-const val PLAYER_BLURB = "Glam-pop walk-on, silver jacket, headset mic and a second helping of chin — loves a double, and they don't always love him back."
+const val PLAYER_BLURB = "Glam-pop walk-on, silver jacket and a second helping of chin — loves a double, and they don't always love him back."
 const val PLAYER_STYLE = "Whatever your timing makes him. Throw on the beat and he's a monster."
 
 /**
  * You: DOUBLE TROUBLE. Close-up, flat-shaded like the others. A big round face with rosy cheeks and a
- * double chin, a tall strawberry-blond quiff with sideburns, a cheesy stage grin, a headset mic,
- * and a shiny silver jacket with a high collar, lit from the side by purple stage lights. Fits a square.
+ * double chin, a tall strawberry-blond quiff with sideburns, a cheesy stage grin and a shiny
+ * silver jacket with a high collar, lit from the side by purple stage lights. Fits a square.
  */
 @Composable
 fun PlayerHead(modifier: Modifier = Modifier) {
@@ -503,12 +503,4 @@ private fun DrawScope.drawPlayer() {
     drawLine(hairDark, Offset(cx - w * 0.14f, h * 0.17f), Offset(cx + w * 0.1f, h * 0.11f), strokeWidth = h * 0.012f, cap = StrokeCap.Round)
     drawLine(hairDark, Offset(cx + w * 0.18f, h * 0.1f), Offset(cx + w * 0.26f, h * 0.24f), strokeWidth = h * 0.012f, cap = StrokeCap.Round)
 
-    // Headset mic: band over the ear, boom round to the corner of the mouth
-    val mic = Color(0xFF1E1E24)
-    drawArc(mic, 180f, 110f, false, Offset(cx - w * 0.38f, h * 0.36f), Size(w * 0.14f, h * 0.2f), style = Stroke(width = h * 0.018f, cap = StrokeCap.Round))
-    drawPath(Path().apply {
-        moveTo(cx - w * 0.33f, h * 0.5f); quadraticBezierTo(cx - w * 0.3f, h * 0.66f, cx - w * 0.18f, h * 0.66f)
-    }, mic, style = Stroke(width = h * 0.014f, cap = StrokeCap.Round))
-    drawCircle(mic, w * 0.028f, Offset(cx - w * 0.17f, h * 0.66f))
-    drawCircle(Color(0xFF4A4A56), w * 0.012f, Offset(cx - w * 0.175f, h * 0.655f))
 }
