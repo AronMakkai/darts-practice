@@ -110,12 +110,9 @@ fun ValueCheckerScreen(navController: NavHostController) {
     val avg = if (dartsTotal == 0) 0f else scored * 3f / dartsTotal
     val inHand = if (finished) 0 else if (dartsInVisit >= 3) 0 else 3 - dartsInVisit
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            ScreenHeader("Fast 501", navController) {
-                TextButton(onClick = { reset() }) { Text("New", color = Gold) }
-            }
-
+    val conf = androidx.compose.ui.platform.LocalConfiguration.current
+    val wide = conf.screenWidthDp > conf.screenHeightDp      // sideways: stats left, board right
+    @Composable fun stats() {
             // Score + power bar
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
@@ -149,24 +146,60 @@ fun ValueCheckerScreen(navController: NavHostController) {
                 )
             }
 
-            Dartboard(
-                modifier = Modifier.padding(8.dp).onGloballyPositioned {
-                    val p = it.positionInRoot()
-                    starOrigin = Offset(p.x + it.size.width / 2f, p.y + it.size.height / 2f)
-                },
-                geometry = FastGeo,
-                showValues = true,
-                onTap = { poke(it) }
-            )
-
+    }
+    @Composable fun hint() {
             Text(
                 "Inner numbers = trebles, outer numbers = doubles",
                 fontSize = 12.sp, color = Grey, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
             )
+    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            ScreenHeader("Fast 501", navController) {
+                TextButton(onClick = { reset() }) { Text("New", color = Gold) }
+            }
+            if (!wide) {
+                stats()
+                Dartboard(
+                    modifier = Modifier.padding(8.dp).onGloballyPositioned {
+                        val p = it.positionInRoot()
+                        starOrigin = Offset(p.x + it.size.width / 2f, p.y + it.size.height / 2f)
+                    },
+                    geometry = FastGeo,
+                    showValues = true,
+                    onTap = { poke(it) }
+                )
+
+                hint()
+            } else {
+                Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        stats()
+                        hint()
+                        Spacer(Modifier.weight(1f))
+                        DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 10.dp).size(width = 132.dp, height = 90.dp))
+                    }
+                    Box(
+                        modifier = Modifier.align(Alignment.CenterVertically).padding(end = 8.dp).widthIn(max = minOf(BOARD_MAX, (conf.screenWidthDp * 0.62f).dp)).aspectRatio(1f, matchHeightConstraintsFirst = true),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Dartboard(
+                            modifier = Modifier.padding(8.dp).onGloballyPositioned {
+                                val p = it.positionInRoot()
+                                starOrigin = Offset(p.x + it.size.width / 2f, p.y + it.size.height / 2f)
+                            },
+                            geometry = FastGeo,
+                            showValues = true,
+                            onTap = { poke(it) }
+                        )
+
+                    }
+                }
+            }
         }
 
-        DartsInHand(
+        if (!wide) DartsInHand(
             inHand = inHand,
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 10.dp).size(width = 132.dp, height = 90.dp)
         )

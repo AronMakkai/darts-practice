@@ -562,8 +562,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
     Box(modifier = Modifier.fillMaxSize()) {
       BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        // Big screens held sideways (tablets, an unfolded Fold): scores and meters left, board right
-        val wide = maxWidth > maxHeight && maxWidth >= 600.dp
+        // Any screen held sideways: scores and meters left, the throw arrow between, the board right
+        val wide = maxWidth > maxHeight
         // Short or narrow phones: slimmer meter so the board gets the height
         val small = !wide && androidx.compose.ui.platform.LocalConfiguration.current.let { it.screenHeightDp < 760 || it.screenWidthDp < 400 }
 
@@ -702,29 +702,44 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
                     // Left: both players' scores and stats, the accuracy meter and the status lines;
                     // the throw arrow and the darts in hand sit below them
-                    Column(modifier = Modifier.fillMaxWidth(0.4f).fillMaxHeight().padding(bottom = 130.dp)) {
+                    Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                         panels()
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(4.dp))
                         accuracyRow()
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(4.dp))
                         status()
+                        Spacer(Modifier.weight(1f))
+                        // The throw arrow and the darts in hand, centred under the stats, next to the board
+                        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
+                            SwipeToThrowZone(
+                                armed = throwStartMs != 0L,
+                                enabled = current == 0 && !matchOver && preset != null,
+                                onSwipe = { armThrow() },
+                                modifier = Modifier.size(120.dp)
+                            )
+                            DartsInHand(inHand = inHand, modifier = Modifier.padding(bottom = 14.dp).size(width = 132.dp, height = 90.dp))
+                        }
                     }
-                    // Right: the board, as big as the height allows
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight().padding(end = 8.dp), contentAlignment = Alignment.CenterEnd) {
-                        board(Modifier.widthIn(max = BOARD_MAX).aspectRatio(1f, matchHeightConstraintsFirst = true))
+                    // Right: the board, as big as the height allows (never more than ~60% of the width)
+                    Box(modifier = Modifier.fillMaxHeight().padding(end = 8.dp), contentAlignment = Alignment.Center) {
+                        board(Modifier.widthIn(max = minOf(BOARD_MAX, maxWidth * 0.62f)).aspectRatio(1f, matchHeightConstraintsFirst = true))
                     }
                 }
             }
         }
       }
 
-        SwipeToThrowZone(
-            armed = throwStartMs != 0L,
-            enabled = current == 0 && !matchOver && preset != null,
-            onSwipe = { armThrow() },
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp + throwInset, top = 8.dp, end = 8.dp, bottom = 8.dp).size(120.dp)
-        )
-        DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp + throwInset, bottom = 22.dp).size(width = 132.dp, height = 90.dp))
+        // Upright: the throw arrow in the bottom corner (sideways it sits in the left column, above)
+        val conf = androidx.compose.ui.platform.LocalConfiguration.current
+        if (conf.screenWidthDp <= conf.screenHeightDp) {
+            SwipeToThrowZone(
+                armed = throwStartMs != 0L,
+                enabled = current == 0 && !matchOver && preset != null,
+                onSwipe = { armThrow() },
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp + throwInset, top = 8.dp, end = 8.dp, bottom = 8.dp).size(120.dp)
+            )
+            DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp + throwInset, bottom = 22.dp).size(width = 132.dp, height = 90.dp))
+        }
         if (matchOver) {
             if (tournament) Button(onClick = { navController.popBackStack() }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("Back to the draw") }
             else Button(onClick = { setupOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("New match") }

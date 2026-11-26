@@ -334,11 +334,20 @@ fun DartlessScreen(navController: NavHostController) {
         CoachTipDialog(remaining = remaining, playerName = "You", onDismiss = { coachAdviceOpen = false })
     }
 
+    // Darts still in hand this visit. Between visits (all three thrown) they are shown as outlines
+    // until you pick up again — the swipe in metronome mode, or the next tap otherwise.
+    // The swipe takes a dart out of the row: while a throw is armed, one fewer is shown resting in the hand
+    val armedNow = throwStartMs != 0L
+    val inHand = when {
+        finished -> 0
+        dartsInVisit >= 3 -> if (armedNow) 2 else 0
+        else -> (3 - dartsInVisit) - (if (armedNow && metronomeMode) 1 else 0)
+    }.coerceAtLeast(0)
     Box(modifier = Modifier.fillMaxSize()) {
-    // Phones: everything stacked above a screen-wide board. Big screens held sideways (tablets, an
-    // unfolded Fold): the scores and meters on the left, the board as big as the height allows on the right.
+    // Upright: everything stacked above a screen-wide board. Any screen held sideways: the scores and
+    // meters on the left, the board as big as the height allows on the right, the throw arrow between.
     val conf = androidx.compose.ui.platform.LocalConfiguration.current
-    val wide = conf.screenWidthDp > conf.screenHeightDp && conf.screenWidthDp >= 600
+    val wide = conf.screenWidthDp > conf.screenHeightDp
     // Short or narrow phones: tighter stats so the board gets the height
     val small = !wide && (conf.screenHeightDp < 760 || conf.screenWidthDp < 400)
     @Composable fun stats() {
@@ -458,33 +467,40 @@ fun DartlessScreen(navController: NavHostController) {
             }
         } else {
             Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                // Left: accuracy, streak, score and messages; the throw arrow sits below them
-                Column(modifier = Modifier.fillMaxWidth(0.4f).fillMaxHeight().padding(bottom = 130.dp)) { stats() }
-                // Right: the board
-                Box(modifier = Modifier.weight(1f).fillMaxHeight().padding(end = 8.dp), contentAlignment = Alignment.CenterEnd) {
-                    board(Modifier.widthIn(max = BOARD_MAX).aspectRatio(1f, matchHeightConstraintsFirst = true))
+                // Left: accuracy, streak, score and messages, with the throw arrow and darts in hand
+                // centred under them, right next to the board
+                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    stats()
+                    Spacer(Modifier.weight(1f))
+                    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
+                        if (metronomeMode) SwipeToThrowZone(
+                            armed = throwStartMs != 0L,
+                            enabled = !finished && preset != null,
+                            onSwipe = { armThrow() },
+                            modifier = Modifier.size(120.dp)
+                        )
+                        DartsInHand(inHand = inHand, modifier = Modifier.padding(bottom = 14.dp).size(width = 132.dp, height = 90.dp))
+                        if (metronomeMode && streak > 0) GoldBarStack(count = streak, modifier = Modifier.width(44.dp).height(120.dp))
+                    }
+                }
+                // Right: the board, as big as the height allows (never more than ~60% of the width)
+                Box(modifier = Modifier.fillMaxHeight().padding(end = 8.dp), contentAlignment = Alignment.Center) {
+                    board(Modifier.widthIn(max = minOf(BOARD_MAX, (conf.screenWidthDp * 0.62f).dp)).aspectRatio(1f, matchHeightConstraintsFirst = true))
                 }
             }
         }
     }
 
-    if (metronomeMode && streak > 0) {
+    if (!wide && metronomeMode && streak > 0) {
         // Bottom-right corner, below the board, so the pile never covers the target.
         GoldBarStack(
             count = streak,
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 8.dp).width(44.dp).height(120.dp)
         )
     }
-    // Darts still in hand this visit. Between visits (all three thrown) they are shown as outlines
-    // until you pick up again — the swipe in metronome mode, or the next tap otherwise.
-    // The swipe takes a dart out of the row: while a throw is armed, one fewer is shown resting in the hand
-    val armedNow = throwStartMs != 0L
-    val inHand = when {
-        finished -> 0
-        dartsInVisit >= 3 -> if (armedNow) 2 else 0
-        else -> (3 - dartsInVisit) - (if (armedNow && metronomeMode) 1 else 0)
-    }.coerceAtLeast(0)
-    if (metronomeMode) {
+    if (wide) {
+        // sideways: the throw controls live in the left column (above)
+    } else if (metronomeMode) {
         SwipeToThrowZone(
             armed = throwStartMs != 0L,
             enabled = !finished && preset != null,
