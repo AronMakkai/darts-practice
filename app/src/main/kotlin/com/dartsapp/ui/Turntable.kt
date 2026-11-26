@@ -49,10 +49,10 @@ fun VinylRecord(modifier: Modifier = Modifier) {
     var dragVel by remember { mutableStateOf(0f) }
 
     /** Tell the needle where the record is: how far the dot has turned past it, as a fraction of the sample. */
-    fun reportNeedle() {
+    fun reportNeedle(degPerSec: Float) {
         var u = ((angle % 360f) + 360f) % 360f
         if (u > 300f) u -= 360f          // just before the dot
-        Music.scratchTo((u / SAMPLE_ARC).toDouble())
+        Music.scratchTo((u / SAMPLE_ARC).toDouble(), (degPerSec / SAMPLE_ARC).toDouble())
     }
 
     // the motor
@@ -65,9 +65,10 @@ fun VinylRecord(modifier: Modifier = Modifier) {
             if (!dragging) {
                 speed += (RPM33_DEG - speed) * (dt * 6f).coerceAtMost(1f)
                 angle = (angle + speed * dt) % 360f
-                reportNeedle()
+                reportNeedle(speed)
             } else if (now - lastDragNs > 80_000_000L) {
                 dragVel = 0f        // finger held still: the record is stopped under it
+                reportNeedle(0f)
             }
         }
     }
@@ -88,11 +89,11 @@ fun VinylRecord(modifier: Modifier = Modifier) {
                     if (d > 180f) d -= 360f
                     if (d < -180f) d += 360f
                     angle = (angle + d) % 360f
-                    reportNeedle()
                     val now = System.nanoTime()
                     val dt = ((now - lastDragNs) / 1e9f).coerceAtLeast(0.004f)
                     dragVel = dragVel * 0.6f + (d / dt) * 0.4f
                     lastDragNs = now
+                    reportNeedle(dragVel)
                 }
             )
         }

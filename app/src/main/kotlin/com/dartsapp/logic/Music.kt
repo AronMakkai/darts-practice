@@ -101,11 +101,17 @@ object Music {
     // reading the record, whether your hand is working it or it is just spinning round ------------
 
     @Volatile private var scratchTarget = 0.0     // where the needle sits: 0..1 through the sample (outside = blank groove)
+    @Volatile private var scratchVel = 0.0        // how fast the record is moving, in sample-lengths a second
+    @Volatile private var scratchSeq = 0          // bumps with every update from the screen
     @Volatile private var faderOpen = false       // open while the SCRATCH button is held
     private var scratchPcm: FloatArray? = null
 
-    /** The record's position under the needle, sent every frame ([frac] 0..1 is the sample, the rest is blank). */
-    fun scratchTo(frac: Double) { scratchTarget = frac }
+    /**
+     * The record's position under the needle, sent every frame ([frac] 0..1 is the sample, the rest
+     * is blank) with its speed ([fracPerSec]), so the needle can glide smoothly between frames
+     * instead of lurching once a frame (which turns a voice into laser zaps).
+     */
+    fun scratchTo(frac: Double, fracPerSec: Double) { scratchTarget = frac; scratchVel = fracPerSec; scratchSeq++ }
     /** The fader: open while the SCRATCH button is held. */
     fun setFader(open: Boolean) { faderOpen = open }
 
@@ -130,7 +136,7 @@ object Music {
                 val p = i.toFloat() / dur
                 val (f0, f1, f2, f3) = shape(p).let { arrayOf(it[0], it[1], it[2], it[3]) }
                 // a little rough vibrato in the shout
-                val wob = 1f + 0.012f * sin(2 * PI * 6.0 * i / RATE).toFloat() + 0.006f * (rnd.nextFloat() - 0.5f)
+                val wob = 1f + 0.008f * sin(2 * PI * 5.5 * i / RATE).toFloat() + 0.02f * (rnd.nextFloat() - 0.5f)
                 phase += 2 * PI * f0 * wob / RATE
                 var v = 0.0
                 var h = 1
@@ -146,12 +152,12 @@ object Music {
                 val white = rnd.nextFloat() * 2f - 1f
                 lp += 0.35f * (white - lp)
                 val env = minOf(1f, p / attack) * (if (p > 1f - release) ((1f - p) / release).coerceAtLeast(0f) else 1f)
-                buf[idx] += ((v * 0.2 + lp * 0.05) * env * amp).toFloat()
+                buf[idx] += ((v * 0.2 * (0.92 + 0.16 * rnd.nextFloat()) + lp * 0.08) * env * amp).toFloat()
             }
         }
         // "AHHH": a breathy "h" onset then the open vowel, pitch falling from 190 to 130
         voice(0.01f, 0.36f, 1f, { p ->
-            floatArrayOf(190f - 60f * p, 780f, 1200f - 80f * p, 2500f)
+            floatArrayOf(175f - 30f * p, 760f, 1180f - 60f * p, 2500f)
         }, attack = 0.06f, release = 0.3f)
         // "YEAHHH": ee -> eh -> ah, the pitch lifting then falling away
         voice(0.42f, 0.52f, 1.05f, { p ->
@@ -159,7 +165,7 @@ object Music {
             val e = ((p - 0.22f) / 0.35f).coerceIn(0f, 1f)        // "eh" opening to "ah"
             val f1 = 290f + (560f - 290f) * y + (760f - 560f) * e
             val f2 = 2250f + (1850f - 2250f) * y + (1300f - 1850f) * e
-            val f0 = if (p < 0.35f) 150f + 70f * (p / 0.35f) else 220f - 85f * ((p - 0.35f) / 0.65f)
+            val f0 = if (p < 0.35f) 160f + 25f * (p / 0.35f) else 185f - 40f * ((p - 0.35f) / 0.65f)
             floatArrayOf(f0, f1, f2, 2600f)
         }, attack = 0.04f, release = 0.35f)
         return buf
@@ -182,24 +188,31 @@ object Music {
             val chunk = ShortArray(256)                  // small chunks: the scratch follows the finger closely
             var pos = 0                                  // the tune: always straight through
             var sPos = scratchTarget                     // the needle, in fractions of the sample (outside 0..1 = blank groove)
-            var lastTarget = sPos
-            var v = 0.0                                  // record speed under the needle, per output sample
+            var est = sPos                               // where the record is now, run on between screen frames
+            var estVel = 0.0                             // its speed, sample-lengths per output sample
+            var seq = scratchSeq
+            var v = 0.0                                  // the needle's speed, per output sample
             var gate = 0f                                // smooths the sample in and out at the arc's ends
             var fader = 0f
             val last = (smp.size - 2).toDouble()
             val perSample = 1.0 / last                   // one sample's step, in fractions
             while (menuWanted) {
-                val target = scratchTarget
-                // the record went once round (or the menu was away): jump rather than whizz across the sample
-                if (kotlin.math.abs(target - lastTarget) > 0.5) { sPos += target - lastTarget }
-                lastTarget = target
+                if (scratchSeq != seq) {
+                    seq = scratchSeq
+                    val target = scratchTarget
+                    // the record went once round: jump the needle with it rather than whizz across the sample
+                    if (kotlin.math.abs(target - est) > 0.5) { sPos += target - est }
+                    est = target
+                    estVel = scratchVel / RATE
+                }
                 val fTarget = if (faderOpen) 1f else 0f
                 for (i in chunk.indices) {
                     var out = pcm[pos] / 32768f
                     pos++; if (pos >= n) pos = 0
-                    // the needle chases where the record has got to (~30 ms behind), so the pitch slides
-                    val want = ((target - sPos) / (RATE * 0.03)).coerceIn(-6.0 * perSample, 6.0 * perSample)
-                    v += (want - v) * 0.02
+                    est += estVel
+                    // move at the record's own speed, plus a gentle pull to close any gap (~40 ms)
+                    val want = (estVel + (est - sPos) / (RATE * 0.04)).coerceIn(-6.0 * perSample, 6.0 * perSample)
+                    v += (want - v) * 0.004
                     sPos += v
                     val inGroove = sPos > 0.0 && sPos < 1.0
                     val speed = kotlin.math.abs(v / perSample)
