@@ -2,6 +2,7 @@ package com.dartsapp.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -10,6 +11,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
@@ -20,6 +22,10 @@ import kotlin.math.sin
 
 /** 33 1/3 rpm in degrees a second. */
 private const val RPM33_DEG = 200f
+/** Where the needle sits on the record, as a screen angle from the centre (degrees, 0 = 3 o'clock). */
+private val NEEDLE_DEG = Math.toDegrees(atan2(-0.72, 0.42)).toFloat()
+/** How much of the record the scratch sample is pressed onto, starting at the dot. */
+private const val SAMPLE_ARC = 150f
 
 /**
  * The menu's turntable: a vinyl record sunk into the bottom edge of the screen so only its top half
@@ -27,9 +33,11 @@ private const val RPM33_DEG = 200f
  * sunset colours as the sun on the horizon, the grooves catch the pink and orange of the sky, a
  * chrome tonearm rests on it, and the rim glows neon pink like the signs.
  *
- * Put a finger on it and drag round to scratch: the record follows your hand (backwards too) and a
- * classic "ahhh... yeahhh!" vocal is cut over the top of the tune, which keeps playing underneath. Let go and
- * the motor brings the record back up to speed.
+ * A classic "ahhh... yeahhh!" is pressed onto a short arc of the record that starts at the white dot
+ * on the label. Put a finger on the record and drag: wherever the dot is relative to the needle is
+ * where you are in the sample, so line the dot up with the needle and push forward for "ahhh...",
+ * pull back to reverse it. It is cut over the top of the tune, which keeps playing underneath.
+ * Let go and the motor brings the record back up to speed. The CUT button is the fader.
  */
 @Composable
 fun VinylRecord(modifier: Modifier = Modifier) {
@@ -38,6 +46,7 @@ fun VinylRecord(modifier: Modifier = Modifier) {
     var dragging by remember { mutableStateOf(false) }
     var lastDragNs by remember { mutableStateOf(0L) }
     var dragVel by remember { mutableStateOf(0f) }
+    var dragU by remember { mutableStateOf(0f) }        // degrees past the dot during this scratch (unwrapped)
 
     // the motor
     LaunchedEffect(Unit) {
@@ -58,7 +67,14 @@ fun VinylRecord(modifier: Modifier = Modifier) {
     Canvas(
         modifier = modifier.pointerInput(Unit) {
             detectDragGestures(
-                onDragStart = { dragging = true; dragVel = 0f; lastDragNs = System.nanoTime(); Music.scratchStart() },
+                onDragStart = {
+                    dragging = true; dragVel = 0f; lastDragNs = System.nanoTime()
+                    // how far the dot has travelled past the needle: 0 = the start of the sample
+                    var u = ((angle % 360f) + 360f) % 360f
+                    if (u > 300f) u -= 360f          // just before the dot
+                    dragU = u
+                    Music.scratchStart((u / SAMPLE_ARC).toDouble())
+                },
                 onDragEnd = { dragging = false; speed = dragVel.coerceIn(-1500f, 1500f); Music.scratchEnd() },
                 onDragCancel = { dragging = false; speed = dragVel; Music.scratchEnd() },
                 onDrag = { change, _ ->
@@ -70,7 +86,8 @@ fun VinylRecord(modifier: Modifier = Modifier) {
                     if (d > 180f) d -= 360f
                     if (d < -180f) d += 360f
                     angle = (angle + d) % 360f
-                    Music.scratchBy(d / RPM33_DEG.toDouble())
+                    dragU += d
+                    Music.scratchTo((dragU / SAMPLE_ARC).toDouble().coerceIn(-0.5, 1.5))
                     val now = System.nanoTime()
                     val dt = ((now - lastDragNs) / 1e9f).coerceAtLeast(0.004f)
                     dragVel = dragVel * 0.6f + (d / dt) * 0.4f
@@ -122,9 +139,17 @@ fun VinylRecord(modifier: Modifier = Modifier) {
             }
             drawCircle(DarkRed, lr * 0.62f, c, style = Stroke(width = lr * 0.08f))
             drawCircle(DarkRed, lr * 0.98f, c, style = Stroke(width = lr * 0.06f))
-            // a "sticker" on the label so you can see it turn
-            drawCircle(PaleGold, lr * 0.1f, Offset(c.x, c.y - lr * 0.8f))
-            drawLine(Night, Offset(c.x - lr * 0.3f, c.y - lr * 0.45f), Offset(c.x + lr * 0.3f, c.y - lr * 0.45f), strokeWidth = lr * 0.05f, cap = StrokeCap.Round)
+            // the scratch sample: a band of slightly shinier groove where it is pressed, running back
+            // from the dot (the part that passes the needle as the record turns forward)
+            drawArc(Color(0xFF4A2E66).copy(alpha = 0.55f), NEEDLE_DEG - SAMPLE_ARC, SAMPLE_ARC, false,
+                Offset(c.x - r * 0.72f, c.y - r * 0.72f), Size(r * 1.44f, r * 1.44f), style = Stroke(width = r * 0.42f))
+            // the white dot on the label marking where the sample starts (it lines up with the needle at the cue)
+            val da = Math.toRadians(NEEDLE_DEG.toDouble())
+            val dot = Offset(c.x + lr * 0.78f * cos(da).toFloat(), c.y + lr * 0.78f * sin(da).toFloat())
+            drawCircle(Night, lr * 0.13f, dot)
+            drawCircle(Color.White, lr * 0.1f, dot)
+            drawLine(Color.White.copy(alpha = 0.5f), Offset(c.x + lr * 0.98f * cos(da).toFloat(), c.y + lr * 0.98f * sin(da).toFloat()),
+                Offset(c.x + r * 0.94f * cos(da).toFloat(), c.y + r * 0.94f * sin(da).toFloat()), strokeWidth = r * 0.006f)
         }
         drawCircle(Color(0xFFFFF1A8), r * 0.03f, c)     // the spindle
 
@@ -140,5 +165,44 @@ fun VinylRecord(modifier: Modifier = Modifier) {
             lineTo(head.x - r * 0.07f, head.y + r * 0.06f); lineTo(head.x + r * 0.03f, head.y + r * 0.04f); close()
         }, Color(0xFFB9BDC9))
         drawCircle(NeonPink, r * 0.012f, Offset(head.x - r * 0.06f, head.y + r * 0.05f))
+    }
+}
+
+
+/**
+ * The fader: a neon CUT button beside the turntable. Hold it to kill the scratch, let go to open it
+ * again, so you can chop the "ahhh" into chirps and transformer stabs while you work the record.
+ */
+@Composable
+fun CutButton(modifier: Modifier = Modifier) {
+    var held by remember { mutableStateOf(false) }
+    Canvas(
+        modifier = modifier.pointerInput(Unit) {
+            detectTapGestures(onPress = {
+                held = true; Music.setFader(false)
+                try { tryAwaitRelease() } finally { held = false; Music.setFader(true) }
+            })
+        }
+    ) {
+        val w = size.width; val h = size.height
+        val c = Offset(w / 2f, h / 2f)
+        val r = minOf(w, h) / 2f
+        val neon = if (held) Red else NeonPink
+        // glow, plate, tube
+        drawCircle(Brush.radialGradient(0.55f to neon.copy(alpha = if (held) 0.7f else 0.35f), 1f to Color.Transparent, center = c, radius = r), r, c)
+        drawCircle(Color(0xFF1E082C).copy(alpha = 0.85f), r * 0.68f, c)
+        drawCircle(neon, r * 0.68f, c, style = Stroke(width = r * 0.08f))
+        drawCircle(Color.White.copy(alpha = 0.7f), r * 0.68f, c, style = Stroke(width = r * 0.025f))
+        // a little fader slot with its knob: across when open, pulled down when cut
+        drawLine(Color(0xFF5A3A70), Offset(c.x - r * 0.38f, c.y + r * 0.2f), Offset(c.x + r * 0.38f, c.y + r * 0.2f), strokeWidth = r * 0.06f, cap = StrokeCap.Round)
+        val kx = if (held) c.x - r * 0.38f else c.x + r * 0.38f
+        drawRoundRect(if (held) Red else PaleGold, Offset(kx - r * 0.08f, c.y + r * 0.08f), Size(r * 0.16f, r * 0.24f), androidx.compose.ui.geometry.CornerRadius(r * 0.04f))
+        // "CUT"
+        val paint = android.graphics.Paint().apply {
+            isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
+            textSize = r * 0.36f; color = if (held) android.graphics.Color.WHITE else android.graphics.Color.rgb(0xFF, 0xE3, 0xA3)
+        }
+        drawContext.canvas.nativeCanvas.drawText("CUT", c.x, c.y - r * 0.02f, paint)
     }
 }

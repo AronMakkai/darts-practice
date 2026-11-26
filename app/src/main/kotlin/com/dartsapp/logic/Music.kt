@@ -100,15 +100,22 @@ object Music {
     // scratches a sample over the top of it, like a DJ cutting a vocal over the beat ----------------
 
     @Volatile private var scratching = false
-    @Volatile private var scratchTarget = 0.0     // seconds into the scratch sample the hand has pushed it to
+    @Volatile private var scratchTarget = 0.0     // 0..1: how far through the sample the needle sits
+    @Volatile private var faderOpen = true        // the CUT button closes it while held
     private var scratchPcm: FloatArray? = null
 
-    /** Finger down on the record: the needle is cued at the start of the scratch sample. */
-    fun scratchStart() { scratchTarget = 0.0; scratching = true }
-    /** The finger has turned the record by [seconds] of music (negative = backwards). */
-    fun scratchBy(seconds: Double) { scratchTarget += seconds }
+    /**
+     * The sample is pressed onto a short arc of the record, starting at the dot on the label. The
+     * screen tells us where the needle sits in it ([frac] 0..1, clamped: before the dot or past the
+     * end of the arc is silent groove) whenever the record moves under a finger.
+     */
+    fun scratchStart(frac: Double) { scratchTarget = frac; scratching = true; cueTo = frac }
+    fun scratchTo(frac: Double) { scratchTarget = frac }
     /** Finger up: the scratch stops. */
     fun scratchEnd() { scratching = false }
+    /** The fader: closed while the CUT button is held, for chirps and transformer cuts. */
+    fun setFader(open: Boolean) { faderOpen = open }
+    @Volatile private var cueTo = -1.0
 
     /**
      * The scratch sample: the classic "AHHH... YEAHHH!" vocal. A big shouted open "ahhh" with the pitch
@@ -185,24 +192,31 @@ object Music {
             var sPos = 0.0                               // the scratch sample: wherever the hand puts it
             var v = 0.0                                  // scratch speed (samples per sample, negative = back)
             var gate = 0f                                // scratch is only heard while the record moves
-            var wasScratching = false
+            var fader = 1f
+            val last = (smp.size - 2).toDouble()
             while (menuWanted) {
                 val sc = scratching
-                if (sc && !wasScratching) { sPos = 0.0; v = 0.0 }
-                wasScratching = sc
+                // finger just went down: the needle is wherever the record already is
+                val cue = cueTo
+                if (cue >= 0.0) { sPos = cue * last; v = 0.0; cueTo = -1.0 }
+                val fTarget = if (faderOpen) 1f else 0f
                 for (i in chunk.indices) {
                     var out = pcm[pos] / 32768f
                     pos++; if (pos >= n) pos = 0
                     if (sc) {
-                        val want = ((scratchTarget * RATE - sPos) / (RATE * 0.03)).coerceIn(-5.0, 5.0)
+                        val want = ((scratchTarget * last - sPos) / (RATE * 0.03)).coerceIn(-5.0, 5.0)
                         v += (want - v) * 0.02
                     } else v *= 0.995
-                    sPos = (sPos + v).coerceIn(0.0, (smp.size - 2).toDouble())
-                    val g = (kotlin.math.abs(v) * 4.0).coerceAtMost(1.0).toFloat() * (if (sc) 1f else 0.6f)
+                    val np = sPos + v
+                    // past either end of the arc the needle is in silent groove
+                    val inGroove = np > 0.0 && np < last
+                    sPos = np.coerceIn(0.0, last)
+                    val g = if (!inGroove) 0f else (kotlin.math.abs(v) * 4.0).coerceAtMost(1.0).toFloat() * (if (sc) 1f else 0.6f)
                     gate += (g - gate) * 0.01f
+                    fader += (fTarget - fader) * 0.05f          // a crisp cut, not a click
                     if (gate > 0.001f) {
                         val i0 = sPos.toInt(); val f = (sPos - i0).toFloat()
-                        out += (smp[i0] + (smp[i0 + 1] - smp[i0]) * f) * gate * 1.4f
+                        out += (smp[i0] + (smp[i0 + 1] - smp[i0]) * f) * gate * fader * 1.4f
                     }
                     chunk[i] = (out.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
                 }
