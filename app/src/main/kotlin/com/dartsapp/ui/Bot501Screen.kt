@@ -354,7 +354,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             hotThrows = if (perfect && bigBed) hotThrows + 1 else 0
             if (hotThrows >= hotNeeded) {
                 hotDartsLeft = HOT_DARTS
-                popText = "HOT STREAK!"; popHuge = true; popScore = 160; popOrigin = panelCentre(0); popTrigger++
+                popText = "IN THE ZONE!"; popHuge = true; popScore = 160; popOrigin = panelCentre(0); popTrigger++
                 Sounds.playCheckoutJingle()
             }
         }
@@ -610,7 +610,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         @Composable fun accuracyRow() {
                 // Accuracy + preset
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (hot) "HOT!" else "ACCURACY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(72.dp))
+                    Text(if (hot) "IN THE ZONE" else "ACCURACY", fontSize = if (hot) 9.sp else 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = if (hot) 0.sp else 2.sp, maxLines = 1, color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(72.dp))
                     HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(if (small) 32.dp else 46.dp))
                 }
 
@@ -746,6 +746,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             else Button(onClick = { setupOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("New match") }
         }
 
+        InTheZone(on = hot && current == 0 && !matchOver)
         BigPop(trigger = popTrigger, text = popText, huge = popHuge, origin = popOrigin, modifier = Modifier.fillMaxSize(), score = popScore)
         BustOverlay(trigger = bustTrigger, origin = bustOrigin, modifier = Modifier.fillMaxSize())
         StarBurst(trigger = camBurst, origin = Offset(boardPos.x + boardSize.width / 2f, boardPos.y + boardSize.height / 2f), modifier = Modifier.fillMaxSize(), count = 70)

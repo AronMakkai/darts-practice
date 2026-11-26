@@ -12,7 +12,7 @@ Metro Darts is a darts practice game and checkout trainer with a retro 80s neon 
 ★ Checkout trainer — every finish from 2 to 170, with the standard checkout table
 ★ 501 darts against six characters, each with a dirty super power
 ★ Tournament mode — knockout bracket, legs and sets
-★ HOT STREAK — chain perfect darts for fatter trebles and doubles
+★ IN THE ZONE — chain perfect darts for fatter trebles and doubles
 ★ The Coach — rates every checkout and teaches the book route
 ★ Darts metronome — learn and record your own throwing rhythm
 ★ Score real darts games: 501 scorer, play a character on your own board
@@ -20,7 +20,7 @@ Metro Darts is a darts practice game and checkout trainer with a retro 80s neon 
 Built around one idea: rhythm wins. Swipe to pick up a dart, watch the ring run out to the edge of the board and back, and tap your target the moment it returns to the bull. Throw on the beat and your darts fly true; hesitate or rush and they drift.
 
 CHECKOUT GAME
-Random checkouts from 2 to 170. Hit them on the beat, in one visit, and gold bars stack up on your streak — ten become a big one. The checkouts get harder the longer you keep it going. String perfect darts together and HOT STREAK lights up: fatter trebles, doubles and bull for your next four darts.
+Random checkouts from 2 to 170. Hit them on the beat, in one visit, and gold bars stack up on your streak — ten become a big one. The checkouts get harder the longer you keep it going. String perfect darts together and you are IN THE ZONE: fatter trebles, doubles and bull for your next four darts.
 
 501 VS CHARACTERS
 Six opponents, each with their own game: the Viking takes his time, the Jockey never wobbles, the Lizzard is deadly on combination finishes, the Taylor scores heavily, the Bling only wants the bull and the double-double, and the Cockney scores for fun. Get them on the ropes and they fight dirty — every one has a super power: the Viking blocks the light, the Lizzard sets lizards loose on the board, the Jockey gets you drunk, the Bling blinds you with his jewellery, the Cockney turns the crowd on you, and the Taylor piles on the pressure until the trebles and doubles shrink. Legs and sets, bot strength scaled by difficulty, and a word from your opponent after every match — they are not gracious.

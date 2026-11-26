@@ -22,6 +22,14 @@ object Music {
     private var menuPcm: ShortArray? = null
     private var crowdTrack: AudioTrack? = null
     private var crowdPcm: ShortArray? = null
+    // IN THE ZONE: a second, muffled copy of the crowd loop runs in step with the first, and the two
+    // are crossfaded, so the room sounds like it is under water while you are in the zone
+    private var crowdWetTrack: AudioTrack? = null
+    private var crowdWetPcm: ShortArray? = null
+    @Volatile var muffled = false
+        private set
+    @Volatile private var mix = 0f        // 0 = clear, 1 = under water
+    private const val CROWD_VOL = 0.5f
     @Volatile private var menuWanted = false
     @Volatile private var crowdWanted = false
 
@@ -47,14 +55,60 @@ object Music {
         if (crowdWanted) {
             if (crowdTrack == null) {
                 val pcm = crowdPcm ?: renderCrowd().also { crowdPcm = it }
-                if (crowdWanted) crowdTrack = loop(pcm, 0.5f)
+                val wet = crowdWetPcm ?: underwater(pcm).also { crowdWetPcm = it }
+                if (crowdWanted) {
+                    // started back to back so they stay in step
+                    crowdTrack = loop(pcm, CROWD_VOL * (1f - mix), start = false)
+                    crowdWetTrack = loop(wet, CROWD_VOL * mix * WET_GAIN, start = false)
+                    try { crowdTrack?.play(); crowdWetTrack?.play() } catch (e: Exception) { }
+                }
             }
-        } else { crowdTrack?.let { safeStop(it) }; crowdTrack = null }
+        } else {
+            crowdTrack?.let { safeStop(it) }; crowdTrack = null
+            crowdWetTrack?.let { safeStop(it) }; crowdWetTrack = null
+        }
+    }
+
+    private const val WET_GAIN = 1.25f     // the filtered copy is quieter; bring it back up a bit
+
+    /** Turn the under-water sound on or off: the crowd crossfades over about half a second. */
+    fun setMuffled(on: Boolean) {
+        if (muffled == on) return
+        muffled = on
+        thread(name = "muffle") {
+            val from = mix; val to = if (on) 1f else 0f
+            for (i in 1..15) {
+                if (muffled != on) return@thread
+                mix = from + (to - from) * i / 15f
+                try { crowdTrack?.setVolume(CROWD_VOL * (1f - mix)); crowdWetTrack?.setVolume(CROWD_VOL * mix * WET_GAIN) } catch (e: Exception) { }
+                Thread.sleep(35)
+            }
+        }
+    }
+
+    /**
+     * The under-water filter: a steep low-pass (four one-pole stages at ~420 Hz) that keeps the
+     * body of the voices and drops the consonants, glass and whistles, with a slow wobble in level.
+     */
+    fun underwater(buf: FloatArray, rate: Int) {
+        val a = (1.0 - exp(-2.0 * PI * 420.0 / rate)).toFloat()
+        var s1 = 0f; var s2 = 0f; var s3 = 0f; var s4 = 0f
+        for (i in buf.indices) {
+            s1 += a * (buf[i] - s1); s2 += a * (s1 - s2); s3 += a * (s2 - s3); s4 += a * (s3 - s4)
+            val wobble = 1f + 0.12f * sin(2.0 * PI * 0.7 * i / rate).toFloat()
+            buf[i] = s4 * 1.8f * wobble
+        }
+    }
+
+    private fun underwater(pcm: ShortArray): ShortArray {
+        val f = FloatArray(pcm.size) { pcm[it] / 30000f }
+        underwater(f, RATE)
+        return toPcm(f)
     }
 
     private fun safeStop(t: AudioTrack) { try { t.stop() } catch (e: Exception) {}; try { t.release() } catch (e: Exception) {} }
 
-    private fun loop(pcm: ShortArray, volume: Float): AudioTrack? = try {
+    private fun loop(pcm: ShortArray, volume: Float, start: Boolean = true): AudioTrack? = try {
         val track = AudioTrack(
             AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build(),
             AudioFormat.Builder().setSampleRate(RATE).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build(),
@@ -63,7 +117,7 @@ object Music {
         track.write(pcm, 0, pcm.size)
         track.setLoopPoints(0, pcm.size, -1)
         track.setVolume(volume)
-        track.play()
+        if (start) track.play()
         track
     } catch (e: Exception) { null }
 
@@ -502,7 +556,7 @@ object Music {
     fun roar(big: Boolean) {
         thread(name = "roar") {
             val pcm = synchronized(roarCache) { roarCache.getOrPut(big) { renderRoar(big) } }
-            playOnce(pcm, 1f)
+            if (muffled) playOnce(underwater(pcm), WET_GAIN) else playOnce(pcm, 1f)
         }
     }
 

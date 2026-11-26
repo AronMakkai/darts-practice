@@ -356,7 +356,7 @@ fun DartlessScreen(navController: NavHostController) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(if (hot) "HOT!" else "ACCURACY", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp,
+                Text(if (hot) "IN THE ZONE" else "ACCURACY", fontSize = if (hot) 9.sp else 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = if (hot) 0.sp else 2.sp, maxLines = 1,
                     color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(78.dp))
                 if (metronomeMode) {
                     HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(if (small) 36.dp else 56.dp))
@@ -520,8 +520,9 @@ fun DartlessScreen(navController: NavHostController) {
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 10.dp).size(width = 132.dp, height = 90.dp)
         )
     }
+    InTheZone(on = hot && metronomeMode)
     StarBurst(trigger = starTrigger, origin = burstOrigin, modifier = Modifier.fillMaxSize())
-    BigPop(trigger = popTrigger, text = "HOT STREAK!", huge = true, origin = Offset(boardPos.x + boardSize.width / 2f, boardPos.y + boardSize.height / 2f), modifier = Modifier.fillMaxSize())
+    BigPop(trigger = popTrigger, text = "IN THE ZONE!", huge = true, origin = Offset(boardPos.x + boardSize.width / 2f, boardPos.y + boardSize.height / 2f), modifier = Modifier.fillMaxSize())
     BustOverlay(trigger = bustTrigger, origin = bustOrigin, modifier = Modifier.fillMaxSize())
     }
 }

@@ -61,7 +61,7 @@ private val TOUR = listOf(
         "Swipe up from the throw arrow to pick up a dart. The aiming ring runs out from the bull and back — tap your target as it returns to the centre. On the beat, the dart flies true; early or late, it drifts."),
     TourPage("This is where I earn my money.",
         "CHECKOUT GAME",
-        "Random finishes from 2 to 170. Check out in one visit to build your streak. Hit perfect darts in a row to light up HOT STREAK — fatter trebles and doubles for four darts. I'll rate every checkout."),
+        "Random finishes from 2 to 170. Check out in one visit to build your streak. Hit perfect darts in a row to get IN THE ZONE — fatter trebles and doubles for four darts. I'll rate every checkout."),
     TourPage("Watch this lot. They play dirty.",
         "501, CHARACTERS & TOURNAMENT",
         "Play 501 against six characters, each with their own game — and a dirty super power when they're losing. Tap any portrait for his bio. Win the Tournament and someone special joins the next draw."),
@@ -243,6 +243,46 @@ fun CompactOnSmallScreens(content: @Composable () -> Unit) {
         androidx.compose.runtime.CompositionLocalProvider(
             androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density * factor, d.fontScale),
             content = content
+        )
+    }
+}
+
+
+/**
+ * IN THE ZONE: a dark vignette closes in around the edge of the screen while it is on (taps pass
+ * straight through), and the crowd and the caller go muffled, as if heard under water.
+ */
+@Composable
+fun InTheZone(on: Boolean, modifier: Modifier = Modifier) {
+    LaunchedEffect(on) {
+        com.dartsapp.logic.Music.setMuffled(on)
+        com.dartsapp.logic.Announcer.setMuffled(on)
+    }
+    DisposableEffect(Unit) {
+        onDispose { com.dartsapp.logic.Music.setMuffled(false); com.dartsapp.logic.Announcer.setMuffled(false) }
+    }
+    val k by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (on) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(if (on) 700 else 500), label = "zone"
+    )
+    // a slow breathing pulse while in the zone
+    val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "zonePulse").animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(1800), androidx.compose.animation.core.RepeatMode.Reverse),
+        label = "pulse")
+    if (k > 0f) androidx.compose.foundation.Canvas(modifier = modifier.fillMaxSize()) {
+        val c = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+        val r = kotlin.math.hypot(size.width, size.height) / 2f
+        val inner = 0.55f - 0.04f * pulse.value
+        drawRect(
+            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                0f to Color.Transparent,
+                inner to Color.Transparent,
+                0.82f to Color(0xFF05000C).copy(alpha = 0.55f * k),
+                1f to Color(0xFF05000C).copy(alpha = 0.92f * k),
+                center = c, radius = r
+            )
         )
     }
 }

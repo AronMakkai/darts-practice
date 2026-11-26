@@ -85,6 +85,7 @@ object Sounds {
                     buf[i] += ((sin(phase) + 0.5 * sin(2 * phase)) * env * 0.09f).toFloat()
                 }
             }
+            if (Music.muffled) Music.underwater(buf, RATE)     // IN THE ZONE: the crowd is under water
             play(buf)
         }
     }
