@@ -402,12 +402,12 @@ private fun DrawScope.drawTache() {
 
 /** The player's own character: name on the scoreboard and his bio card. */
 const val PLAYER_NAME = "DOUBLE TROUBLE"
-const val PLAYER_BLURB = "Glam-pop walk-on, silver jacket and a second helping of chin — loves a double, and they don't always love him back."
+const val PLAYER_BLURB = "Glam-pop walk-on, ponytail, silver jacket and a second helping of chin — loves a double, and they don't always love him back."
 const val PLAYER_STYLE = "Whatever your timing makes him. Throw on the beat and he's a monster."
 
 /**
  * You: DOUBLE TROUBLE. Close-up, flat-shaded like the others. A big round face with rosy cheeks and a
- * double chin, a tall strawberry-blond quiff with sideburns, a cheesy stage grin and a shiny
+ * double chin, a tall strawberry-blond quiff with sideburns and a ponytail, a cheesy stage grin and a shiny
  * silver jacket with a high collar, lit from the side by purple stage lights. Fits a square.
  */
 @Composable
@@ -437,6 +437,20 @@ private fun DrawScope.drawPlayer() {
     drawPath(Path().apply { moveTo(cx - w * 0.2f, h * 0.76f); lineTo(cx - w * 0.3f, h * 0.66f); lineTo(cx - w * 0.33f, h * 0.84f); lineTo(cx - w * 0.06f, h * 0.94f); close() }, silverLight)
     drawPath(Path().apply { moveTo(cx + w * 0.2f, h * 0.76f); lineTo(cx + w * 0.3f, h * 0.66f); lineTo(cx + w * 0.33f, h * 0.84f); lineTo(cx + w * 0.06f, h * 0.94f); close() }, silver)
     drawLine(silverDark, Offset(cx + w * 0.3f, h * 0.67f), Offset(cx + w * 0.32f, h * 0.83f), strokeWidth = h * 0.012f)
+
+    // Ponytail: gathered at the back of his head, pulled forward over his right shoulder (our left),
+    // lying on the silver collar and tapering to a point on his chest
+    drawPath(Path().apply {
+        moveTo(cx - w * 0.2f, h * 0.5f)
+        quadraticBezierTo(cx - w * 0.42f, h * 0.62f, cx - w * 0.36f, h * 0.84f)
+        quadraticBezierTo(cx - w * 0.33f, h * 0.94f, cx - w * 0.24f, h * 0.99f)
+        quadraticBezierTo(cx - w * 0.28f, h * 0.88f, cx - w * 0.26f, h * 0.78f)
+        quadraticBezierTo(cx - w * 0.24f, h * 0.66f, cx - w * 0.14f, h * 0.58f); close()
+    }, hair)
+    drawLine(hairLight, Offset(cx - w * 0.33f, h * 0.66f), Offset(cx - w * 0.32f, h * 0.86f), strokeWidth = h * 0.014f, cap = StrokeCap.Round)
+    drawLine(hairDark, Offset(cx - w * 0.29f, h * 0.7f), Offset(cx - w * 0.28f, h * 0.9f), strokeWidth = h * 0.01f, cap = StrokeCap.Round)
+    // the hair tie
+    drawLine(Color(0xFF2A1E3A), Offset(cx - w * 0.35f, h * 0.73f), Offset(cx - w * 0.27f, h * 0.715f), strokeWidth = h * 0.028f, cap = StrokeCap.Round)
 
     // Big round face, wider than the others, with a double chin under the jaw
     drawRect(s.dark, Offset(cx - w * 0.14f, h * 0.68f), Size(w * 0.28f, h * 0.12f))
