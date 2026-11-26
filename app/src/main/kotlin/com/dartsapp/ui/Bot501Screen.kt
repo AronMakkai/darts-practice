@@ -564,6 +564,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
       BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         // Any screen held sideways: scores and meters left, the throw arrow between, the board right
         val wide = maxWidth > maxHeight
+        val boardCap = minOf(BOARD_MAX, maxWidth * 0.62f)      // sideways: never more than ~60% of the width
         // Short or narrow phones: slimmer meter so the board gets the height
         val small = !wide && androidx.compose.ui.platform.LocalConfiguration.current.let { it.screenHeightDp < 760 || it.screenWidthDp < 400 }
 
@@ -722,7 +723,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     }
                     // Right: the board, as big as the height allows (never more than ~60% of the width)
                     Box(modifier = Modifier.fillMaxHeight().padding(end = 8.dp), contentAlignment = Alignment.Center) {
-                        board(Modifier.widthIn(max = minOf(BOARD_MAX, maxWidth * 0.62f)).aspectRatio(1f, matchHeightConstraintsFirst = true))
+                        board(Modifier.widthIn(max = boardCap).aspectRatio(1f, matchHeightConstraintsFirst = true))
                     }
                 }
             }
