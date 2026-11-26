@@ -201,8 +201,7 @@ object Music {
             val f0 = 165f + 45f * minOf(1f, p / 0.4f) - 15f * ((p - 0.6f).coerceAtLeast(0f) / 0.4f)
             floatArrayOf(f0, 420f + (580f - 420f) * r, 1250f + (1900f - 1250f) * r, 1650f + (2600f - 1650f) * r)
         }, attack = 0.05f, release = 0.15f)
-        // "SHHHHH": the star of the show — a big, long hiss around 2.5-5 kHz that comes in under the end
-        // of the vowel, swells, holds, and only fades at the very end
+        // "shhhh": a soft hiss around 2.5-5 kHz that comes in under the end of the vowel and fades away
         val sStart = (RATE * 0.38f).toInt()
         hp = 0f; prev = 0f; lp = 0f
         for (i in sStart until n) {
@@ -210,8 +209,9 @@ object Music {
             hp = 0.9f * (hp + white - prev); prev = white          // high-pass
             lp += 0.55f * (hp - lp)                                 // take the very top off
             val p = (i - sStart).toFloat() / (n - sStart)
-            val env = minOf(1f, p / 0.15f) * (if (p > 0.7f) ((1f - p) / 0.3f).coerceAtLeast(0f) else 1f)
-            buf[i] += lp * 0.75f * env         // about twice as loud as the vowel, short of clipping
+            // in quickly, then a long, steady fade to nothing
+            val env = minOf(1f, p / 0.1f) * (1f - p).coerceAtLeast(0f).let { it * kotlin.math.sqrt(it) }
+            buf[i] += lp * 0.25f * env         // well under the vowel
         }
         return buf
     }
