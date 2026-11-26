@@ -337,7 +337,7 @@ fun DartlessScreen(navController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
         // No scrolling: the board must stay put under a swipe. The board box takes whatever height is left.
-        modifier = Modifier.fillMaxSize().padding(bottom = if (metronomeMode) 130.dp else 100.dp)
+        modifier = Modifier.fillMaxSize().padding(bottom = 4.dp)
     ) {
         ScreenHeader("Checkout Game", navController) {
             // The coach: tap for his route advice on the current score (same dialog as the 501 modes)
@@ -413,10 +413,13 @@ fun DartlessScreen(navController: NavHostController) {
             )
         }
 
+        // The board: as wide as the screen on a phone (capped at BOARD_MAX so it is the same size on
+        // big screens), using all the height down to the bottom edge — the throw arrow and the darts in
+        // hand float over its lower corners on short phones rather than shrinking it.
+        Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         Box(
-            // A square that fits whatever height is left, so the board never spills up over the text
-            modifier = Modifier.weight(1f, fill = false).aspectRatio(1f, matchHeightConstraintsFirst = true)
-                .align(Alignment.CenterHorizontally).padding(top = 6.dp, start = 4.dp, end = 4.dp).onGloballyPositioned {
+            modifier = Modifier.widthIn(max = BOARD_MAX).aspectRatio(1f, matchHeightConstraintsFirst = true)
+                .padding(top = 4.dp, start = 2.dp, end = 2.dp).onGloballyPositioned {
                 boardPos = it.positionInRoot()
                 boardSize = it.size
             },
@@ -438,6 +441,7 @@ fun DartlessScreen(navController: NavHostController) {
                 )
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
             }
+        }
         }
 
     }

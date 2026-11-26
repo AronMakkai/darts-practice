@@ -126,3 +126,7 @@ fun throwButtonInset(): androidx.compose.ui.unit.Dp {
     val maxInset = (widthDp / 2f - 60f - 8f).coerceAtLeast(0f)     // 120 dp zone, 8 dp margin
     return (maxInset * pos).dp
 }
+
+
+/** The dartboard never grows beyond this, so it is the same size on a tablet or unfolded phone as on a big phone. */
+val BOARD_MAX = 470.dp

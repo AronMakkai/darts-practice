@@ -681,14 +681,17 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         }
 
         if (!wide) {
-            Column(modifier = Modifier.fillMaxSize().padding(bottom = 130.dp)) {
+            Column(modifier = Modifier.fillMaxSize().padding(bottom = 4.dp)) {
                 header()
                 if (version < 0) Text("")
                 panels()
                 accuracyRow()
                 status()
-                // A square that fits whatever height is left, so the board never spills up over the text
-                board(Modifier.weight(1f, fill = false).aspectRatio(1f, matchHeightConstraintsFirst = true).align(Alignment.CenterHorizontally))
+                // The board: screen-wide on a phone (capped at BOARD_MAX on big screens) and using all the
+                // height to the bottom edge; on short phones the throw arrow floats over its lower corner
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                    board(Modifier.widthIn(max = BOARD_MAX).aspectRatio(1f, matchHeightConstraintsFirst = true))
+                }
             }
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -703,7 +706,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     }
                     // Centre: the board, as big as the height allows
                     Box(modifier = Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        board(Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true))
+                        board(Modifier.widthIn(max = BOARD_MAX).aspectRatio(1f, matchHeightConstraintsFirst = true))
                     }
                     // Right: the accuracy bar, standing upright
                     Column(modifier = Modifier.width(92.dp).fillMaxHeight().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
