@@ -705,12 +705,13 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             }
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
-                header()
                 if (version < 0) Text("")
+                // Sideways the board runs the full height, top to bottom; everything else shares the rest
                 Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                    // Left: both players' scores and stats, the accuracy meter and the status lines;
-                    // the throw arrow and the darts in hand sit below them
+                    // Left: the header, both players' scores and stats, the accuracy meter and the status
+                    // lines; the throw arrow and the darts in hand sit below them
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        header()
                         panels()
                         Spacer(Modifier.height(4.dp))
                         accuracyRow()
@@ -728,8 +729,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                             )
                         }
                     }
-                    // Right: the board, as big as the height allows (at most half the width)
-                    Box(modifier = Modifier.fillMaxHeight().padding(end = 8.dp), contentAlignment = Alignment.Center) {
+                    // Right: the board, the full height of the screen (at most 60% of the width)
+                    Box(modifier = Modifier.fillMaxHeight().padding(end = 4.dp), contentAlignment = Alignment.Center) {
                         board(Modifier.widthIn(max = boardCap).aspectRatio(1f, matchHeightConstraintsFirst = true))
                     }
                 }

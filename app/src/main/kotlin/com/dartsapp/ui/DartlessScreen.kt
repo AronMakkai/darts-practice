@@ -445,10 +445,7 @@ fun DartlessScreen(navController: NavHostController) {
             }
         }
     }
-    Column(
-        // No scrolling: the board must stay put under a swipe. The board box takes whatever height is left.
-        modifier = Modifier.fillMaxSize().padding(bottom = 4.dp)
-    ) {
+    @Composable fun header() {
         ScreenHeader("Checkout Game", navController) {
             // The coach: tap for his route advice on the current score (same dialog as the 501 modes)
             IconButton(onClick = { coachAdviceOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
@@ -456,8 +453,13 @@ fun DartlessScreen(navController: NavHostController) {
             if (!metronomeMode) TextButton(onClick = { showTip = !showTip }) { Text("Tip", color = if (showTip) Gold else Grey) }
             TextButton(onClick = { newCheckout() }) { Text("New", color = Gold) }
         }
-
+    }
+    Column(
+        // No scrolling: the board must stay put under a swipe. The board box takes whatever height is left.
+        modifier = Modifier.fillMaxSize().padding(bottom = if (wide) 0.dp else 4.dp)
+    ) {
         if (!wide) {
+            header()
             stats()
             // The board: as wide as the screen on a phone (capped at BOARD_MAX so it is the same size on
             // big screens), using all the height down to the bottom edge — the throw arrow and the darts in
@@ -470,6 +472,7 @@ fun DartlessScreen(navController: NavHostController) {
                 // Left: accuracy, streak, score and messages, with the throw arrow and darts in hand
                 // centred under them, right next to the board
                 Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    header()
                     stats()
                     Spacer(Modifier.weight(1f))
                     // Along the bottom: the streak's gold bars, the darts in hand, then the throw arrow
@@ -485,8 +488,8 @@ fun DartlessScreen(navController: NavHostController) {
                         )
                     }
                 }
-                // Right: the board, as big as the height allows (at most half the width)
-                Box(modifier = Modifier.fillMaxHeight().padding(end = 8.dp), contentAlignment = Alignment.Center) {
+                // Right: the board, the full height of the screen, top to bottom (at most 60% of the width)
+                Box(modifier = Modifier.fillMaxHeight().padding(end = 4.dp), contentAlignment = Alignment.Center) {
                     board(Modifier.widthIn(max = landscapeBoardCap(conf.screenWidthDp.dp)).aspectRatio(1f, matchHeightConstraintsFirst = true))
                 }
             }

@@ -185,12 +185,15 @@ fun ValueCheckerScreen(navController: NavHostController, checkoutMode: Boolean =
     }
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            ScreenHeader(if (checkoutMode) "Fast Checkout" else "Fast 501", navController) {
-                // The Coach: tap for his route on the current score
-                IconButton(onClick = { tipOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
-                TextButton(onClick = { reset() }) { Text("New", color = Gold) }
+            @Composable fun header() {
+                ScreenHeader(if (checkoutMode) "Fast Checkout" else "Fast 501", navController) {
+                    // The Coach: tap for his route on the current score
+                    IconButton(onClick = { tipOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
+                    TextButton(onClick = { reset() }) { Text("New", color = Gold) }
+                }
             }
             if (!wide) {
+                header()
                 stats()
                 Dartboard(
                     modifier = Modifier.padding(8.dp).onGloballyPositioned {
@@ -205,18 +208,20 @@ fun ValueCheckerScreen(navController: NavHostController, checkoutMode: Boolean =
                 hint()
             } else {
                 Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    // sideways: the board runs the full height on the right, the rest shares the left
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        header()
                         stats()
                         hint()
                         Spacer(Modifier.weight(1f))
                         DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 10.dp).size(width = 132.dp, height = 90.dp))
                     }
                     Box(
-                        modifier = Modifier.align(Alignment.CenterVertically).padding(end = 8.dp).widthIn(max = landscapeBoardCap(conf.screenWidthDp.dp)).aspectRatio(1f, matchHeightConstraintsFirst = true),
+                        modifier = Modifier.align(Alignment.CenterVertically).padding(end = 4.dp).widthIn(max = landscapeBoardCap(conf.screenWidthDp.dp)).aspectRatio(1f, matchHeightConstraintsFirst = true),
                         contentAlignment = Alignment.Center
                     ) {
                         Dartboard(
-                            modifier = Modifier.padding(8.dp).onGloballyPositioned {
+                            modifier = Modifier.padding(2.dp).onGloballyPositioned {
                                 val p = it.positionInRoot()
                                 starOrigin = Offset(p.x + it.size.width / 2f, p.y + it.size.height / 2f)
                             },

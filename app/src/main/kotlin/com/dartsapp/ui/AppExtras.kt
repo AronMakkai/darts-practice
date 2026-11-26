@@ -238,7 +238,7 @@ val BOARD_MAX = 470.dp
  * stays a little smaller than upright, so on a big near-square screen (an unfolded Fold) it doesn't swamp them.
  */
 fun landscapeBoardCap(screenWidth: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp =
-    minOf(400.dp, screenWidth * 0.5f)
+    screenWidth * 0.6f
 
 /**
  * On small screens (a narrow phone, or a foldable's cover screen) everything around the board —
