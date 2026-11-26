@@ -68,7 +68,8 @@ fun MainMenuScreen(navController: NavHostController) {
         VinylRecord(motorOn = deckOn, modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(recR))
         // ...its fader in one corner, the motor's start/stop in the other
         val btn = minOf(64f, recR.value * 0.55f).dp
-        CutButton(modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 10.dp).size(btn))
+        // the CUT button is bigger: it gets hammered during a scratch
+        CutButton(modifier = Modifier.align(Alignment.BottomStart).padding(start = 2.dp, bottom = 4.dp).size(minOf(100f, recR.value * 0.8f).dp))
         StartStopButton(on = deckOn, onToggle = { deckOn = !deckOn }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 10.dp).size(btn))
         TvFilter(modifier = Modifier.fillMaxSize())
     }
