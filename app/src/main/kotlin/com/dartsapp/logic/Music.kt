@@ -96,21 +96,62 @@ object Music {
         } finally { safeStop(track) }
     }
 
-    // ---- the record on the main menu: the menu tune is streamed from a "turntable" whose speed and
-    // direction your finger can take over, so you can scratch it -----------------------------------
+    // ---- the record on the main menu: the menu tune plays on as normal, and dragging the record
+    // scratches a sample over the top of it, like a DJ cutting a vocal over the beat ----------------
 
-    /** Where the needle is in the tune, in seconds (the record's angle on screen follows it). */
-    @Volatile var menuPosSec = 0.0
-        private set
     @Volatile private var scratching = false
-    @Volatile private var scratchTarget = 0.0     // seconds: where the finger has dragged the record to
+    @Volatile private var scratchTarget = 0.0     // seconds into the scratch sample the hand has pushed it to
+    private var scratchPcm: FloatArray? = null
 
-    /** Finger down on the record: the platter stops following the motor and follows the hand. */
-    fun scratchStart() { scratchTarget = menuPosSec; scratching = true }
+    /** Finger down on the record: the needle is cued at the start of the scratch sample. */
+    fun scratchStart() { scratchTarget = 0.0; scratching = true }
     /** The finger has turned the record by [seconds] of music (negative = backwards). */
     fun scratchBy(seconds: Double) { scratchTarget += seconds }
-    /** Finger up: the motor brings it back up to speed. */
+    /** Finger up: the scratch stops. */
     fun scratchEnd() { scratching = false }
+
+    /**
+     * The scratch sample: the classic "ffff–aaaah" vocal stab. A breathy "f", then a big, raspy, open
+     * "ah" with lots of harmonics so it chirps and squeals when cut back and forth.
+     */
+    private fun renderScratchSample(): FloatArray {
+        val len = 1.3f
+        val n = (RATE * len).toInt()
+        val buf = FloatArray(n)
+        val rnd = Random(77)
+        // "fff": bright hiss, swelling
+        val fLen = (RATE * 0.16f).toInt()
+        var hp = 0f; var prev = 0f
+        for (i in 0 until fLen) {
+            val white = rnd.nextFloat() * 2f - 1f
+            hp = 0.85f * (hp + white - prev); prev = white
+            val p = i.toFloat() / fLen
+            buf[i] = hp * 0.35f * (p * p)
+        }
+        // "aaah": 160 Hz glottal buzz through an open-vowel formant set, falling a little at the end
+        val start = fLen
+        val dur = n - start
+        val f1 = 760f; val f2 = 1150f; val f3 = 2500f
+        var phase = 0.0
+        for (i in 0 until dur) {
+            val p = i.toFloat() / dur
+            val f0 = 160f * (1f - 0.12f * p * p)
+            phase += 2 * PI * f0 / RATE
+            var v = 0.0
+            var hN = 1
+            while (hN <= 24) {
+                val fh = f0 * hN
+                if (fh > RATE / 2.2f) break
+                val g = 1f / (1f + ((fh - f1) / 120f).let { it * it }) + 0.7f / (1f + ((fh - f2) / 160f).let { it * it }) +
+                    0.35f / (1f + ((fh - f3) / 260f).let { it * it }) + 0.04f
+                v += g / kotlin.math.sqrt(hN.toFloat()) * sin(hN * phase)
+                hN++
+            }
+            val env = minOf(1f, p / 0.04f) * (if (p > 0.8f) (1f - p) / 0.2f else 1f)
+            buf[start + i] = (v * env * 0.22f).toFloat()
+        }
+        return buf
+    }
 
     private fun streamMenu(pcm: ShortArray) {
         val minBuf = AudioTrack.getMinBufferSize(RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT).coerceAtLeast(1024)
@@ -122,33 +163,36 @@ object Music {
             )
         } catch (e: Exception) { return }
         try {
+            val smp = scratchPcm ?: renderScratchSample().also { scratchPcm = it }
             track.setVolume(0.55f)
             track.play()
             val n = pcm.size
             val chunk = ShortArray(256)                  // small chunks: the scratch follows the finger closely
-            var pos = (menuPosSec * RATE) % n            // fractional sample index
-            var v = 1.0                                  // playback speed: 1 = normal, negative = backwards
+            var pos = 0                                  // the tune: always straight through
+            var sPos = 0.0                               // the scratch sample: wherever the hand puts it
+            var v = 0.0                                  // scratch speed (samples per sample, negative = back)
+            var gate = 0f                                // scratch is only heard while the record moves
+            var wasScratching = false
             while (menuWanted) {
+                val sc = scratching
+                if (sc && !wasScratching) { sPos = 0.0; v = 0.0 }
+                wasScratching = sc
                 for (i in chunk.indices) {
-                    if (scratching) {
-                        // chase the finger: the speed is whatever gets us to where the hand has put the record
-                        var diff = scratchTarget * RATE - pos
-                        diff -= Math.floor(diff / n + 0.5) * n      // the tune loops: take the short way round
-                        val want = (diff / (RATE * 0.035)).coerceIn(-6.0, 6.0)
+                    var out = pcm[pos] / 32768f
+                    pos++; if (pos >= n) pos = 0
+                    if (sc) {
+                        val want = ((scratchTarget * RATE - sPos) / (RATE * 0.03)).coerceIn(-5.0, 5.0)
                         v += (want - v) * 0.02
-                    } else {
-                        // the motor pulls it back up to 33 1/3 in about a third of a second
-                        v += (1.0 - v) * 0.0009
+                    } else v *= 0.995
+                    sPos = (sPos + v).coerceIn(0.0, (smp.size - 2).toDouble())
+                    val g = (kotlin.math.abs(v) * 4.0).coerceAtMost(1.0).toFloat() * (if (sc) 1f else 0.6f)
+                    gate += (g - gate) * 0.01f
+                    if (gate > 0.001f) {
+                        val i0 = sPos.toInt(); val f = (sPos - i0).toFloat()
+                        out += (smp[i0] + (smp[i0 + 1] - smp[i0]) * f) * gate * 1.4f
                     }
-                    pos += v
-                    while (pos < 0) pos += n
-                    while (pos >= n) pos -= n
-                    val i0 = pos.toInt(); val f = (pos - i0).toFloat()
-                    val a = pcm[i0]; val b = pcm[if (i0 + 1 >= n) 0 else i0 + 1]
-                    chunk[i] = (a + (b - a) * f).toInt().toShort()
+                    chunk[i] = (out.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
                 }
-                menuPosSec = pos / RATE
-                if (!scratching) scratchTarget = menuPosSec
                 if (track.write(chunk, 0, chunk.size) < 0) break
             }
         } catch (e: Exception) {
