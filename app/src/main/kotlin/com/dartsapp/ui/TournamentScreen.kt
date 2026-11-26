@@ -56,9 +56,11 @@ fun TournamentScreen(navController: NavHostController) {
         }
         if (tick < 0) Text("")
         ChromeTitle("TOURNAMENT", modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 24.dp))
-        // The prize, on a tag in the corner
-        Box(modifier = Modifier.fillMaxWidth().padding(end = 10.dp), contentAlignment = Alignment.CenterEnd) {
-            PrizeTag(modifier = Modifier.graphicsLayer { rotationZ = 6f })
+        // The prize, on a tag in the corner (gone once you have won it)
+        if (!com.dartsapp.logic.Settings.turntableUnlocked(unlockContext)) {
+            Box(modifier = Modifier.fillMaxWidth().padding(end = 10.dp), contentAlignment = Alignment.CenterEnd) {
+                PrizeTag(modifier = Modifier.graphicsLayer { rotationZ = 6f })
+            }
         }
 
         if (!started) {
@@ -273,7 +275,7 @@ internal fun ChampionSplash(onIrl: () -> Unit, onDismiss: () -> Unit) {
                     .padding(16.dp)
             ) {
                 Text(
-                    if (page == 0) "Congratulations, champion! You beat the lot of them — and you now have the throwing rhythm of a professional darts player."
+                    if (page == 0) "Congratulations, champion! You beat the lot of them — and you now have the throwing rhythm of a professional darts player. Your prize, the record player, is waiting on the main menu."
                     else "For real, the swipe and tap timing is based on real darts, and there is a metronome function in the Darts IRL menu to explore this further. GAME ON!",
                     color = BubbleText, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
                 )

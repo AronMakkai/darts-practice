@@ -267,3 +267,14 @@ fun StartStopButton(on: Boolean, onToggle: () -> Unit, modifier: Modifier = Modi
         drawCircle(if (on) Color(0xFFFF3B3B) else Color(0xFF4A2030), r * 0.07f, Offset(c.x, c.y + r * 0.32f))
     }
 }
+
+
+/** Before the record player is won: just a faint neon outline of where it will sit. */
+@Composable
+fun EmptyDeckOutline(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val r = size.height * 0.98f
+        val c = Offset(size.width / 2f, size.height + r * 0.02f)
+        drawCircle(NeonPink.copy(alpha = 0.22f), r, c, style = Stroke(width = r * 0.012f))
+    }
+}

@@ -279,7 +279,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 if (i == 0) Settings.addMatchWon(context)
                 if (tournament && !tourReported) {
                     tourReported = true; Tournament.recordUserResult(i == 0)
-                    if (Tournament.youWon) Settings.setCoachUnlocked(context, true)    // winning a tournament brings the Coach out to play
+                    if (Tournament.youWon) {
+                        Settings.setCoachUnlocked(context, true)        // winning a tournament brings the Coach out to play
+                        Settings.setTurntableUnlocked(context, true)    // ...and wins the prize: the record player on the main menu
+                    }
                 }
                 banterText = Banter.line(opponent, botWon = i == 1)
                 banterKey++

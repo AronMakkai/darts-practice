@@ -67,6 +67,10 @@ object Settings {
     /** The Coach only plays in tournaments, and only joins the draw once you have won one. */
     fun coachUnlocked(ctx: Context): Boolean = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("coachUnlocked", false)
     fun setCoachUnlocked(ctx: Context, on: Boolean) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("coachUnlocked", on).apply() }
+    /** The tournament prize: the record player on the main menu (anyone who has already won a tournament has it). */
+    fun turntableUnlocked(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("turntableUnlocked", false) || coachUnlocked(ctx)
+    fun setTurntableUnlocked(ctx: Context, on: Boolean) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("turntableUnlocked", on).apply() }
 
     fun opponentIndex(ctx: Context): Int = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("opponent", 0)
     fun setOpponentIndex(ctx: Context, i: Int) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("opponent", i).apply() }

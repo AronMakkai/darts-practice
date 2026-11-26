@@ -64,13 +64,20 @@ fun MainMenuScreen(navController: NavHostController) {
         // The turntable: half a record showing at the bottom edge, playing the menu tune — scratch it
         val conf = androidx.compose.ui.platform.LocalConfiguration.current
         val recR = minOf(conf.screenWidthDp * 0.34f, conf.screenHeightDp * 0.19f).dp
-        var deckOn by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
-        VinylRecord(motorOn = deckOn, modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(recR))
-        // ...its fader in one corner, the motor's start/stop in the other
-        val btn = minOf(64f, recR.value * 0.55f).dp
-        // the CUT button is bigger: it gets hammered during a scratch
-        CutButton(modifier = Modifier.align(Alignment.BottomStart).padding(start = 2.dp, bottom = 4.dp).size(minOf(100f, recR.value * 0.8f).dp))
-        StartStopButton(on = deckOn, onToggle = { deckOn = !deckOn }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 10.dp).size(btn))
+        // It is the tournament prize: until you have won one, only a faint outline of where it will go
+        val menuCtx = androidx.compose.ui.platform.LocalContext.current
+        val deckUnlocked = remember { com.dartsapp.logic.Settings.turntableUnlocked(menuCtx) }
+        if (!deckUnlocked) {
+            EmptyDeckOutline(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(recR))
+        } else {
+            var deckOn by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+            VinylRecord(motorOn = deckOn, modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(recR))
+            // ...its fader in one corner, the motor's start/stop in the other
+            val btn = minOf(64f, recR.value * 0.55f).dp
+            // the CUT button is bigger: it gets hammered during a scratch
+            CutButton(modifier = Modifier.align(Alignment.BottomStart).padding(start = 2.dp, bottom = 4.dp).size(minOf(100f, recR.value * 0.8f).dp))
+            StartStopButton(on = deckOn, onToggle = { deckOn = !deckOn }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 10.dp).size(btn))
+        }
         TvFilter(modifier = Modifier.fillMaxSize())
     }
 }
