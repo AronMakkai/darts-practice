@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -559,64 +560,72 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         Sounds.starPop()
     }
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(bottom = 130.dp)) {
-            ScreenHeader(
-                if (tournament) "${Tournament.rounds[tourRound.coerceIn(0, 2)]} · first to ${legsPerSet / 2 + 1}" else if (startScore == 301) "301 · 1 Player" else "501 · 1 Player",
-                navController
-            ) {
-                IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
-                if (!tournament) TextButton(onClick = { setupOpen = true }) { Text("Match", color = Gold) }
-            }
-            if (version < 0) Text("")
+      BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        // Big screens held sideways (tablets, an unfolded Fold): stats left, board centre, accuracy bar right
+        val wide = maxWidth > maxHeight && maxWidth >= 600.dp
 
-            // Two compact panels
-            for (i in 0..1) {
-                val s = sides[i]
-                val active = i == current && !matchOver
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)
-                        .background(if (active) Charcoal else Night)
-                        .onGloballyPositioned { panelPos[i] = it.positionInRoot(); panelSize[i] = it.size }
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
+        @Composable fun header() {
+                ScreenHeader(
+                    if (tournament) "${Tournament.rounds[tourRound.coerceIn(0, 2)]} · first to ${legsPerSet / 2 + 1}" else if (startScore == 301) "301 · 1 Player" else "501 · 1 Player",
+                    navController
                 ) {
-                    if (i == 1) OpponentHead(opponent, modifier = Modifier.size(38.dp).clickable { bioOpen = true }.padding(end = 4.dp))
-                    Column(modifier = Modifier.width(if (i == 1) 74.dp else 88.dp)) {
-                        Text(s.name, fontSize = 9.sp, lineHeight = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp, color = if (active) Gold else Grey, maxLines = 1)
-                        Text(s.remaining.toString(), fontSize = 26.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = if (active) Gold else OffWhite)
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        PowerBar(value = s.remaining.toFloat() / startScore, enabled = false, onChange = {}, modifier = Modifier.fillMaxWidth().height(14.dp), segmentColor = { frac -> if (frac * startScore < 170f) Color(0xFFFF7A1A) else BoardCream })
-                        Text(
-                            "S ${s.sets}  L ${s.legs}   avg ${"%.1f".format(s.average)}" +
-                                (if (s.remaining in 2..170 && CheckoutLogic.isFinishable(s.remaining)) "   ${CheckoutLogic.tip(s.remaining)}" else ""),
-                            fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = if (active) PaleGold else Grey, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
+                    IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
+                    if (!tournament) TextButton(onClick = { setupOpen = true }) { Text("Match", color = Gold) }
+                }
+        }
+        @Composable fun panels() {
+                // Two compact panels
+                for (i in 0..1) {
+                    val s = sides[i]
+                    val active = i == current && !matchOver
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)
+                            .background(if (active) Charcoal else Night)
+                            .onGloballyPositioned { panelPos[i] = it.positionInRoot(); panelSize[i] = it.size }
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (i == 1) OpponentHead(opponent, modifier = Modifier.size(38.dp).clickable { bioOpen = true }.padding(end = 4.dp))
+                        Column(modifier = Modifier.width(if (i == 1) 74.dp else 88.dp)) {
+                            Text(s.name, fontSize = 9.sp, lineHeight = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp, color = if (active) Gold else Grey, maxLines = 1)
+                            Text(s.remaining.toString(), fontSize = 26.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = if (active) Gold else OffWhite)
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            PowerBar(value = s.remaining.toFloat() / startScore, enabled = false, onChange = {}, modifier = Modifier.fillMaxWidth().height(14.dp), segmentColor = { frac -> if (frac * startScore < 170f) Color(0xFFFF7A1A) else BoardCream })
+                            Text(
+                                "S ${s.sets}  L ${s.legs}   avg ${"%.1f".format(s.average)}" +
+                                    (if (s.remaining in 2..170 && CheckoutLogic.isFinishable(s.remaining)) "   ${CheckoutLogic.tip(s.remaining)}" else ""),
+                                fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = if (active) PaleGold else Grey, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
                     }
                 }
-            }
 
-            // Accuracy + preset
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (hot) "HOT!" else "ACCURACY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(72.dp))
-                HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(46.dp))
-            }
+        }
+        @Composable fun accuracyRow() {
+                // Accuracy + preset
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (hot) "HOT!" else "ACCURACY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal, modifier = Modifier.width(72.dp))
+                    HotMeter(value = accuracy, hot = hot, modifier = Modifier.weight(1f).height(46.dp))
+                }
 
-            // Fixed-height status
-            Column(modifier = Modifier.fillMaxWidth().height(44.dp).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(message.ifEmpty { " " }, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(22.dp))
-                Text(
-                    if (current == 0) "Dart ${if (dartsInVisit >= 3) 3 else dartsInVisit}/3   " + (timingNote.ifEmpty { "Visit: " + thrown.joinToString(" ") { it.label }.ifEmpty { "—" } })
-                    else "$botName throwing…   " + thrown.joinToString(" ") { it.label },
-                    fontSize = 12.sp, color = PaleGold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(20.dp)
-                )
-            }
+        }
+        @Composable fun status() {
+                // Fixed-height status
+                Column(modifier = Modifier.fillMaxWidth().height(44.dp).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(message.ifEmpty { " " }, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(22.dp))
+                    Text(
+                        if (current == 0) "Dart ${if (dartsInVisit >= 3) 3 else dartsInVisit}/3   " + (timingNote.ifEmpty { "Visit: " + thrown.joinToString(" ") { it.label }.ifEmpty { "—" } })
+                        else "$botName throwing…   " + thrown.joinToString(" ") { it.label },
+                        fontSize = 12.sp, color = PaleGold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(20.dp)
+                    )
+                }
 
+        }
+        @Composable fun board(sizing: Modifier) {
             Box(
-                // A square that fits whatever height is left, so the board never spills up over the text
-                modifier = Modifier.weight(1f, fill = false).aspectRatio(1f, matchHeightConstraintsFirst = true)
-                    .align(Alignment.CenterHorizontally).padding(top = 6.dp, start = 4.dp, end = 4.dp).onGloballyPositioned {
+                modifier = sizing.padding(top = 6.dp, start = 4.dp, end = 4.dp).onGloballyPositioned {
                     boardPos = it.positionInRoot(); boardSize = it.size
                 }.gameShotCamera(camT, camPoint.x, camPoint.y),
                 contentAlignment = Alignment.Center
@@ -669,6 +678,44 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 PerfectPop(trigger = perfectTrigger, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
             }
         }
+
+        if (!wide) {
+            Column(modifier = Modifier.fillMaxSize().padding(bottom = 130.dp)) {
+                header()
+                if (version < 0) Text("")
+                panels()
+                accuracyRow()
+                status()
+                // A square that fits whatever height is left, so the board never spills up over the text
+                board(Modifier.weight(1f, fill = false).aspectRatio(1f, matchHeightConstraintsFirst = true).align(Alignment.CenterHorizontally))
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                header()
+                if (version < 0) Text("")
+                Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    // Left: both players' scores and stats, then the status lines; the swipe zone sits below
+                    Column(modifier = Modifier.fillMaxWidth(0.34f).fillMaxHeight().padding(bottom = 130.dp)) {
+                        panels()
+                        Spacer(Modifier.height(8.dp))
+                        status()
+                    }
+                    // Centre: the board, as big as the height allows
+                    Box(modifier = Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        board(Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true))
+                    }
+                    // Right: the accuracy bar, standing upright
+                    Column(modifier = Modifier.width(92.dp).fillMaxHeight().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(if (hot) "HOT!" else "ACCURACY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp,
+                            color = if (hot) Color(0xFFFF7A1A) else Grey, fontWeight = if (hot) FontWeight.Black else FontWeight.Normal)
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp, bottom = 130.dp), contentAlignment = Alignment.Center) {
+                            HotMeter(value = accuracy, hot = hot, modifier = Modifier.width(46.dp).fillMaxHeight().standUpright())
+                        }
+                    }
+                }
+            }
+        }
+      }
 
         SwipeToThrowZone(
             armed = throwStartMs != 0L,
@@ -793,3 +840,17 @@ internal fun BanterDialog(opponent: Opponent, text: String, youWon: Boolean, onD
         }
     }
 }
+
+
+/** Lays a horizontal bar out standing upright: its length runs bottom-to-top along the available height. */
+private fun Modifier.standUpright(): Modifier = this
+    .graphicsLayer { rotationZ = -90f }
+    .layout { measurable, constraints ->
+        val p = measurable.measure(
+            androidx.compose.ui.unit.Constraints(
+                minWidth = constraints.minHeight, maxWidth = constraints.maxHeight,
+                minHeight = constraints.minWidth, maxHeight = constraints.maxWidth
+            )
+        )
+        layout(p.height, p.width) { p.place((p.height - p.width) / 2, (p.width - p.height) / 2) }
+    }
