@@ -31,7 +31,9 @@ private val NEEDLE_DEG = Math.toDegrees(atan2(TIP_Y.toDouble(), TIP_X.toDouble()
 /** Sound comes out of the speaker a little after we ask for it: lead the needle by this much. */
 private const val AUDIO_LEAD_SEC = 0.04f
 /** How much of the record the scratch sample is pressed onto, starting at the dot. */
-private const val SAMPLE_ARC = 160f
+private val SAMPLE_ARC = Music.SAMPLE_ARC.toFloat()
+/** The second sample ("freeeshhh") starts half a turn round from the first. */
+private val SECOND_CUE = Music.SECOND_CUE.toFloat()
 
 /**
  * The menu's turntable: a vinyl record sunk into the bottom edge of the screen so only its top half
@@ -39,8 +41,9 @@ private const val SAMPLE_ARC = 160f
  * sunset colours as the sun on the horizon, the grooves catch the pink and orange of the sky, a
  * chrome tonearm rests on it, and the rim glows neon pink like the signs.
  *
- * A classic "ahhh... yeahhh!" is pressed onto a short arc of the record that starts at the white dot
- * on the label, and the needle is always reading it. With the motor on (START), the sample comes
+ * Two samples are pressed onto the record, each on a short arc starting at a dot on the label: a
+ * classic "ahhh... yeahhh!" from the white dot and "freeeshhh" from the teal one, half a turn round.
+ * The needle is always reading them. With the motor on (START), the sample comes
  * round once a turn. Touch the record and it stops dead under your finger; drag to cut it back and
  * forth (line the dot up with the needle for the start). Let go and it carries your flick, then the
  * motor takes it back up to speed (or, with the motor off, it coasts to a stop). Hold CUT (the
@@ -57,11 +60,10 @@ fun VinylRecord(motorOn: Boolean, modifier: Modifier = Modifier) {
 
     /** Tell the needle where the record is: how far the dot has turned past it, as a fraction of the sample. */
     fun reportNeedle(degPerSec: Float) {
-        var u = ((angle % 360f) + 360f) % 360f
-        if (u > 300f) u -= 360f          // just before the dot
-        // lead by the output delay, so the "ahh" is heard exactly as the white line meets the needle
-        u += degPerSec * AUDIO_LEAD_SEC
-        Music.scratchTo((u / SAMPLE_ARC).toDouble(), (degPerSec / SAMPLE_ARC).toDouble())
+        // how far the record has turned past the first cue dot; the sound engine knows where the samples are.
+        // Lead by the output delay, so a sample is heard exactly as its line meets the needle.
+        val u = ((angle % 360f) + 360f) % 360f + degPerSec * AUDIO_LEAD_SEC
+        Music.scratchTo(u.toDouble(), degPerSec.toDouble())
     }
 
     // the motor
@@ -166,17 +168,21 @@ fun VinylRecord(motorOn: Boolean, modifier: Modifier = Modifier) {
             }
             drawCircle(DarkRed, lr * 0.62f, c, style = Stroke(width = lr * 0.08f))
             drawCircle(DarkRed, lr * 0.98f, c, style = Stroke(width = lr * 0.06f))
-            // the scratch sample: a band of slightly shinier groove where it is pressed, running back
-            // from the dot (the part that passes the needle as the record turns forward)
-            drawArc(Color(0xFF4A2E66).copy(alpha = 0.55f), NEEDLE_DEG - SAMPLE_ARC, SAMPLE_ARC, false,
-                Offset(c.x - r * 0.72f, c.y - r * 0.72f), Size(r * 1.44f, r * 1.44f), style = Stroke(width = r * 0.42f))
-            // the white dot on the label marking where the sample starts (it lines up with the needle at the cue)
-            val da = Math.toRadians(NEEDLE_DEG.toDouble())
-            val dot = Offset(c.x + lr * 0.78f * cos(da).toFloat(), c.y + lr * 0.78f * sin(da).toFloat())
-            drawCircle(Night, lr * 0.13f, dot)
-            drawCircle(Color.White, lr * 0.1f, dot)
-            drawLine(Color.White.copy(alpha = 0.5f), Offset(c.x + lr * 0.98f * cos(da).toFloat(), c.y + lr * 0.98f * sin(da).toFloat()),
-                Offset(c.x + r * 0.94f * cos(da).toFloat(), c.y + r * 0.94f * sin(da).toFloat()), strokeWidth = r * 0.006f)
+            // the two samples: bands of slightly shinier groove where they are pressed, each running back
+            // from its cue (the part that passes the needle as the record turns forward), and a dot on
+            // the label with a line out across the grooves marking where each starts.
+            // White: "ahhh... yeahhh!"   Teal: "freeeshhh"
+            for ((cue, mark) in listOf(0f to Color.White, SECOND_CUE to NeonTeal)) {
+                val start = NEEDLE_DEG - cue
+                drawArc((if (cue == 0f) Color(0xFF4A2E66) else Color(0xFF1E4A5A)).copy(alpha = 0.55f), start - SAMPLE_ARC, SAMPLE_ARC, false,
+                    Offset(c.x - r * 0.72f, c.y - r * 0.72f), Size(r * 1.44f, r * 1.44f), style = Stroke(width = r * 0.42f))
+                val da = Math.toRadians(start.toDouble())
+                val dot = Offset(c.x + lr * 0.78f * cos(da).toFloat(), c.y + lr * 0.78f * sin(da).toFloat())
+                drawCircle(Night, lr * 0.13f, dot)
+                drawCircle(mark, lr * 0.1f, dot)
+                drawLine(mark.copy(alpha = 0.55f), Offset(c.x + lr * 0.98f * cos(da).toFloat(), c.y + lr * 0.98f * sin(da).toFloat()),
+                    Offset(c.x + r * 0.94f * cos(da).toFloat(), c.y + r * 0.94f * sin(da).toFloat()), strokeWidth = r * 0.006f)
+            }
         }
         drawCircle(Color(0xFFFFF1A8), r * 0.03f, c)     // the spindle
 

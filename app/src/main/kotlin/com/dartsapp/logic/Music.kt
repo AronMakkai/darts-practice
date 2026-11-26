@@ -96,22 +96,27 @@ object Music {
         } finally { safeStop(track) }
     }
 
-    // ---- the record on the main menu: the menu tune plays on as normal, and the record carries a
-    // scratch sample on a short arc. The SCRATCH button is the fader: hold it and you hear the needle
-    // reading the record, whether your hand is working it or it is just spinning round ------------
+    // ---- the record on the main menu: the menu tune plays on as normal, and the record carries two
+    // scratch samples, each pressed onto a short arc starting at a cue dot: "ahhh... yeahhh!" from
+    // 0 degrees and "freeeshhh" from 180. The needle always reads the record; CUT is the fader -------
 
-    @Volatile private var scratchTarget = 0.0     // where the needle sits: 0..1 through the sample (outside = blank groove)
-    @Volatile private var scratchVel = 0.0        // how fast the record is moving, in sample-lengths a second
+    /** How much of the record each sample is pressed onto, in degrees; the second one starts at 180. */
+    const val SAMPLE_ARC = 160.0
+    const val SECOND_CUE = 180.0
+
+    @Volatile private var scratchTarget = 0.0     // the record's angle under the needle, degrees past the first cue
+    @Volatile private var scratchVel = 0.0        // how fast it is turning, degrees a second
     @Volatile private var scratchSeq = 0          // bumps with every update from the screen
     @Volatile private var faderOpen = true        // the CUT button closes it while held
     private var scratchPcm: FloatArray? = null
+    private var freshPcm: FloatArray? = null
 
     /**
-     * The record's position under the needle, sent every frame ([frac] 0..1 is the sample, the rest
-     * is blank) with its speed ([fracPerSec]), so the needle can glide smoothly between frames
-     * instead of lurching once a frame (which turns a voice into laser zaps).
+     * The record's angle under the needle ([deg], degrees past the first cue dot) and its speed,
+     * sent every frame, so the needle can glide smoothly between frames instead of lurching once a
+     * frame (which turns a voice into laser zaps).
      */
-    fun scratchTo(frac: Double, fracPerSec: Double) { scratchTarget = frac; scratchVel = fracPerSec; scratchSeq++ }
+    fun scratchTo(deg: Double, degPerSec: Double) { scratchTarget = deg; scratchVel = degPerSec; scratchSeq++ }
     /** The fader: open unless the CUT button is held. */
     fun setFader(open: Boolean) { faderOpen = open }
 
@@ -126,41 +131,12 @@ object Music {
         val n = (RATE * len).toInt()
         val buf = FloatArray(n)
         val rnd = Random(77)
-        // one sung syllable with formants and pitch moving over it: fn(p) gives (f0, F1, F2, F3) at 0..1
-        fun voice(t0: Float, durSec: Float, amp: Float, shape: (Float) -> FloatArray, attack: Float, release: Float) {
-            val start = (t0 * RATE).toInt(); val dur = (durSec * RATE).toInt()
-            var phase = 0.0
-            var lp = 0f
-            for (i in 0 until dur) {
-                val idx = start + i; if (idx >= n) break
-                val p = i.toFloat() / dur
-                val (f0, f1, f2, f3) = shape(p).let { arrayOf(it[0], it[1], it[2], it[3]) }
-                // a little rough vibrato in the shout
-                val wob = 1f + 0.008f * sin(2 * PI * 5.5 * i / RATE).toFloat() + 0.02f * (rnd.nextFloat() - 0.5f)
-                phase += 2 * PI * f0 * wob / RATE
-                var v = 0.0
-                var h = 1
-                while (h <= 30) {
-                    val fh = f0 * h
-                    if (fh > RATE / 2.2f) break
-                    val g = 1f / (1f + ((fh - f1) / 110f).let { it * it }) + 0.8f / (1f + ((fh - f2) / 150f).let { it * it }) +
-                        0.4f / (1f + ((fh - f3) / 250f).let { it * it }) + 0.03f
-                    v += g / kotlin.math.sqrt(h.toFloat()) * sin(h * phase)
-                    h++
-                }
-                // breath through the formants: noise, roughly band-limited
-                val white = rnd.nextFloat() * 2f - 1f
-                lp += 0.35f * (white - lp)
-                val env = minOf(1f, p / attack) * (if (p > 1f - release) ((1f - p) / release).coerceAtLeast(0f) else 1f)
-                buf[idx] += ((v * 0.2 * (0.92 + 0.16 * rnd.nextFloat()) + lp * 0.08) * env * amp).toFloat()
-            }
-        }
         // "AHHH": a breathy "h" onset then the open vowel, pitch falling from 190 to 130
-        voice(0.01f, 0.36f, 1f, { p ->
+        voice(buf, rnd, 0.01f, 0.36f, 1f, { p ->
             floatArrayOf(175f - 30f * p, 760f, 1180f - 60f * p, 2500f)
         }, attack = 0.06f, release = 0.3f)
         // "YEAHHH": ee -> eh -> ah, the pitch lifting then falling away
-        voice(0.42f, 0.52f, 1.05f, { p ->
+        voice(buf, rnd, 0.42f, 0.52f, 1.05f, { p ->
             val y = (p / 0.22f).coerceIn(0f, 1f)                  // the "y" glide
             val e = ((p - 0.22f) / 0.35f).coerceIn(0f, 1f)        // "eh" opening to "ah"
             val f1 = 290f + (560f - 290f) * y + (760f - 560f) * e
@@ -168,6 +144,74 @@ object Music {
             val f0 = if (p < 0.35f) 160f + 25f * (p / 0.35f) else 185f - 40f * ((p - 0.35f) / 0.65f)
             floatArrayOf(f0, f1, f2, 2600f)
         }, attack = 0.04f, release = 0.35f)
+        return buf
+    }
+
+    // one sung syllable with formants and pitch moving over it: fn(p) gives (f0, F1, F2, F3) at 0..1
+    private fun voice(buf: FloatArray, rnd: Random, t0: Float, durSec: Float, amp: Float, shape: (Float) -> FloatArray, attack: Float, release: Float) {
+        val n = buf.size
+        val start = (t0 * RATE).toInt(); val dur = (durSec * RATE).toInt()
+        var phase = 0.0
+        var lp = 0f
+        for (i in 0 until dur) {
+            val idx = start + i; if (idx >= n) break
+            val p = i.toFloat() / dur
+            val (f0, f1, f2, f3) = shape(p).let { arrayOf(it[0], it[1], it[2], it[3]) }
+            // a little rough vibrato in the shout
+            val wob = 1f + 0.008f * sin(2 * PI * 5.5 * i / RATE).toFloat() + 0.02f * (rnd.nextFloat() - 0.5f)
+            phase += 2 * PI * f0 * wob / RATE
+            var v = 0.0
+            var h = 1
+            while (h <= 30) {
+                val fh = f0 * h
+                if (fh > RATE / 2.2f) break
+                val g = 1f / (1f + ((fh - f1) / 110f).let { it * it }) + 0.8f / (1f + ((fh - f2) / 150f).let { it * it }) +
+                    0.4f / (1f + ((fh - f3) / 250f).let { it * it }) + 0.03f
+                v += g / kotlin.math.sqrt(h.toFloat()) * sin(h * phase)
+                h++
+            }
+            // breath through the formants: noise, roughly band-limited
+            val white = rnd.nextFloat() * 2f - 1f
+            lp += 0.35f * (white - lp)
+            val env = minOf(1f, p / attack) * (if (p > 1f - release) ((1f - p) / release).coerceAtLeast(0f) else 1f)
+            buf[idx] += ((v * 0.2 * (0.92 + 0.16 * rnd.nextFloat()) + lp * 0.08) * env * amp).toFloat()
+        }
+    }
+
+    /**
+     * The second sample: "FREEEESHHH!" A breathy "f", a rolled "r" sliding into a long, bright "eh"
+     * with the pitch lifting, then a big hissing "shhh" that fades away.
+     */
+    private fun renderFreshSample(): FloatArray {
+        val n = (RATE * 0.95f).toInt()
+        val buf = FloatArray(n)
+        val rnd = Random(78)
+        // "f": soft, wide hiss
+        val fEnd = (RATE * 0.11f).toInt()
+        var hp = 0f; var prev = 0f; var lp = 0f
+        for (i in 0 until fEnd) {
+            val white = rnd.nextFloat() * 2f - 1f
+            hp = 0.7f * (hp + white - prev); prev = white
+            val p = i.toFloat() / fEnd
+            buf[i] += hp * 0.22f * minOf(1f, p * 3f)
+        }
+        // "rrreeee": r-coloured onset (low F3) opening into a bright "eh", pitch rising then holding
+        voice(buf, rnd, 0.09f, 0.46f, 1.05f, { p ->
+            val r = (p / 0.25f).coerceIn(0f, 1f)
+            val f0 = 165f + 45f * minOf(1f, p / 0.4f) - 15f * ((p - 0.6f).coerceAtLeast(0f) / 0.4f)
+            floatArrayOf(f0, 420f + (580f - 420f) * r, 1250f + (1900f - 1250f) * r, 1650f + (2600f - 1650f) * r)
+        }, attack = 0.05f, release = 0.15f)
+        // "shhhh": strong hiss centred around 2.5-5 kHz, swelling in then fading out
+        val sStart = (RATE * 0.5f).toInt()
+        hp = 0f; prev = 0f; lp = 0f
+        for (i in sStart until n) {
+            val white = rnd.nextFloat() * 2f - 1f
+            hp = 0.9f * (hp + white - prev); prev = white          // high-pass
+            lp += 0.55f * (hp - lp)                                 // take the very top off
+            val p = (i - sStart).toFloat() / (n - sStart)
+            val env = minOf(1f, p / 0.12f) * (1f - p).let { it * it }.coerceAtLeast(0f)
+            buf[i] += lp * 0.5f * env
+        }
         return buf
     }
 
@@ -190,29 +234,29 @@ object Music {
             }
         } catch (e: Exception) { return }
         try {
-            val smp = scratchPcm ?: renderScratchSample().also { scratchPcm = it }
+            val smpA = scratchPcm ?: renderScratchSample().also { scratchPcm = it }
+            val smpB = freshPcm ?: renderFreshSample().also { freshPcm = it }
             track.setVolume(0.55f)
             track.play()
             val n = pcm.size
             val chunk = ShortArray(192)                  // tiny chunks (4 ms at 48 kHz): the scratch follows the finger closely
             val step = RATE.toDouble() / outRate         // tune samples per output sample
             var pos = 0.0                                // the tune: always straight through
-            var sPos = scratchTarget                     // the needle, in fractions of the sample (outside 0..1 = blank groove)
+            var sPos = scratchTarget                     // the needle on the record, degrees (unwrapped)
             var est = sPos                               // where the record is now, run on between screen frames
-            var estVel = 0.0                             // its speed, sample-lengths per output sample
+            var estVel = 0.0                             // its speed, degrees per output sample
             var seq = scratchSeq
-            var v = 0.0                                  // the needle's speed, per output sample
-            var gate = 0f                                // smooths the sample in and out at the arc's ends
+            var v = 0.0                                  // the needle's speed, degrees per output sample
+            var gate = 0f                                // smooths the samples in and out at the arcs' ends
             var fader = 1f
-            val last = (smp.size - 2).toDouble()
-            val perSample = 1.0 / last                   // one sample's step, in fractions
+            val natural = 200.0 / outRate                // 33 1/3 rpm, degrees per output sample
             while (menuWanted) {
                 if (scratchSeq != seq) {
                     seq = scratchSeq
-                    val target = scratchTarget
-                    // the record went once round: jump the needle with it rather than whizz across the sample
-                    if (kotlin.math.abs(target - est) > 0.5) { sPos += target - est }
-                    est = target
+                    // the screen sends 0..360; keep our copy continuous across the wrap
+                    var d = scratchTarget - est
+                    d -= Math.floor(d / 360.0 + 0.5) * 360.0
+                    est += d
                     estVel = scratchVel / outRate
                 }
                 val fTarget = if (faderOpen) 1f else 0f
@@ -223,16 +267,21 @@ object Music {
                     pos += step; if (pos >= n) pos -= n
                     est += estVel
                     // move at the record's own speed, plus a quick pull to close any gap (~12 ms)
-                    val want = (estVel + (est - sPos) / (outRate * 0.012)).coerceIn(-8.0 * perSample * step, 8.0 * perSample * step)
+                    val want = (estVel + (est - sPos) / (outRate * 0.012)).coerceIn(-8.0 * natural, 8.0 * natural)
                     v += (want - v) * 0.015
                     sPos += v
-                    val inGroove = sPos > 0.0 && sPos < 1.0
-                    val speed = kotlin.math.abs(v / perSample / step)        // 1 = natural pitch
-                    val g = if (!inGroove) 0f else (speed * 4.0).coerceAtMost(1.0).toFloat()
+                    // which sample (if any) is under the needle, and how far through it
+                    val deg = ((sPos % 360.0) + 360.0) % 360.0
+                    val smp: FloatArray?; val frac: Double
+                    if (deg < SAMPLE_ARC) { smp = smpA; frac = deg / SAMPLE_ARC }
+                    else if (deg >= SECOND_CUE && deg < SECOND_CUE + SAMPLE_ARC) { smp = smpB; frac = (deg - SECOND_CUE) / SAMPLE_ARC }
+                    else { smp = null; frac = 0.0 }
+                    val speed = kotlin.math.abs(v / natural)
+                    val g = if (smp == null) 0f else (speed * 4.0).coerceAtMost(1.0).toFloat()
                     gate += (g - gate) * 0.005f
                     fader += (fTarget - fader) * 0.1f           // a cut in well under a millisecond, but no click
-                    if (gate > 0.001f && fader > 0.001f) {
-                        val x = sPos.coerceIn(0.0, 1.0) * last
+                    if (smp != null && gate > 0.001f && fader > 0.001f) {
+                        val x = frac * (smp.size - 2)
                         val i0 = x.toInt(); val f = (x - i0).toFloat()
                         out += (smp[i0] + (smp[i0 + 1] - smp[i0]) * f) * gate * fader * 1.4f
                     }
