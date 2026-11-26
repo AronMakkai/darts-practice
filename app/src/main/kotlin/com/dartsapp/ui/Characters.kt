@@ -397,3 +397,118 @@ private fun DrawScope.drawTache() {
     drawLine(hairLight, Offset(cx - w * 0.16f, h * 0.3f), Offset(cx + w * 0.18f, h * 0.12f), strokeWidth = h * 0.012f, cap = StrokeCap.Round)
     drawLine(hairLight, Offset(cx - w * 0.3f, h * 0.24f), Offset(cx - w * 0.3f, h * 0.44f), strokeWidth = h * 0.02f, cap = StrokeCap.Round)
 }
+
+// ---- you ----------------------------------------------------------------------------------------
+
+/** The player's own character: name on the scoreboard and his bio card. */
+const val PLAYER_NAME = "DOUBLE TROUBLE"
+const val PLAYER_BLURB = "Glam-pop walk-on, silver jacket, headset mic and a second helping of chin — loves a double, and they don't always love him back."
+const val PLAYER_STYLE = "Whatever your timing makes him. Throw on the beat and he's a monster."
+
+/**
+ * You: DOUBLE TROUBLE. Close-up, flat-shaded like the others. A big round face with rosy cheeks and a
+ * double chin, a tall strawberry-blond quiff with sideburns, a cheesy stage grin, a headset mic,
+ * and a shiny silver jacket with a high collar, lit from the side by purple stage lights. Fits a square.
+ */
+@Composable
+fun PlayerHead(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) { drawPlayer() }
+}
+
+private fun DrawScope.drawPlayer() {
+    val w = size.width; val h = size.height; val cx = w / 2f
+    val s = Skin(Color(0xFFF2B99A), Color(0xFFD48E72), Color(0xFFFCD6C0))
+    val hair = Color(0xFFD9A35A); val hairDark = Color(0xFFB07A3A); val hairLight = Color(0xFFF2CC86)
+    val silver = Color(0xFFB9BDC9); val silverDark = Color(0xFF7D8292); val silverLight = Color(0xFFEDEFF5)
+    val stage = Color(0xFFB06BFF)
+
+    // Silver jacket: broad shoulders, a big stand-up collar, folds catching the light
+    drawPath(Path().apply {
+        moveTo(0f, h); lineTo(w * 0.04f, h * 0.84f); lineTo(cx - w * 0.2f, h * 0.76f); lineTo(cx, h * 0.92f)
+        lineTo(cx + w * 0.2f, h * 0.76f); lineTo(w * 0.96f, h * 0.84f); lineTo(w, h); close()
+    }, silver)
+    drawPath(Path().apply { moveTo(w * 0.04f, h * 0.84f); lineTo(w * 0.16f, h * 0.8f); lineTo(w * 0.22f, h); lineTo(0f, h); close() }, silverDark)
+    drawLine(silverLight, Offset(w * 0.72f, h * 0.84f), Offset(w * 0.8f, h), strokeWidth = h * 0.03f, cap = StrokeCap.Round)
+    drawLine(silverLight, Offset(w * 0.3f, h * 0.86f), Offset(w * 0.34f, h), strokeWidth = h * 0.02f, cap = StrokeCap.Round)
+    drawLine(Color.White, Offset(w * 0.86f, h * 0.88f), Offset(w * 0.89f, h * 0.95f), strokeWidth = h * 0.015f, cap = StrokeCap.Round)
+    // dark tee in the open neck
+    drawPath(Path().apply { moveTo(cx - w * 0.13f, h * 0.8f); lineTo(cx + w * 0.13f, h * 0.8f); lineTo(cx, h * 0.93f); close() }, Color(0xFF221A2E))
+    // high collar, flipped up either side
+    drawPath(Path().apply { moveTo(cx - w * 0.2f, h * 0.76f); lineTo(cx - w * 0.3f, h * 0.66f); lineTo(cx - w * 0.33f, h * 0.84f); lineTo(cx - w * 0.06f, h * 0.94f); close() }, silverLight)
+    drawPath(Path().apply { moveTo(cx + w * 0.2f, h * 0.76f); lineTo(cx + w * 0.3f, h * 0.66f); lineTo(cx + w * 0.33f, h * 0.84f); lineTo(cx + w * 0.06f, h * 0.94f); close() }, silver)
+    drawLine(silverDark, Offset(cx + w * 0.3f, h * 0.67f), Offset(cx + w * 0.32f, h * 0.83f), strokeWidth = h * 0.012f)
+
+    // Big round face, wider than the others, with a double chin under the jaw
+    drawRect(s.dark, Offset(cx - w * 0.14f, h * 0.68f), Size(w * 0.28f, h * 0.12f))
+    drawOval(s.dark, Offset(cx - w * 0.36f, h * 0.42f), Size(w * 0.09f, h * 0.14f))
+    drawOval(s.dark, Offset(cx + w * 0.27f, h * 0.42f), Size(w * 0.09f, h * 0.14f))
+    drawOval(s.base, Offset(cx - w * 0.31f, h * 0.2f), Size(w * 0.62f, h * 0.58f))
+    // chins: the jaw, then a second, rounder one below it
+    drawOval(s.base, Offset(cx - w * 0.22f, h * 0.62f), Size(w * 0.44f, h * 0.17f))
+    drawArc(s.dark, 20f, 140f, false, Offset(cx - w * 0.16f, h * 0.64f), Size(w * 0.32f, h * 0.12f), style = Stroke(width = h * 0.012f, cap = StrokeCap.Round))
+    // the purple stage light rakes the right side of his face
+    drawPath(Path().apply {
+        moveTo(cx + w * 0.16f, h * 0.24f); quadraticBezierTo(cx + w * 0.33f, h * 0.36f, cx + w * 0.3f, h * 0.56f)
+        quadraticBezierTo(cx + w * 0.25f, h * 0.72f, cx + w * 0.14f, h * 0.77f)
+        quadraticBezierTo(cx + w * 0.27f, h * 0.56f, cx + w * 0.16f, h * 0.24f); close()
+    }, stage.copy(alpha = 0.2f))
+    // rosy cheeks
+    drawOval(Color(0xFFE8786A).copy(alpha = 0.45f), Offset(cx - w * 0.27f, h * 0.53f), Size(w * 0.13f, h * 0.08f))
+    drawOval(Color(0xFFE8786A).copy(alpha = 0.45f), Offset(cx + w * 0.14f, h * 0.53f), Size(w * 0.13f, h * 0.08f))
+    drawOval(s.light, Offset(cx - w * 0.23f, h * 0.5f), Size(w * 0.08f, h * 0.04f))
+
+    // Cheesy stage grin: wide, all top teeth
+    val lip = Color(0xFF8A3A34)
+    drawPath(Path().apply {
+        moveTo(cx - w * 0.16f, h * 0.62f); quadraticBezierTo(cx, h * 0.76f, cx + w * 0.16f, h * 0.62f)
+        quadraticBezierTo(cx, h * 0.66f, cx - w * 0.16f, h * 0.62f); close()
+    }, Color(0xFF5A1E1C))
+    drawPath(Path().apply {
+        moveTo(cx - w * 0.145f, h * 0.627f); quadraticBezierTo(cx, h * 0.662f, cx + w * 0.145f, h * 0.627f)
+        quadraticBezierTo(cx, h * 0.715f, cx - w * 0.145f, h * 0.627f); close()
+    }, OffWhite)
+    drawLine(lip, Offset(cx - w * 0.17f, h * 0.615f), Offset(cx - w * 0.14f, h * 0.63f), strokeWidth = h * 0.012f, cap = StrokeCap.Round)
+    drawLine(lip, Offset(cx + w * 0.17f, h * 0.615f), Offset(cx + w * 0.14f, h * 0.63f), strokeWidth = h * 0.012f, cap = StrokeCap.Round)
+
+    // Little button nose and twinkly eyes, brows up
+    nose(s, 0.9f)
+    val brow = hairDark
+    drawLine(brow, Offset(cx - w * 0.21f, h * 0.38f), Offset(cx - w * 0.07f, h * 0.36f), strokeWidth = h * 0.024f, cap = StrokeCap.Round)
+    drawLine(brow, Offset(cx + w * 0.07f, h * 0.36f), Offset(cx + w * 0.21f, h * 0.38f), strokeWidth = h * 0.024f, cap = StrokeCap.Round)
+    drawOval(OffWhite, Offset(cx - w * 0.18f, h * 0.43f), Size(w * 0.1f, h * 0.05f))
+    drawOval(OffWhite, Offset(cx + w * 0.08f, h * 0.43f), Size(w * 0.1f, h * 0.05f))
+    drawCircle(Color(0xFF3A6EA8), w * 0.022f, Offset(cx - w * 0.125f, h * 0.455f))
+    drawCircle(Color(0xFF3A6EA8), w * 0.022f, Offset(cx + w * 0.135f, h * 0.455f))
+    drawCircle(Color.White, w * 0.007f, Offset(cx - w * 0.118f, h * 0.447f))
+    drawCircle(Color.White, w * 0.007f, Offset(cx + w * 0.142f, h * 0.447f))
+    // cheek-squeezed lower lids from the grin
+    drawArc(s.dark, 200f, 140f, false, Offset(cx - w * 0.19f, h * 0.465f), Size(w * 0.12f, h * 0.04f), style = Stroke(width = h * 0.008f))
+    drawArc(s.dark, 200f, 140f, false, Offset(cx + w * 0.07f, h * 0.465f), Size(w * 0.12f, h * 0.04f), style = Stroke(width = h * 0.008f))
+
+    // Hair: chunky sideburns and a tall swept-up quiff with a curl at the front
+    drawPath(Path().apply { moveTo(cx - w * 0.3f, h * 0.32f); lineTo(cx - w * 0.31f, h * 0.52f); lineTo(cx - w * 0.26f, h * 0.5f); lineTo(cx - w * 0.25f, h * 0.34f); close() }, hairDark)
+    drawPath(Path().apply { moveTo(cx + w * 0.3f, h * 0.32f); lineTo(cx + w * 0.31f, h * 0.52f); lineTo(cx + w * 0.26f, h * 0.5f); lineTo(cx + w * 0.25f, h * 0.34f); close() }, hairDark)
+    drawPath(Path().apply {
+        moveTo(cx - w * 0.31f, h * 0.36f); quadraticBezierTo(cx - w * 0.34f, h * 0.14f, cx - w * 0.12f, h * 0.08f)
+        quadraticBezierTo(cx + w * 0.08f, h * -0.02f, cx + w * 0.28f, h * 0.06f)
+        quadraticBezierTo(cx + w * 0.38f, h * 0.14f, cx + w * 0.31f, h * 0.36f)
+        lineTo(cx + w * 0.24f, h * 0.27f); quadraticBezierTo(cx, h * 0.22f, cx - w * 0.22f, h * 0.3f); close()
+    }, hair)
+    // the front curl rolling forward over the brow
+    drawPath(Path().apply {
+        moveTo(cx - w * 0.2f, h * 0.24f); quadraticBezierTo(cx - w * 0.06f, h * 0.06f, cx + w * 0.16f, h * 0.1f)
+        quadraticBezierTo(cx + w * 0.06f, h * 0.16f, cx + w * 0.04f, h * 0.27f)
+        quadraticBezierTo(cx - w * 0.06f, h * 0.2f, cx - w * 0.2f, h * 0.24f); close()
+    }, hairLight)
+    drawLine(hairDark, Offset(cx - w * 0.14f, h * 0.17f), Offset(cx + w * 0.1f, h * 0.11f), strokeWidth = h * 0.012f, cap = StrokeCap.Round)
+    drawLine(hairDark, Offset(cx + w * 0.18f, h * 0.1f), Offset(cx + w * 0.26f, h * 0.24f), strokeWidth = h * 0.012f, cap = StrokeCap.Round)
+
+    // Headset mic: band over the ear, boom round to the corner of the mouth
+    val mic = Color(0xFF1E1E24)
+    drawArc(mic, 180f, 110f, false, Offset(cx - w * 0.38f, h * 0.36f), Size(w * 0.14f, h * 0.2f), style = Stroke(width = h * 0.018f, cap = StrokeCap.Round))
+    drawPath(Path().apply {
+        moveTo(cx - w * 0.33f, h * 0.5f); quadraticBezierTo(cx - w * 0.3f, h * 0.66f, cx - w * 0.18f, h * 0.66f)
+    }, mic, style = Stroke(width = h * 0.014f, cap = StrokeCap.Round))
+    drawCircle(mic, w * 0.028f, Offset(cx - w * 0.17f, h * 0.66f))
+    drawCircle(Color(0xFF4A4A56), w * 0.012f, Offset(cx - w * 0.175f, h * 0.655f))
+}

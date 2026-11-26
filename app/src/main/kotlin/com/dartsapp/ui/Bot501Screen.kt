@@ -132,7 +132,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var powerSplash by remember { mutableStateOf(false) }
     var powerActive by remember { mutableStateOf(false) }
     var powerUsed by remember { mutableStateOf(false) }       // once per leg
-    var bioOpen by remember { mutableStateOf(false) }          // the opponent's bio card
+    var bioOpen by remember { mutableStateOf(false) }
+    var playerBioOpen by remember { mutableStateOf(false) }    // your own bio card (Double Trouble)          // the opponent's bio card
     var pickerBio by remember { mutableStateOf<Opponent?>(null) } // bio opened from the opponent picker
     var lizardEpoch by remember { mutableStateOf(0L) }        // when the Lizzard let his lizards loose
     var camTrigger by remember { mutableStateOf(0) }          // game-shot replay: zoom and slow-motion dart
@@ -172,7 +173,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var setsToWin by remember { mutableStateOf(1) }
     var tourReported by remember { mutableStateOf(false) }
 
-    var sides by remember { mutableStateOf(listOf(Side("YOU", 501), Side(botName, 501))) }
+    var sides by remember { mutableStateOf(listOf(Side(PLAYER_NAME, 501), Side(botName, 501))) }
     var current by remember { mutableStateOf(0) }
     var legStarter by remember { mutableStateOf(0) }
     var matchOver by remember { mutableStateOf(false) }
@@ -250,7 +251,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
 
     fun startMatch() {
-        sides = listOf(Side("YOU", startScore), Side(botName, startScore))
+        sides = listOf(Side(PLAYER_NAME, startScore), Side(botName, startScore))
         current = 0; legStarter = 0; matchOver = false
         powerActive = false; powerUsed = false; powerSplash = false
         resetVisit()
@@ -499,6 +500,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
 
     if (bioOpen) OpponentBioDialog(opponent = opponent, onDismiss = { bioOpen = false })
+    if (playerBioOpen) PlayerBioDialog(onDismiss = { playerBioOpen = false })
     pickerBio?.let { OpponentBioDialog(opponent = it, onDismiss = { pickerBio = null }) }
 
     if (powerSplash) {
@@ -590,8 +592,9 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (i == 1) OpponentHead(opponent, modifier = Modifier.size(38.dp).clickable { bioOpen = true }.padding(end = 4.dp))
-                        Column(modifier = Modifier.width(if (i == 1) 74.dp else 88.dp)) {
-                            Text(s.name, fontSize = 9.sp, lineHeight = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp, color = if (active) Gold else Grey, maxLines = 1)
+                        else PlayerHead(modifier = Modifier.size(38.dp).clickable { playerBioOpen = true }.padding(end = 4.dp))
+                        Column(modifier = Modifier.width(80.dp)) {
+                            Text(s.name, fontSize = 9.sp, lineHeight = 10.sp, fontFamily = FontFamily.Monospace, letterSpacing = if (s.name.length > 11) 0.sp else 1.sp, softWrap = false, color = if (active) Gold else Grey, maxLines = 1)
                             Text(s.remaining.toString(), fontSize = 26.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = if (active) Gold else OffWhite)
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -820,6 +823,30 @@ internal fun OpponentBioDialog(opponent: Opponent, showPower: Boolean = true, on
                 Text(opponent.powerInfo, fontSize = 14.sp, color = OffWhite, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
                 Text("Once a leg, when you're on a finish and he's 100 or more behind. Lasts the rest of the leg.", fontSize = 11.sp, color = Grey, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
             }
+            Text("tap to close", fontSize = 11.sp, color = Grey.copy(alpha = 0.7f), modifier = Modifier.padding(top = 14.dp))
+        }
+    }
+}
+
+/** Your own bio card: Double Trouble. Tap anywhere to close. */
+@Composable
+internal fun PlayerBioDialog(onDismiss: () -> Unit) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .background(NearBlack, CutCornerShape(topStart = 16.dp, bottomEnd = 16.dp))
+                .border(BorderStroke(2.dp, Gold), CutCornerShape(topStart = 16.dp, bottomEnd = 16.dp))
+                .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { onDismiss() }
+                .padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            PlayerHead(modifier = Modifier.size(150.dp))
+            Text(PLAYER_NAME, fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, fontWeight = FontWeight.Black, color = Gold, fontSize = 20.sp)
+            Text("That's you", fontSize = 13.sp, color = PaleGold, modifier = Modifier.padding(top = 2.dp))
+            Text(PLAYER_BLURB, fontSize = 12.sp, color = Grey, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+            Spacer(Modifier.height(12.dp))
+            Text("PLAYING STYLE", fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, color = Grey, modifier = Modifier.fillMaxWidth())
+            Text(PLAYER_STYLE, fontSize = 14.sp, color = OffWhite, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
             Text("tap to close", fontSize = 11.sp, color = Grey.copy(alpha = 0.7f), modifier = Modifier.padding(top = 14.dp))
         }
     }
