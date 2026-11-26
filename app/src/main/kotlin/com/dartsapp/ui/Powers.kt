@@ -279,7 +279,7 @@ fun HeckleBubbles(modifier: Modifier = Modifier) {
             val bw = tw + w * 0.07f
             val bh = w * 0.11f
             canvas.save()
-            canvas.translate(px.coerceIn(bw / 2f, w - bw / 2f), py)
+            canvas.translate(px.coerceIn(bw / 2f, (w - bw / 2f).coerceAtLeast(bw / 2f)), py)
             canvas.rotate(((i * 37) % 21 - 10).toFloat())
             canvas.scale(pop, pop)
             val rect = android.graphics.RectF(-bw / 2f, -bh / 2f, bw / 2f, bh / 2f)

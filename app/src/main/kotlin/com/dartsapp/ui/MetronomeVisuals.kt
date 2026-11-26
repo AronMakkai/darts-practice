@@ -786,9 +786,13 @@ fun BigPop(trigger: Int, text: String, huge: Boolean, origin: Offset, modifier: 
                 isFakeBoldText = true; letterSpacing = 0.04f
                 textSize = w * (if (huge) 0.115f else 0.085f) * scale.coerceAtLeast(0.01f)
             }
-            val half = paint.measureText(text) / 2f + 8f
-            val cx = origin.x.coerceIn(half, w - half)
-            val cy = (origin.y - h * 0.05f - h * 0.03f * t).coerceIn(paint.textSize, h - 8f)
+            // never wider than the screen (a long word plus the spring's overshoot used to overflow it)
+            val maxText = w * 0.92f
+            val wide = paint.measureText(text)
+            if (wide > maxText) paint.textSize *= maxText / wide
+            val half = (paint.measureText(text) / 2f + 8f).coerceAtMost(w / 2f)
+            val cx = origin.x.coerceIn(half, (w - half).coerceAtLeast(half))
+            val cy = (origin.y - h * 0.05f - h * 0.03f * t).coerceIn(paint.textSize, (h - 8f).coerceAtLeast(paint.textSize))
             val base = cy + paint.textSize * 0.36f
             val a = (255 * fade).toInt()
             val canvas = drawContext.canvas.nativeCanvas
