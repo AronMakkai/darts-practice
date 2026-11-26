@@ -553,7 +553,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }.coerceAtLeast(0)
 
     val camT = rememberGameShotClock(camTrigger)
-    val throwInset = throwButtonInset()      // the throw arrow can sit further in on big screens (Settings)
+    val throwInset = throwButtonInset()      // the throw arrow can sit further in on big screens (Settings)...
+    val throwLift = throwButtonLift()        // ...and higher up, closer to the board
     // Once the camera is in, stars burst out of the winning spot (centred on the board by the zoom)
     var camBurst by remember { mutableStateOf(0) }
     LaunchedEffect(camTrigger) {
@@ -740,9 +741,9 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 armed = throwStartMs != 0L,
                 enabled = current == 0 && !matchOver && preset != null,
                 onSwipe = { armThrow() },
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp + throwInset, top = 8.dp, end = 8.dp, bottom = 8.dp).size(120.dp)
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp + throwInset, top = 8.dp, end = 8.dp, bottom = 8.dp + throwLift).size(120.dp)
             )
-            DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp + throwInset, bottom = 22.dp).size(width = 132.dp, height = 90.dp))
+            DartsInHand(inHand = inHand, modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp + throwInset, bottom = 22.dp + throwLift).size(width = 132.dp, height = 90.dp))
         }
         if (matchOver) {
             if (tournament) Button(onClick = { navController.popBackStack() }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text("Back to the draw") }

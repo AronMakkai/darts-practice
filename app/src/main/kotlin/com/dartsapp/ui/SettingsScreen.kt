@@ -141,7 +141,7 @@ fun SettingsScreen(navController: NavHostController) {
             Text("Corner", fontSize = 12.sp, color = Grey, modifier = Modifier.weight(1f))
             Text("Near the centre", fontSize = 12.sp, color = Grey)
         }
-        Text("Moves the swipe-to-throw arrow in from the bottom-left corner — handy on tablets and unfolded phones where the corner is a long reach.",
+        Text("Moves the swipe-to-throw arrow in from the bottom-left corner and up towards the board — handy on tablets and unfolded phones where the corner is a long reach.",
             fontSize = 12.sp, color = Grey, modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp))
 
         Spacer(Modifier.height(16.dp))

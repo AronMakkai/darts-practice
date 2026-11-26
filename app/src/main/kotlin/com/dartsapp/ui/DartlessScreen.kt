@@ -508,11 +508,11 @@ fun DartlessScreen(navController: NavHostController) {
             enabled = !finished && preset != null,
             onSwipe = { armThrow() },
             // the throw arrow can sit further in on big screens (Settings)
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp + throwButtonInset(), top = 8.dp, end = 8.dp, bottom = 8.dp).size(120.dp)
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp + throwButtonInset(), top = 8.dp, end = 8.dp, bottom = 8.dp + throwButtonLift()).size(120.dp)
         )
         DartsInHand(
             inHand = inHand,
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp, bottom = 22.dp).size(width = 132.dp, height = 90.dp)
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = 132.dp + throwButtonInset(), bottom = 22.dp + throwButtonLift()).size(width = 132.dp, height = 90.dp)
         )
     } else {
         DartsInHand(

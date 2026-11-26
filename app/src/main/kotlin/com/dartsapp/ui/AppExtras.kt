@@ -213,6 +213,19 @@ fun throwButtonInset(): androidx.compose.ui.unit.Dp {
     return (maxInset * pos).dp
 }
 
+/**
+ * ...and the same setting lifts it up the screen towards the board as it comes in: from the bottom
+ * corner at one end of the slider to about an eighth of the screen higher at the other.
+ */
+@Composable
+fun throwButtonLift(): androidx.compose.ui.unit.Dp {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val pos = remember { com.dartsapp.logic.Settings.throwButtonPos(ctx) }
+    val heightDp = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
+    val maxLift = (heightDp * 0.13f).coerceIn(0f, 120f)
+    return (maxLift * pos).dp
+}
+
 
 /** The dartboard never grows beyond this, so it is the same size on a tablet or unfolded phone as on a big phone. */
 val BOARD_MAX = 470.dp
