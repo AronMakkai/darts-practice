@@ -18,7 +18,7 @@ import kotlin.random.Random
 object Music {
     private const val RATE = 22050
 
-    private var menuTrack: AudioTrack? = null
+    private var menuThread: Thread? = null
     private var menuPcm: ShortArray? = null
     private var crowdPcm: ShortArray? = null
     // The crowd loop is streamed by its own thread rather than played as one static buffer, so it
@@ -44,11 +44,12 @@ object Music {
     @Synchronized
     private fun syncTracks() {
         if (menuWanted) {
-            if (menuTrack == null) {
+            if (menuThread?.isAlive != true) {
                 val pcm = menuPcm ?: renderMenuTrack().also { menuPcm = it }
-                if (menuWanted) menuTrack = loop(pcm, 0.55f)
+                if (menuWanted) menuThread = thread(name = "menuMusic") { streamMenu(pcm) }
             }
-        } else { menuTrack?.let { safeStop(it) }; menuTrack = null }
+        }
+        // (when not wanted, the menu thread sees menuWanted == false and stops itself)
         if (crowdWanted) {
             if (crowdThread?.isAlive != true) {
                 val pcm = crowdPcm ?: renderCrowd().also { crowdPcm = it }
@@ -89,6 +90,65 @@ object Music {
                     val y = x * (1f - m) + s4 * 1.9f * wobble * m
                     chunk[i] = (y.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
                 }
+                if (track.write(chunk, 0, chunk.size) < 0) break
+            }
+        } catch (e: Exception) {
+        } finally { safeStop(track) }
+    }
+
+    // ---- the record on the main menu: the menu tune is streamed from a "turntable" whose speed and
+    // direction your finger can take over, so you can scratch it -----------------------------------
+
+    /** Where the needle is in the tune, in seconds (the record's angle on screen follows it). */
+    @Volatile var menuPosSec = 0.0
+        private set
+    @Volatile private var scratching = false
+    @Volatile private var scratchTarget = 0.0     // seconds: where the finger has dragged the record to
+
+    /** Finger down on the record: the platter stops following the motor and follows the hand. */
+    fun scratchStart() { scratchTarget = menuPosSec; scratching = true }
+    /** The finger has turned the record by [seconds] of music (negative = backwards). */
+    fun scratchBy(seconds: Double) { scratchTarget += seconds }
+    /** Finger up: the motor brings it back up to speed. */
+    fun scratchEnd() { scratching = false }
+
+    private fun streamMenu(pcm: ShortArray) {
+        val minBuf = AudioTrack.getMinBufferSize(RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT).coerceAtLeast(1024)
+        val track = try {
+            AudioTrack(
+                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build(),
+                AudioFormat.Builder().setSampleRate(RATE).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build(),
+                minBuf, AudioTrack.MODE_STREAM, android.media.AudioManager.AUDIO_SESSION_ID_GENERATE
+            )
+        } catch (e: Exception) { return }
+        try {
+            track.setVolume(0.55f)
+            track.play()
+            val n = pcm.size
+            val chunk = ShortArray(256)                  // small chunks: the scratch follows the finger closely
+            var pos = (menuPosSec * RATE) % n            // fractional sample index
+            var v = 1.0                                  // playback speed: 1 = normal, negative = backwards
+            while (menuWanted) {
+                for (i in chunk.indices) {
+                    if (scratching) {
+                        // chase the finger: the speed is whatever gets us to where the hand has put the record
+                        var diff = scratchTarget * RATE - pos
+                        diff -= Math.floor(diff / n + 0.5) * n      // the tune loops: take the short way round
+                        val want = (diff / (RATE * 0.035)).coerceIn(-6.0, 6.0)
+                        v += (want - v) * 0.02
+                    } else {
+                        // the motor pulls it back up to 33 1/3 in about a third of a second
+                        v += (1.0 - v) * 0.0009
+                    }
+                    pos += v
+                    while (pos < 0) pos += n
+                    while (pos >= n) pos -= n
+                    val i0 = pos.toInt(); val f = (pos - i0).toFloat()
+                    val a = pcm[i0]; val b = pcm[if (i0 + 1 >= n) 0 else i0 + 1]
+                    chunk[i] = (a + (b - a) * f).toInt().toShort()
+                }
+                menuPosSec = pos / RATE
+                if (!scratching) scratchTarget = menuPosSec
                 if (track.write(chunk, 0, chunk.size) < 0) break
             }
         } catch (e: Exception) {

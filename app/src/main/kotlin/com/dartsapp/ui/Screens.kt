@@ -61,6 +61,10 @@ fun MainMenuScreen(navController: NavHostController) {
             }
             Spacer(Modifier.weight(0.65f))
         }
+        // The turntable: half a record showing at the bottom edge, playing the menu tune — scratch it
+        val conf = androidx.compose.ui.platform.LocalConfiguration.current
+        val recR = minOf(conf.screenWidthDp * 0.46f, conf.screenHeightDp * 0.19f).dp
+        VinylRecord(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(recR))
         TvFilter(modifier = Modifier.fillMaxSize())
     }
 }
