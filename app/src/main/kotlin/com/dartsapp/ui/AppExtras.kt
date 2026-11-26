@@ -130,3 +130,28 @@ fun throwButtonInset(): androidx.compose.ui.unit.Dp {
 
 /** The dartboard never grows beyond this, so it is the same size on a tablet or unfolded phone as on a big phone. */
 val BOARD_MAX = 470.dp
+
+/**
+ * On small screens (a narrow phone, or a foldable's cover screen) everything around the board —
+ * scores, stats, bars, buttons, text — is drawn a bit smaller, so the board keeps its full width and
+ * the rest still fits. Normal and large screens are untouched.
+ */
+@Composable
+fun CompactOnSmallScreens(content: @Composable () -> Unit) {
+    val conf = androidx.compose.ui.platform.LocalConfiguration.current
+    val w = conf.screenWidthDp; val h = conf.screenHeightDp
+    val factor = when {
+        w < 360 || h < 640 -> 0.80f
+        w < 400 || h < 740 -> 0.88f
+        else -> 1f
+    }
+    val d = androidx.compose.ui.platform.LocalDensity.current
+    if (factor == 1f) {
+        content()
+    } else {
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density * factor, d.fontScale),
+            content = content
+        )
+    }
+}

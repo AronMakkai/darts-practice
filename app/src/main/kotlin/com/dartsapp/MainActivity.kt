@@ -30,6 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.dartsapp.ui.DartsTheme
+import com.dartsapp.ui.CompactOnSmallScreens
 import com.dartsapp.ui.MainMenuScreen
 import com.dartsapp.ui.CheckoutScreen
 import com.dartsapp.ui.DartlessScreen
@@ -105,14 +106,14 @@ fun DartsApp() {
     NavHost(navController = navController, startDestination = "menu") {
         composable("menu") { MainMenuScreen(navController) }
         composable("checkout") { CheckoutScreen(navController) }
-        composable("dartless") { DartlessScreen(navController) }
+        composable("dartless") { CompactOnSmallScreens { DartlessScreen(navController) } }
         composable("valuechecker") { ValueCheckerScreen(navController) }
         composable("metronome") { MetronomeScreen(navController) }
         composable("settings") { SettingsScreen(navController) }
-        composable("x01") { FiveOhOneScreen(navController) }
-        composable("x01bot") { FiveOhOneScreen(navController, vsBot = true) }
-        composable("bot501") { Bot501Screen(navController) }
-        composable("bot501tour") { Bot501Screen(navController, tournament = true) }
+        composable("x01") { CompactOnSmallScreens { FiveOhOneScreen(navController) } }
+        composable("x01bot") { CompactOnSmallScreens { FiveOhOneScreen(navController, vsBot = true) } }
+        composable("bot501") { CompactOnSmallScreens { Bot501Screen(navController) } }
+        composable("bot501tour") { CompactOnSmallScreens { Bot501Screen(navController, tournament = true) } }
         composable("tournament") { TournamentScreen(navController) }
         composable("game") {
             SubMenuScreen(
