@@ -472,15 +472,17 @@ fun DartlessScreen(navController: NavHostController) {
                 Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                     stats()
                     Spacer(Modifier.weight(1f))
-                    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
+                    // Along the bottom: the streak's gold bars, the darts in hand, then the throw arrow
+                    // right up against the board
+                    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.Bottom) {
+                        if (metronomeMode && streak > 0) GoldBarStack(count = streak, modifier = Modifier.width(44.dp).height(120.dp))
+                        DartsInHand(inHand = inHand, modifier = Modifier.padding(bottom = 14.dp).size(width = 132.dp, height = 90.dp))
                         if (metronomeMode) SwipeToThrowZone(
                             armed = throwStartMs != 0L,
                             enabled = !finished && preset != null,
                             onSwipe = { armThrow() },
                             modifier = Modifier.size(120.dp)
                         )
-                        DartsInHand(inHand = inHand, modifier = Modifier.padding(bottom = 14.dp).size(width = 132.dp, height = 90.dp))
-                        if (metronomeMode && streak > 0) GoldBarStack(count = streak, modifier = Modifier.width(44.dp).height(120.dp))
                     }
                 }
                 // Right: the board, as big as the height allows (never more than ~60% of the width)

@@ -710,15 +710,15 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                         Spacer(Modifier.height(4.dp))
                         status()
                         Spacer(Modifier.weight(1f))
-                        // The throw arrow and the darts in hand, centred under the stats, next to the board
-                        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
+                        // Along the bottom: the darts in hand, then the throw arrow right up against the board
+                        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.Bottom) {
+                            DartsInHand(inHand = inHand, modifier = Modifier.padding(bottom = 14.dp).size(width = 132.dp, height = 90.dp))
                             SwipeToThrowZone(
                                 armed = throwStartMs != 0L,
                                 enabled = current == 0 && !matchOver && preset != null,
                                 onSwipe = { armThrow() },
                                 modifier = Modifier.size(120.dp)
                             )
-                            DartsInHand(inHand = inHand, modifier = Modifier.padding(bottom = 14.dp).size(width = 132.dp, height = 90.dp))
                         }
                     }
                     // Right: the board, as big as the height allows (never more than ~60% of the width)
