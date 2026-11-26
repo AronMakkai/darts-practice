@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.material3.*
@@ -13,6 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,49 +50,130 @@ object AppLinks {
     }
 }
 
-private data class TourPage(val title: String, val body: String)
+private data class TourPage(val coach: String, val title: String, val body: String)
 
 private val TOUR = listOf(
-    TourPage("WELCOME TO METRO DARTS",
+    TourPage("Alright, champ! I'm the Coach.",
+        "WELCOME TO METRO DARTS",
         "Darts is rhythm. Every game here is played to a beat, like a real throw: stance, aim, release."),
-    TourPage("HOW TO THROW",
-        "Swipe up from the bottom-left to pick up a dart. The aiming ring runs out from the bull and back — tap your target as it returns to the centre. On the beat, the dart flies true; early or late, it drifts."),
-    TourPage("CHECKOUT GAME",
-        "Random finishes from 2 to 170. Check out in one visit to build your streak. Hit perfect darts in a row to light up HOT STREAK — fatter trebles and doubles for four darts. The Coach rates every checkout."),
-    TourPage("501, CHARACTERS & TOURNAMENT",
+    TourPage("Here's the secret, listen up.",
+        "HOW TO THROW",
+        "Swipe up from the throw arrow to pick up a dart. The aiming ring runs out from the bull and back — tap your target as it returns to the centre. On the beat, the dart flies true; early or late, it drifts."),
+    TourPage("This is where I earn my money.",
+        "CHECKOUT GAME",
+        "Random finishes from 2 to 170. Check out in one visit to build your streak. Hit perfect darts in a row to light up HOT STREAK — fatter trebles and doubles for four darts. I'll rate every checkout."),
+    TourPage("Watch this lot. They play dirty.",
+        "501, CHARACTERS & TOURNAMENT",
         "Play 501 against six characters, each with their own game — and a dirty super power when they're losing. Tap any portrait for his bio. Win the Tournament and someone special joins the next draw."),
-    TourPage("DARTS IRL",
+    TourPage("And when you're ready for the real thing…",
+        "DARTS IRL",
         "Got a real board? Score real games here: 2-player 501, 501 against a character, a checkout helper, and the Metronome to learn and record your own throwing rhythm."),
 )
 
-/** First-launch walkthrough: a few short pages, with Skip on every page. */
+/**
+ * First-launch walkthrough: the Coach stands beside a speech-bubble pop-up and talks you through a
+ * few short pages. He bobs about while he talks and gives a little nod on every new page. Skip on every page.
+ */
 @Composable
 fun WelcomeTour(onDone: () -> Unit) {
     var page by remember { mutableStateOf(0) }
     val p = TOUR[page]
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDone) {
+    val shape = CutCornerShape(topStart = 16.dp, bottomEnd = 16.dp)
+
+    // The Coach: an idle bob and sway, plus a nod each time the page turns
+    val idle = androidx.compose.animation.core.rememberInfiniteTransition(label = "coachIdle")
+    val bob = idle.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(1400, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            androidx.compose.animation.core.RepeatMode.Reverse),
+        label = "bob")
+    val nod = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(page) {
+        nod.snapTo(1f)
+        nod.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = 0.35f, stiffness = 260f))
+    }
+    // ...and he pops in the first time
+    val enter = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(Unit) { enter.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 300f)) }
+
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDone,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Column(
-            modifier = Modifier.fillMaxWidth()
-                .background(BubblePurple, CutCornerShape(topStart = 16.dp, bottomEnd = 16.dp))
-                .border(BorderStroke(2.dp, NeonPink), CutCornerShape(topStart = 16.dp, bottomEnd = 16.dp))
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth().padding(horizontal = 16.dp)
         ) {
-            Text(p.title, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 2.sp,
-                color = Gold, fontSize = 18.sp, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(12.dp))
-            Text(p.body, color = BubbleText, fontSize = 15.sp, lineHeight = 21.sp, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(14.dp))
-            // page dots
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (i in TOUR.indices) Box(Modifier.size(8.dp).background(if (i == page) NeonPink else Charcoal, CutCornerShape(2.dp)))
+            // The pop-up: a speech bubble from the Coach
+            Column(
+                modifier = Modifier.fillMaxWidth()
+                    .background(BubblePurple, shape)
+                    .border(BorderStroke(2.dp, NeonPink), shape)
+                    .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                androidx.compose.animation.AnimatedContent(
+                    targetState = page,
+                    transitionSpec = {
+                        val dir = if (targetState > initialState) 1 else -1
+                        (androidx.compose.animation.slideInHorizontally { it * dir / 3 } + androidx.compose.animation.fadeIn())
+                            .togetherWith(androidx.compose.animation.slideOutHorizontally { -it * dir / 3 } + androidx.compose.animation.fadeOut())
+                    },
+                    label = "tourPage"
+                ) { i ->
+                    val q = TOUR[i]
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Text("“${q.coach}”", color = NeonPink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, textAlign = TextAlign.Center)
+                        Spacer(Modifier.height(8.dp))
+                        Text(q.title, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 2.sp,
+                            color = Gold, fontSize = 18.sp, textAlign = TextAlign.Center)
+                        Spacer(Modifier.height(10.dp))
+                        Text(q.body, color = BubbleText, fontSize = 15.sp, lineHeight = 21.sp, textAlign = TextAlign.Center)
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                // page dots (tap one to jump there)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (i in TOUR.indices) Box(
+                        Modifier.size(if (i == page) 10.dp else 8.dp)
+                            .background(if (i == page) NeonPink else Charcoal, CutCornerShape(2.dp))
+                            .clickable { page = i }
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    if (page > 0) TextButton(onClick = { page-- }) { Text("Back", color = Grey) }
+                    else TextButton(onClick = onDone) { Text("Skip", color = Grey) }
+                    Spacer(Modifier.weight(1f))
+                    if (page in 1 until TOUR.lastIndex) TextButton(onClick = onDone) { Text("Skip", color = Grey) }
+                    Button(onClick = { if (page < TOUR.lastIndex) page++ else onDone() }) {
+                        Text(if (page < TOUR.lastIndex) "Next" else "Let's play")
+                    }
+                }
             }
-            Spacer(Modifier.height(10.dp))
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (page < TOUR.lastIndex) TextButton(onClick = onDone) { Text("Skip", color = Grey) }
-                Spacer(Modifier.weight(1f))
-                Button(onClick = { if (page < TOUR.lastIndex) page++ else onDone() }) {
-                    Text(if (page < TOUR.lastIndex) "Next" else "Let's play")
+            // The bubble's tail, pointing down at the Coach
+            androidx.compose.foundation.Canvas(modifier = Modifier.padding(start = 54.dp).size(width = 30.dp, height = 18.dp).offset(y = (-2).dp)) {
+                val tail = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width * 0.15f, size.height); close()
+                }
+                drawPath(tail, BubblePurple)
+                val edge = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                drawLine(NeonPink, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width * 0.15f, size.height), edge.width)
+                drawLine(NeonPink, androidx.compose.ui.geometry.Offset(size.width, 0f), androidx.compose.ui.geometry.Offset(size.width * 0.15f, size.height), edge.width)
+            }
+            // The Coach himself, with his nameplate
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 8.dp)) {
+                CoachHead(modifier = Modifier.size(104.dp).graphicsLayer {
+                    val e = enter.value
+                    scaleX = e; scaleY = e
+                    translationY = (bob.value - 0.5f) * 6.dp.toPx() - nod.value * 8.dp.toPx()
+                    rotationZ = (bob.value - 0.5f) * 4f + nod.value * 6f
+                })
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text("THE COACH", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 2.sp, color = Gold, fontSize = 14.sp)
+                    Text("${page + 1} of ${TOUR.size}", fontFamily = FontFamily.Monospace, color = Grey, fontSize = 11.sp)
                 }
             }
         }
