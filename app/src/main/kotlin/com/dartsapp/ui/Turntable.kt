@@ -1,8 +1,9 @@
 package com.dartsapp.ui
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -28,7 +29,7 @@ private const val TIP_Y = -0.67f
 /** Where the needle sits on the record, as a screen angle from the centre (degrees, 0 = 3 o'clock). */
 private val NEEDLE_DEG = Math.toDegrees(atan2(TIP_Y.toDouble(), TIP_X.toDouble())).toFloat()
 /** Sound comes out of the speaker a little after we ask for it: lead the needle by this much. */
-private const val AUDIO_LEAD_SEC = 0.07f
+private const val AUDIO_LEAD_SEC = 0.04f
 /** How much of the record the scratch sample is pressed onto, starting at the dot. */
 private const val SAMPLE_ARC = 160f
 
@@ -39,16 +40,17 @@ private const val SAMPLE_ARC = 160f
  * chrome tonearm rests on it, and the rim glows neon pink like the signs.
  *
  * A classic "ahhh... yeahhh!" is pressed onto a short arc of the record that starts at the white dot
- * on the label, and the needle is always reading it. Hold the SCRATCH button (the fader) to hear it:
- * with the record just spinning, the sample comes round once a turn; put a finger on the record and
- * drag to cut it back and forth (line the dot up with the needle for the start). Let go and it
- * carries your flick, then the motor brings it back up to speed and it plays round and round again.
- * The menu tune keeps playing underneath.
+ * on the label, and the needle is always reading it. With the motor on (START), the sample comes
+ * round once a turn. Touch the record and it stops dead under your finger; drag to cut it back and
+ * forth (line the dot up with the needle for the start). Let go and it carries your flick, then the
+ * motor takes it back up to speed (or, with the motor off, it coasts to a stop). Hold CUT (the
+ * fader) to kill the sound. The menu tune keeps playing underneath.
  */
 @Composable
-fun VinylRecord(modifier: Modifier = Modifier) {
+fun VinylRecord(motorOn: Boolean, modifier: Modifier = Modifier) {
+    val motor by rememberUpdatedState(motorOn)
     var angle by remember { mutableStateOf(0f) }
-    var speed by remember { mutableStateOf(RPM33_DEG) }     // degrees a second
+    var speed by remember { mutableStateOf(if (motorOn) RPM33_DEG else 0f) }     // degrees a second
     var dragging by remember { mutableStateOf(false) }
     var lastDragNs by remember { mutableStateOf(0L) }
     var dragVel by remember { mutableStateOf(0f) }
@@ -70,10 +72,12 @@ fun VinylRecord(modifier: Modifier = Modifier) {
             val dt = ((now - last) / 1e9f).coerceIn(0f, 0.1f)
             last = now
             if (!dragging) {
-                speed += (RPM33_DEG - speed) * (dt * 6f).coerceAtMost(1f)
+                // the motor pulls it up to 33 1/3 quickly; off, the brake brings it to a stop in about a second
+                if (motor) speed += (RPM33_DEG - speed) * (dt * 6f).coerceAtMost(1f)
+                else { val b = 260f * dt; speed = if (kotlin.math.abs(speed) <= b) 0f else speed - b * kotlin.math.sign(speed) }
                 angle = (angle + speed * dt) % 360f
                 reportNeedle(speed)
-            } else if (now - lastDragNs > 80_000_000L) {
+            } else if (now - lastDragNs > 40_000_000L) {
                 dragVel = 0f        // finger held still: the record is stopped under it
                 reportNeedle(0f)
             }
@@ -82,27 +86,41 @@ fun VinylRecord(modifier: Modifier = Modifier) {
 
     Canvas(
         modifier = modifier.pointerInput(Unit) {
-            detectDragGestures(
-                onDragStart = { dragging = true; dragVel = 0f; lastDragNs = System.nanoTime() },
-                // let go: the record carries your flick, then the motor takes it back up to speed
-                onDragEnd = { dragging = false; speed = dragVel.coerceIn(-1500f, 1500f) },
-                onDragCancel = { dragging = false; speed = dragVel },
-                onDrag = { change, _ ->
-                    change.consume()
-                    val c = Offset(size.width / 2f, size.height.toFloat())
-                    val a0 = Math.toDegrees(atan2((change.previousPosition.y - c.y).toDouble(), (change.previousPosition.x - c.x).toDouble())).toFloat()
-                    val a1 = Math.toDegrees(atan2((change.position.y - c.y).toDouble(), (change.position.x - c.x).toDouble())).toFloat()
-                    var d = a1 - a0
-                    if (d > 180f) d -= 360f
-                    if (d < -180f) d += 360f
-                    angle = (angle + d) % 360f
-                    val now = System.nanoTime()
-                    val dt = ((now - lastDragNs) / 1e9f).coerceAtLeast(0.004f)
-                    dragVel = dragVel * 0.6f + (d / dt) * 0.4f
-                    lastDragNs = now
-                    reportNeedle(dragVel)
+            // raw touches, no drag threshold: the record stops the instant you touch it and follows
+            // every movement of your finger from the very first pixel
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                down.consume()
+                dragging = true; dragVel = 0f; lastDragNs = System.nanoTime()
+                reportNeedle(0f)
+                val c = Offset(size.width / 2f, size.height.toFloat())
+                fun ang(p: Offset) = Math.toDegrees(atan2((p.y - c.y).toDouble(), (p.x - c.x).toDouble())).toFloat()
+                var lastAng = ang(down.position)
+                try {
+                    while (true) {
+                        val ev = awaitPointerEvent()
+                        val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!ch.pressed) break
+                        val a1 = ang(ch.position)
+                        var d = a1 - lastAng
+                        lastAng = a1
+                        if (d > 180f) d -= 360f
+                        if (d < -180f) d += 360f
+                        ch.consume()
+                        if (d == 0f) continue
+                        angle = (angle + d) % 360f
+                        val now = System.nanoTime()
+                        val dt = ((now - lastDragNs) / 1e9f).coerceAtLeast(0.003f)
+                        dragVel = dragVel * 0.5f + (d / dt) * 0.5f
+                        lastDragNs = now
+                        reportNeedle(dragVel)
+                    }
+                } finally {
+                    // let go: the record carries your flick, then the motor takes over
+                    dragging = false
+                    speed = if (System.nanoTime() - lastDragNs > 40_000_000L) 0f else dragVel.coerceIn(-1500f, 1500f)
                 }
-            )
+            }
         }
     ) {
         val w = size.width; val h = size.height
@@ -179,40 +197,67 @@ fun VinylRecord(modifier: Modifier = Modifier) {
 }
 
 
+/** A round neon deck button: glow, dark plate, tube ring, and a label. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.deckButton(neon: Color, lit: Boolean, label: String, labelColor: Int) {
+    val w = size.width; val h = size.height
+    val c = Offset(w / 2f, h / 2f)
+    val r = minOf(w, h) / 2f
+    drawCircle(Brush.radialGradient(0.55f to neon.copy(alpha = if (lit) 0.75f else 0.3f), 1f to Color.Transparent, center = c, radius = r), r, c)
+    drawCircle(Color(0xFF1E082C).copy(alpha = 0.85f), r * 0.68f, c)
+    drawCircle(neon, r * 0.68f, c, style = Stroke(width = r * 0.08f))
+    drawCircle(Color.White.copy(alpha = 0.7f), r * 0.68f, c, style = Stroke(width = r * 0.025f))
+    val paint = android.graphics.Paint().apply {
+        isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
+        textSize = r * (if (label.length > 4) 0.26f else 0.34f); color = labelColor
+    }
+    drawContext.canvas.nativeCanvas.drawText(label, c.x, c.y - r * 0.02f, paint)
+}
+
 /**
- * The fader: a neon SCRATCH button beside the turntable. Hold it to open the fader and hear the
- * needle on the record; let go to cut it. Tap it while you work the record for chirps and stabs.
+ * The fader: a neon CUT button beside the turntable. The sound is open; press and hold to kill it,
+ * let go to open it again — tap it while you work the record for chirps and stabs. It reacts the
+ * moment your finger lands, not when it lifts.
  */
 @Composable
-fun ScratchButton(modifier: Modifier = Modifier) {
+fun CutButton(modifier: Modifier = Modifier) {
     var held by remember { mutableStateOf(false) }
-    DisposableEffect(Unit) { onDispose { Music.setFader(false) } }
+    DisposableEffect(Unit) { onDispose { Music.setFader(true) } }
     Canvas(
         modifier = modifier.pointerInput(Unit) {
-            detectTapGestures(onPress = {
-                held = true; Music.setFader(true)
-                try { tryAwaitRelease() } finally { held = false; Music.setFader(false) }
-            })
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                down.consume()
+                held = true; Music.setFader(false)
+                try { waitForUpOrCancellation() } finally { held = false; Music.setFader(true) }
+            }
         }
     ) {
-        val w = size.width; val h = size.height
-        val c = Offset(w / 2f, h / 2f)
-        val r = minOf(w, h) / 2f
-        val neon = if (held) NeonTeal else NeonPink
-        // glow, plate, tube
-        drawCircle(Brush.radialGradient(0.55f to neon.copy(alpha = if (held) 0.75f else 0.35f), 1f to Color.Transparent, center = c, radius = r), r, c)
-        drawCircle(Color(0xFF1E082C).copy(alpha = 0.85f), r * 0.68f, c)
-        drawCircle(neon, r * 0.68f, c, style = Stroke(width = r * 0.08f))
-        drawCircle(Color.White.copy(alpha = 0.7f), r * 0.68f, c, style = Stroke(width = r * 0.025f))
-        // a little fader slot with its knob: over to the open side while held
-        drawLine(Color(0xFF5A3A70), Offset(c.x - r * 0.38f, c.y + r * 0.22f), Offset(c.x + r * 0.38f, c.y + r * 0.22f), strokeWidth = r * 0.06f, cap = StrokeCap.Round)
-        val kx = if (held) c.x + r * 0.38f else c.x - r * 0.38f
-        drawRoundRect(if (held) NeonTeal else PaleGold, Offset(kx - r * 0.08f, c.y + r * 0.1f), Size(r * 0.16f, r * 0.24f), androidx.compose.ui.geometry.CornerRadius(r * 0.04f))
-        val paint = android.graphics.Paint().apply {
-            isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
-            textSize = r * 0.25f; color = if (held) android.graphics.Color.WHITE else android.graphics.Color.rgb(0xFF, 0xE3, 0xA3)
+        val r = minOf(size.width, size.height) / 2f
+        val c = Offset(size.width / 2f, size.height / 2f)
+        deckButton(if (held) Red else NeonPink, held, "CUT",
+            if (held) android.graphics.Color.WHITE else android.graphics.Color.rgb(0xFF, 0xE3, 0xA3))
+        // the fader knob: across to the closed side while held
+        drawLine(Color(0xFF5A3A70), Offset(c.x - r * 0.38f, c.y + r * 0.24f), Offset(c.x + r * 0.38f, c.y + r * 0.24f), strokeWidth = r * 0.06f, cap = StrokeCap.Round)
+        val kx = if (held) c.x - r * 0.38f else c.x + r * 0.38f
+        drawRoundRect(if (held) Red else PaleGold, Offset(kx - r * 0.08f, c.y + r * 0.12f), Size(r * 0.16f, r * 0.24f), androidx.compose.ui.geometry.CornerRadius(r * 0.04f))
+    }
+}
+
+/** The deck's START/STOP button: turns the turntable's motor on and off. */
+@Composable
+fun StartStopButton(on: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+    val toggle by rememberUpdatedState(onToggle)
+    Canvas(
+        modifier = modifier.pointerInput(Unit) {
+            awaitEachGesture { awaitFirstDown().consume(); toggle() }
         }
-        drawContext.canvas.nativeCanvas.drawText("SCRATCH", c.x, c.y - r * 0.02f, paint)
+    ) {
+        val r = minOf(size.width, size.height) / 2f
+        val c = Offset(size.width / 2f, size.height / 2f)
+        deckButton(if (on) NeonTeal else NeonPink, on, if (on) "STOP" else "START",
+            if (on) android.graphics.Color.WHITE else android.graphics.Color.rgb(0xFF, 0xE3, 0xA3))
+        // the strobe light: lit while the platter turns
+        drawCircle(if (on) Color(0xFFFF3B3B) else Color(0xFF4A2030), r * 0.07f, Offset(c.x, c.y + r * 0.32f))
     }
 }

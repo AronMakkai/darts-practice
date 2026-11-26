@@ -103,7 +103,7 @@ object Music {
     @Volatile private var scratchTarget = 0.0     // where the needle sits: 0..1 through the sample (outside = blank groove)
     @Volatile private var scratchVel = 0.0        // how fast the record is moving, in sample-lengths a second
     @Volatile private var scratchSeq = 0          // bumps with every update from the screen
-    @Volatile private var faderOpen = false       // open while the SCRATCH button is held
+    @Volatile private var faderOpen = true        // the CUT button closes it while held
     private var scratchPcm: FloatArray? = null
 
     /**
@@ -112,7 +112,7 @@ object Music {
      * instead of lurching once a frame (which turns a voice into laser zaps).
      */
     fun scratchTo(frac: Double, fracPerSec: Double) { scratchTarget = frac; scratchVel = fracPerSec; scratchSeq++ }
-    /** The fader: open while the SCRATCH button is held. */
+    /** The fader: open unless the CUT button is held. */
     fun setFader(open: Boolean) { faderOpen = open }
 
     /**
@@ -172,28 +172,38 @@ object Music {
     }
 
     private fun streamMenu(pcm: ShortArray) {
-        val minBuf = AudioTrack.getMinBufferSize(RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT).coerceAtLeast(1024)
+        // As little delay as the phone allows between a finger on the record (or the CUT button) and the
+        // speaker: the low-latency output path, the smallest buffer it will take, and tiny chunks
+        // (the fast path only opens at the phone's own output rate, so this stream runs at that rate
+        // and steps through the 22 kHz tune and sample at a fractional speed)
+        val outRate = try { AudioTrack.getNativeOutputSampleRate(android.media.AudioManager.STREAM_MUSIC) } catch (e: Exception) { 48000 }
+            .let { if (it in 8000..192000) it else 48000 }
+        val minBuf = AudioTrack.getMinBufferSize(outRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT).coerceAtLeast(256)
         val track = try {
-            AudioTrack(
-                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build(),
-                AudioFormat.Builder().setSampleRate(RATE).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build(),
-                minBuf, AudioTrack.MODE_STREAM, android.media.AudioManager.AUDIO_SESSION_ID_GENERATE
-            )
+            val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
+            val fmt = AudioFormat.Builder().setSampleRate(outRate).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build()
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                AudioTrack.Builder().setAudioAttributes(attrs).setAudioFormat(fmt).setBufferSizeInBytes(minBuf)
+                    .setTransferMode(AudioTrack.MODE_STREAM).setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY).build()
+            } else {
+                AudioTrack(attrs, fmt, minBuf, AudioTrack.MODE_STREAM, android.media.AudioManager.AUDIO_SESSION_ID_GENERATE)
+            }
         } catch (e: Exception) { return }
         try {
             val smp = scratchPcm ?: renderScratchSample().also { scratchPcm = it }
             track.setVolume(0.55f)
             track.play()
             val n = pcm.size
-            val chunk = ShortArray(256)                  // small chunks: the scratch follows the finger closely
-            var pos = 0                                  // the tune: always straight through
+            val chunk = ShortArray(192)                  // tiny chunks (4 ms at 48 kHz): the scratch follows the finger closely
+            val step = RATE.toDouble() / outRate         // tune samples per output sample
+            var pos = 0.0                                // the tune: always straight through
             var sPos = scratchTarget                     // the needle, in fractions of the sample (outside 0..1 = blank groove)
             var est = sPos                               // where the record is now, run on between screen frames
             var estVel = 0.0                             // its speed, sample-lengths per output sample
             var seq = scratchSeq
             var v = 0.0                                  // the needle's speed, per output sample
             var gate = 0f                                // smooths the sample in and out at the arc's ends
-            var fader = 0f
+            var fader = 1f
             val last = (smp.size - 2).toDouble()
             val perSample = 1.0 / last                   // one sample's step, in fractions
             while (menuWanted) {
@@ -203,22 +213,24 @@ object Music {
                     // the record went once round: jump the needle with it rather than whizz across the sample
                     if (kotlin.math.abs(target - est) > 0.5) { sPos += target - est }
                     est = target
-                    estVel = scratchVel / RATE
+                    estVel = scratchVel / outRate
                 }
                 val fTarget = if (faderOpen) 1f else 0f
                 for (i in chunk.indices) {
-                    var out = pcm[pos] / 32768f
-                    pos++; if (pos >= n) pos = 0
+                    val p0 = pos.toInt(); val pf = (pos - p0).toFloat()
+                    val q0 = pcm[p0]; val q1 = pcm[if (p0 + 1 >= n) 0 else p0 + 1]
+                    var out = (q0 + (q1 - q0) * pf) / 32768f
+                    pos += step; if (pos >= n) pos -= n
                     est += estVel
-                    // move at the record's own speed, plus a gentle pull to close any gap (~40 ms)
-                    val want = (estVel + (est - sPos) / (RATE * 0.04)).coerceIn(-6.0 * perSample, 6.0 * perSample)
-                    v += (want - v) * 0.004
+                    // move at the record's own speed, plus a quick pull to close any gap (~12 ms)
+                    val want = (estVel + (est - sPos) / (outRate * 0.012)).coerceIn(-8.0 * perSample * step, 8.0 * perSample * step)
+                    v += (want - v) * 0.015
                     sPos += v
                     val inGroove = sPos > 0.0 && sPos < 1.0
-                    val speed = kotlin.math.abs(v / perSample)
+                    val speed = kotlin.math.abs(v / perSample / step)        // 1 = natural pitch
                     val g = if (!inGroove) 0f else (speed * 4.0).coerceAtMost(1.0).toFloat()
-                    gate += (g - gate) * 0.01f
-                    fader += (fTarget - fader) * 0.05f          // a crisp cut, not a click
+                    gate += (g - gate) * 0.005f
+                    fader += (fTarget - fader) * 0.1f           // a cut in well under a millisecond, but no click
                     if (gate > 0.001f && fader > 0.001f) {
                         val x = sPos.coerceIn(0.0, 1.0) * last
                         val i0 = x.toInt(); val f = (x - i0).toFloat()

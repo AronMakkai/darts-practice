@@ -64,9 +64,12 @@ fun MainMenuScreen(navController: NavHostController) {
         // The turntable: half a record showing at the bottom edge, playing the menu tune — scratch it
         val conf = androidx.compose.ui.platform.LocalConfiguration.current
         val recR = minOf(conf.screenWidthDp * 0.34f, conf.screenHeightDp * 0.19f).dp
-        VinylRecord(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(recR))
-        // ...and its fader, in the corner beside it
-        ScratchButton(modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 10.dp).size(minOf(64f, recR.value * 0.55f).dp))
+        var deckOn by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+        VinylRecord(motorOn = deckOn, modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(recR))
+        // ...its fader in one corner, the motor's start/stop in the other
+        val btn = minOf(64f, recR.value * 0.55f).dp
+        CutButton(modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 10.dp).size(btn))
+        StartStopButton(on = deckOn, onToggle = { deckOn = !deckOn }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 10.dp).size(btn))
         TvFilter(modifier = Modifier.fillMaxSize())
     }
 }
