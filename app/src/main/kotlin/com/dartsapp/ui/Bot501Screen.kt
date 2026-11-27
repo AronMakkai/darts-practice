@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -197,6 +198,17 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         shake.animateTo(0f, androidx.compose.animation.core.tween(3500, easing = androidx.compose.animation.core.LinearEasing))
     }
     DisposableEffect(Unit) { onDispose { Music.stopBuild() } }
+    var coachKick by remember { mutableStateOf(0) }               // the nine-darter: the Coach's big moment
+    var coachWink by remember { mutableStateOf(false) }
+    val coachPop = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(coachKick) {
+        if (coachKick == 0) return@LaunchedEffect
+        coachPop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 260f))
+        delay(350); coachWink = true
+        delay(700); coachWink = false
+        delay(1600)
+        coachPop.animateTo(0f, androidx.compose.animation.core.tween(450))
+    }
     var accuracy by remember { mutableStateOf(0.8f) }
     var throwStartMs by remember { mutableStateOf(0L) }
     var lastTapMs by remember { mutableStateOf(0L) }
@@ -238,6 +250,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         Announcer.say("Nine darter!")
         shakeKick++
         starRain++
+        coachKick++
         popText = "9 DARTER!"; popHuge = true; popScore = 180
         popOrigin = Offset(boardPos.x + boardSize.width / 2f, boardPos.y + boardSize.height / 2f)
         popTrigger++
@@ -623,11 +636,20 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         val small = !wide && androidx.compose.ui.platform.LocalConfiguration.current.let { it.screenHeightDp < 760 || it.screenWidthDp < 400 }
 
         @Composable fun header() {
+              // above the panels and the board, so the Coach can swell out over them after a nine-darter
+              Box(modifier = Modifier.zIndex(5f)) {
                 ScreenHeader(
                     if (tournament) "${Tournament.rounds[tourRound.coerceIn(0, 2)]} · first to ${legsPerSet / 2 + 1}" else if (startScore == 301) "301 · 1 Player" else "501 · 1 Player",
                     navController
                 ) {
-                    IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
+                    IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp).zIndex(10f)) {
+                        // after a nine-darter the Coach swells up out of the header and winks at you
+                        CoachHead(modifier = Modifier.size(34.dp).graphicsLayer {
+                            val k = coachPop.value
+                            scaleX = 1f + 2.2f * k; scaleY = 1f + 2.2f * k
+                            translationY = 40.dp.toPx() * k
+                        }, wink = coachWink)
+                    }
                     // TEMPORARY: try the nine-darter effect — the crowd builds for a few seconds, then the nine lands
                     TextButton(onClick = {
                         Music.nineDartBuild()
@@ -635,6 +657,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("9", color = NeonPink, fontWeight = FontWeight.Black) }
                     if (!tournament) TextButton(onClick = { setupOpen = true }) { Text("Match", color = Gold) }
                 }
+              }
         }
         @Composable fun panels() {
                 // Two compact panels
@@ -696,9 +719,9 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     val k = shake.value
                     if (k > 0f) {
                         val t = shake.value * 60f
-                        translationX = kotlin.math.sin(t * 7.3f) * 14.dp.toPx() * k
-                        translationY = kotlin.math.cos(t * 9.1f) * 10.dp.toPx() * k
-                        rotationZ = kotlin.math.sin(t * 5.7f) * 2.5f * k
+                        translationX = kotlin.math.sin(t * 7.3f) * 7.dp.toPx() * k
+                        translationY = kotlin.math.cos(t * 9.1f) * 5.dp.toPx() * k
+                        rotationZ = kotlin.math.sin(t * 5.7f) * 1.2f * k
                     }
                 },
                 contentAlignment = Alignment.Center

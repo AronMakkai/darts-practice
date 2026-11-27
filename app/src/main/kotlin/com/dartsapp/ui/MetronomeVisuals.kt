@@ -635,7 +635,7 @@ fun PowerBar(value: Float, enabled: Boolean, onChange: (Float) -> Unit, modifier
  * shirt with orange, pink and purple shapes and a palm leaf. Three skin tones, no gradients. Fits a square.
  */
 @Composable
-fun CoachHead(modifier: Modifier = Modifier) {
+fun CoachHead(modifier: Modifier = Modifier, wink: Boolean = false) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -735,6 +735,12 @@ fun CoachHead(modifier: Modifier = Modifier) {
         drawCircle(Black, w * 0.011f, Offset(cx + w * 0.125f, h * 0.463f))
         drawRect(skin, Offset(cx - w * 0.18f, h * 0.472f), Size(w * 0.11f, h * 0.014f))
         drawRect(skin, Offset(cx + w * 0.07f, h * 0.472f), Size(w * 0.11f, h * 0.014f))
+        if (wink) {
+            // a cheeky wink: his left eye (our right) squeezed shut under a dropped brow
+            drawOval(skinDark, Offset(cx + w * 0.055f, h * 0.37f), Size(w * 0.15f, h * 0.12f))
+            drawArc(Black, 15f, 150f, false, Offset(cx + w * 0.07f, h * 0.43f), Size(w * 0.11f, h * 0.04f), style = Stroke(width = h * 0.016f, cap = StrokeCap.Round))
+            drawLine(hair, Offset(cx + w * 0.06f, h * 0.41f), Offset(cx + w * 0.21f, h * 0.405f), strokeWidth = h * 0.024f, cap = StrokeCap.Round)
+        }
 
         // Hair: full, swept up and back from a high forehead, grey at the temples
         drawPath(Path().apply {

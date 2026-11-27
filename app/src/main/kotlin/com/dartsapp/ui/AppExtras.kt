@@ -324,7 +324,7 @@ fun InTheZone(on: Boolean, modifier: Modifier = Modifier) {
  * gold, pink and teal, tumbling as they fall, at different sizes and speeds. Taps pass through.
  */
 @Composable
-fun StarRain(trigger: Int, modifier: Modifier = Modifier, count: Int = 140, seconds: Float = 5f) {
+fun StarRain(trigger: Int, modifier: Modifier = Modifier, count: Int = 200, seconds: Float = 5f) {
     if (trigger == 0) return
     var t by remember(trigger) { mutableStateOf(0f) }
     LaunchedEffect(trigger) {
@@ -342,7 +342,7 @@ fun StarRain(trigger: Int, modifier: Modifier = Modifier, count: Int = 140, seco
                 0.6f + rnd.nextFloat() * 0.9f,     // size
                 rnd.nextFloat() * 360f,            // spin start
                 (rnd.nextFloat() - 0.5f) * 400f,   // spin speed
-                rnd.nextInt(3).toFloat(),          // colour
+                (if (rnd.nextFloat() < 0.7f) 0 else 1 + rnd.nextInt(2)).toFloat(),   // colour: mostly gold
                 (rnd.nextFloat() - 0.5f) * 0.08f   // drift
             )
         }
