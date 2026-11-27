@@ -425,10 +425,10 @@ fun PlayerHead(modifier: Modifier = Modifier) {
 private fun DrawScope.drawSilhouette() {
     val w = size.width; val h = size.height; val cx = w / 2f
     val body = Color(0xFF120D18)
-    // a bright stage glow behind him, so he reads as a silhouette: hot pink-orange at head height,
-    // falling off to purple at the corners
+    // a dim stage glow behind him, so he still reads as a silhouette: dusky pink at head height,
+    // falling off to deep purple at the corners
     drawRect(Brush.radialGradient(
-        0f to Color(0xFFFFB27A), 0.35f to Color(0xFFFF5E9A), 0.75f to Color(0xFF7A3AA8), 1f to Color(0xFF3A1E5A),
+        0f to Color(0xFFB4547A), 0.4f to Color(0xFF6E2C6E), 0.8f to Color(0xFF341A4C), 1f to Color(0xFF1E1030),
         center = Offset(cx, h * 0.4f), radius = maxOf(w, h) * 0.75f))
     val shoulders = Path().apply {
         moveTo(0f, h); lineTo(w * 0.04f, h * 0.86f)
