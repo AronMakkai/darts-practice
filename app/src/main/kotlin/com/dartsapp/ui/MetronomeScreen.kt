@@ -91,7 +91,7 @@ internal fun stepSeconds(kind: Kind, preset: TimingPreset?, interval: Float, opp
 }.coerceAtLeast(0.25f)
 
 @Composable
-fun MetronomeScreen(navController: NavHostController) {
+fun MetronomeScreen(navController: NavHostController, learnNow: Boolean = false) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("metronome", Context.MODE_PRIVATE) }
 
@@ -154,6 +154,9 @@ fun MetronomeScreen(navController: NavHostController) {
         step = Step.START
         elapsedSec = 0f
     }
+
+    // Came from MY THROWING PACE → "Record my own pace": go straight into learning mode
+    LaunchedEffect(Unit) { if (learnNow) startLearning() }
 
     fun learningStepDone() {
         val now = System.currentTimeMillis()

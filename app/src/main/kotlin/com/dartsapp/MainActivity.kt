@@ -32,6 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import com.dartsapp.ui.DartsTheme
 import com.dartsapp.ui.CompactOnSmallScreens
 import com.dartsapp.ui.MainMenuScreen
+import com.dartsapp.ui.PaceScreen
 import com.dartsapp.ui.CheckoutScreen
 import com.dartsapp.ui.DartlessScreen
 import com.dartsapp.ui.ValueCheckerScreen
@@ -85,7 +86,7 @@ fun DartsApp() {
     fun applyAudio(r: String?, foreground: Boolean) {
         if (!foreground) { Music.stopAll(); return }
         when (r) {
-            "menu", "game", "irl", "settings" -> if (Settings.musicOn(context)) Music.startMenu() else Music.stopAll()
+            "menu", "game", "irl", "settings", "pace" -> if (Settings.musicOn(context)) Music.startMenu() else Music.stopAll()
             "dartless", "bot501", "bot501tour", "x01", "x01bot", "valuechecker", "fastcheckout" -> if (Settings.crowdOn(context)) Music.startCrowd() else Music.stopAll()
             else -> Music.stopAll()
         }
@@ -110,6 +111,8 @@ fun DartsApp() {
         composable("valuechecker") { ValueCheckerScreen(navController) }
         composable("fastcheckout") { ValueCheckerScreen(navController, checkoutMode = true) }
         composable("metronome") { MetronomeScreen(navController) }
+        composable("metronome-learn") { MetronomeScreen(navController, learnNow = true) }
+        composable("pace") { PaceScreen(navController) }
         composable("settings") { SettingsScreen(navController) }
         composable("x01") { CompactOnSmallScreens { FiveOhOneScreen(navController) } }
         composable("x01bot") { CompactOnSmallScreens { FiveOhOneScreen(navController, vsBot = true) } }
@@ -133,6 +136,7 @@ fun DartsApp() {
             SubMenuScreen(
                 navController, "IRL",
                 listOf(
+                    "MY THROWING PACE" to "pace",
                     "CHECKOUT" to "checkout",
                     "1 PLAYER 501" to "x01bot",
                     "2 PLAYER 501" to "x01",

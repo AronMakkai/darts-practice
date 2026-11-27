@@ -221,7 +221,7 @@ internal fun ChromeTitle(text: String, modifier: Modifier = Modifier) {
  * rolling band and a faint flicker. Purely visual — it does not intercept touches.
  */
 @Composable
-private fun TvFilter(modifier: Modifier = Modifier) {
+internal fun TvFilter(modifier: Modifier = Modifier) {
     var t by remember { mutableStateOf(0f) }
     LaunchedEffect(Unit) {
         val start = withFrameNanos { it }
