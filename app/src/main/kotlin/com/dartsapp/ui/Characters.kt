@@ -439,8 +439,8 @@ private fun DrawScope.drawSilhouette() {
     }
     drawPath(shoulders, body)
     drawRect(body, Offset(cx - w * 0.14f, h * 0.6f), Size(w * 0.28f, h * 0.18f))                      // neck: a proper bloke's neck
-    drawOval(body, Offset(cx - w * 0.3f, h * 0.4f), Size(w * 0.08f, h * 0.13f))                        // ears
-    drawOval(body, Offset(cx + w * 0.22f, h * 0.4f), Size(w * 0.08f, h * 0.13f))
+    drawOval(body, Offset(cx - w * 0.268f, h * 0.405f), Size(w * 0.056f, h * 0.12f))                  // ears, tucked in close
+    drawOval(body, Offset(cx + w * 0.212f, h * 0.405f), Size(w * 0.056f, h * 0.12f))
     drawOval(body, Offset(cx - w * 0.24f, h * 0.17f), Size(w * 0.48f, h * 0.53f))                      // head
     // Hair: a scruffy crop — the outline broken into tufts that sweep forward (to our left), a few
     // stray strands sticking up
