@@ -51,7 +51,10 @@ enum class Opponent(
         powerLine = "Ay up, duck. Ah'm sixteen-time Metro Darts champion, me... an' that sort o' pressure meks them trebles an' doubles look proper tiny ter whoever's stood oppa-site. Gerron with it, then."),
     COACH("THE COACH", 0.82f, "Your coach — swept-back hair, big grin, that Hawaiian shirt, knows every route in the book",
         powerName = "LOOK OVER THERE",
-        powerLine = "This is not going my way. But being both whimsical and charming has its perks. Look over there...")
+        powerLine = "This is not going my way. But being both whimsical and charming has its perks. Look over there..."),
+    // Unlocked by winning a tournament: he presents the prize, then he's yours to play
+    TROUBLE("DOUBLE TROUBLE", 0.86f, "Glam-pop showman: ponytail, silver jacket and a second helping of chin — lives for the doubles",
+        finishing = 1.1f, flair = true)
 }
 
 /** Where he is from (shown on his bio card); null when he will not say. */
@@ -63,6 +66,7 @@ val Opponent.hometown: String? get() = when (this) {
     Opponent.GOATEE -> "New South Wales, Australia"
     Opponent.TACHE -> "Stoke-on-Trent, UK"
     Opponent.COACH -> null
+    Opponent.TROUBLE -> "Blackpool, UK"
 }
 
 /** His game in a line: the playing style he plays with all the time. */
@@ -74,6 +78,7 @@ val Opponent.specialMove: String get() = when (this) {
     Opponent.GOATEE -> "Combination finisher — deadly once he's on a checkout."
     Opponent.TACHE -> "Heavy scorer — the trebles come easy to him."
     Opponent.COACH -> "Knows every route in the book."
+    Opponent.TROUBLE -> "Double specialist — the doubles look like dustbin lids to him, and he loves a double-double finish."
 }
 
 /** What his special power does to you. */
@@ -85,6 +90,7 @@ val Opponent.powerInfo: String get() = when (this) {
     Opponent.GOATEE -> "Lets his lizards loose: they crawl all over the board on your throws — hit one and your visit is over, no score."
     Opponent.TACHE -> "Piles on the pressure: the trebles and doubles shrink on your throws."
     Opponent.COACH -> "Distracts you and spins the board to a new angle after every dart."
+    Opponent.TROUBLE -> ""
 }
 
 /** Portrait of [who], flat-shaded like the coach. Fits a square. */
@@ -105,6 +111,7 @@ fun OpponentHead(who: Opponent, modifier: Modifier = Modifier, angry: Boolean = 
                 Opponent.GOATEE -> drawGoatee()
                 Opponent.TACHE -> drawTache()
                 Opponent.COACH -> {}
+                Opponent.TROUBLE -> drawTrouble()
             }
             if (angry) angryOverlay()
         }
@@ -400,22 +407,68 @@ private fun DrawScope.drawTache() {
 
 // ---- you ----------------------------------------------------------------------------------------
 
-/** The player's own character: name on the scoreboard and his bio card. */
-const val PLAYER_NAME = "DOUBLE TROUBLE"
-const val PLAYER_BLURB = "Glam-pop walk-on, ponytail, silver jacket and a second helping of chin — loves a double, and they don't always love him back."
-const val PLAYER_STYLE = "Whatever your timing makes him. Throw on the beat and he's a monster."
+/** The player: just "YOU", an everyman in silhouette. */
+const val PLAYER_NAME = "YOU"
+const val PLAYER_BLURB = "An ordinary punter with a set of darts and a dream. No walk-on music. Yet."
+const val PLAYER_STYLE = "Whatever your timing makes you. Throw on the beat and you're a monster."
 
 /**
- * You: DOUBLE TROUBLE. Close-up, flat-shaded like the others. A big round face with rosy cheeks and a
- * double chin, a tall strawberry-blond quiff with sideburns and a ponytail, a cheesy stage grin and a shiny
- * silver jacket with a high collar, lit from the side by purple stage lights. Fits a square.
+ * You: an average bloke in silhouette, the same flat style and framing as the characters — short
+ * hair, ears, a plain t-shirt — dark against the room, with a rim of pink stage light down one side.
  */
 @Composable
 fun PlayerHead(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) { drawPlayer() }
+    Canvas(modifier = modifier) { drawSilhouette() }
 }
 
-private fun DrawScope.drawPlayer() {
+private fun DrawScope.drawSilhouette() {
+    val w = size.width; val h = size.height; val cx = w / 2f
+    val body = Color(0xFF4B4163); val rim = NeonPink
+    val shoulders = Path().apply {
+        moveTo(0f, h); lineTo(w * 0.04f, h * 0.86f)
+        quadraticBezierTo(cx - w * 0.3f, h * 0.76f, cx - w * 0.12f, h * 0.74f)
+        lineTo(cx + w * 0.12f, h * 0.74f)
+        quadraticBezierTo(cx + w * 0.3f, h * 0.76f, w * 0.96f, h * 0.86f)
+        lineTo(w, h); close()
+    }
+    drawPath(shoulders, body)
+    drawRect(body, Offset(cx - w * 0.1f, h * 0.6f), Size(w * 0.2f, h * 0.18f))                       // neck
+    drawOval(body, Offset(cx - w * 0.3f, h * 0.4f), Size(w * 0.08f, h * 0.13f))                        // ears
+    drawOval(body, Offset(cx + w * 0.22f, h * 0.4f), Size(w * 0.08f, h * 0.13f))
+    drawOval(body, Offset(cx - w * 0.24f, h * 0.17f), Size(w * 0.48f, h * 0.53f))                      // head
+    val hair = Path().apply {                                                                            // short hair, a little fuller than the skull
+        moveTo(cx - w * 0.245f, h * 0.4f)
+        quadraticBezierTo(cx - w * 0.28f, h * 0.11f, cx, h * 0.12f)
+        quadraticBezierTo(cx + w * 0.28f, h * 0.11f, cx + w * 0.245f, h * 0.4f); close()
+    }
+    drawPath(hair, body)
+    // the pink rim light down his right side (our left), like the stage lights on the others:
+    // round the hair, down the cheek, the ear and the shoulder
+    drawPath(Path().apply {
+        moveTo(cx - w * 0.05f, h * 0.12f); quadraticBezierTo(cx - w * 0.28f, h * 0.11f, cx - w * 0.245f, h * 0.4f)
+        quadraticBezierTo(cx - w * 0.245f, h * 0.55f, cx - w * 0.17f, h * 0.62f)
+    }, rim.copy(alpha = 0.75f), style = Stroke(width = h * 0.018f, cap = StrokeCap.Round))
+    drawArc(rim.copy(alpha = 0.55f), 120f, 60f, false, Offset(cx - w * 0.3f, h * 0.4f), Size(w * 0.08f, h * 0.13f), style = Stroke(width = h * 0.012f, cap = StrokeCap.Round))
+    drawPath(Path().apply {
+        moveTo(w * 0.05f, h * 0.88f); quadraticBezierTo(cx - w * 0.3f, h * 0.78f, cx - w * 0.13f, h * 0.76f)
+    }, rim.copy(alpha = 0.6f), style = Stroke(width = h * 0.016f, cap = StrokeCap.Round))
+    // the neckline of the t-shirt
+    drawArc(Color(0xFF3A3050), 20f, 140f, false, Offset(cx - w * 0.12f, h * 0.66f), Size(w * 0.24f, h * 0.14f), style = Stroke(width = h * 0.014f))
+}
+
+// ---- Double Trouble -----------------------------------------------------------------------------
+
+/**
+ * DOUBLE TROUBLE, the tournament prize-giver: close-up, flat-shaded like the others. A big round face
+ * with rosy cheeks and a double chin, a tall strawberry-blond quiff with sideburns and a ponytail,
+ * a cheesy stage grin and a shiny silver jacket, lit from the side by purple stage lights. Fits a square.
+ */
+@Composable
+fun DoubleTroubleHead(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) { drawTrouble() }
+}
+
+private fun DrawScope.drawTrouble() {
     val w = size.width; val h = size.height; val cx = w / 2f
     val s = Skin(Color(0xFFF2B99A), Color(0xFFD48E72), Color(0xFFFCD6C0))
     val hair = Color(0xFFD9A35A); val hairDark = Color(0xFFB07A3A); val hairLight = Color(0xFFF2CC86)

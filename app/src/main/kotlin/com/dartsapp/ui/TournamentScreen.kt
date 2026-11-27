@@ -75,7 +75,7 @@ fun TournamentScreen(navController: NavHostController) {
                 )
                 Spacer(Modifier.height(20.dp))
                 // The field, big, in a neon-framed line-up: tap any of them for his bio
-                for (row in Opponent.values().filter { it != Opponent.COACH || coachUnlocked }.chunked(3)) {
+                for (row in Opponent.values().filter { it != Opponent.TROUBLE && (it != Opponent.COACH || coachUnlocked) }.chunked(3)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(vertical = 5.dp)) {
                         for (o in row) {
                             Column(
@@ -141,6 +141,28 @@ fun TournamentScreen(navController: NavHostController) {
 /** What the tournament winner takes home (in the game). Edit to change the tag. */
 const val PRIZE_NAME = "SL-2000 RECORD PLAYER"
 
+/** The prize: a little silver turntable with a record on it. Fits a 4:3 box. */
+@Composable
+private fun TurntableIcon(modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val w = size.width; val h = size.height
+        // silver plinth
+        drawRoundRect(Color(0xFFB9BDC9), size = androidx.compose.ui.geometry.Size(w, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(h * 0.12f))
+        drawRoundRect(Color(0xFF7D8292), topLeft = androidx.compose.ui.geometry.Offset(0f, h * 0.86f), size = androidx.compose.ui.geometry.Size(w, h * 0.14f))
+        // platter and record
+        val c = androidx.compose.ui.geometry.Offset(w * 0.4f, h * 0.48f)
+        drawCircle(Color(0xFF0E0714), h * 0.4f, c)
+        drawCircle(Color(0xFF2A1838), h * 0.3f, c, style = androidx.compose.ui.graphics.drawscope.Stroke(width = h * 0.02f))
+        drawCircle(Color(0xFFFF4F8B), h * 0.13f, c)
+        drawCircle(Color(0xFFFFF1A8), h * 0.03f, c)
+        // tonearm
+        drawCircle(Color(0xFF5A5A6E), h * 0.08f, androidx.compose.ui.geometry.Offset(w * 0.86f, h * 0.18f))
+        drawLine(Color(0xFFEDEFF5), androidx.compose.ui.geometry.Offset(w * 0.86f, h * 0.18f), androidx.compose.ui.geometry.Offset(w * 0.6f, h * 0.62f), strokeWidth = h * 0.06f)
+        // pitch fader
+        drawLine(Color(0xFF5A5A6E), androidx.compose.ui.geometry.Offset(w * 0.9f, h * 0.45f), androidx.compose.ui.geometry.Offset(w * 0.9f, h * 0.8f), strokeWidth = h * 0.05f)
+    }
+}
+
 /** A neon price-tag style badge: a little silver turntable and "PRIZE: ..." */
 @Composable
 private fun PrizeTag(modifier: Modifier = Modifier) {
@@ -148,23 +170,7 @@ private fun PrizeTag(modifier: Modifier = Modifier) {
         modifier = modifier.neonFrame(Gold, corner = 8.dp).padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        androidx.compose.foundation.Canvas(modifier = Modifier.size(width = 40.dp, height = 30.dp)) {
-            val w = size.width; val h = size.height
-            // silver plinth
-            drawRoundRect(Color(0xFFB9BDC9), size = androidx.compose.ui.geometry.Size(w, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(h * 0.12f))
-            drawRoundRect(Color(0xFF7D8292), topLeft = androidx.compose.ui.geometry.Offset(0f, h * 0.86f), size = androidx.compose.ui.geometry.Size(w, h * 0.14f))
-            // platter and record
-            val c = androidx.compose.ui.geometry.Offset(w * 0.4f, h * 0.48f)
-            drawCircle(Color(0xFF0E0714), h * 0.4f, c)
-            drawCircle(Color(0xFF2A1838), h * 0.3f, c, style = androidx.compose.ui.graphics.drawscope.Stroke(width = h * 0.02f))
-            drawCircle(Color(0xFFFF4F8B), h * 0.13f, c)
-            drawCircle(Color(0xFFFFF1A8), h * 0.03f, c)
-            // tonearm
-            drawCircle(Color(0xFF5A5A6E), h * 0.08f, androidx.compose.ui.geometry.Offset(w * 0.86f, h * 0.18f))
-            drawLine(Color(0xFFEDEFF5), androidx.compose.ui.geometry.Offset(w * 0.86f, h * 0.18f), androidx.compose.ui.geometry.Offset(w * 0.6f, h * 0.62f), strokeWidth = h * 0.06f)
-            // pitch fader
-            drawLine(Color(0xFF5A5A6E), androidx.compose.ui.geometry.Offset(w * 0.9f, h * 0.45f), androidx.compose.ui.geometry.Offset(w * 0.9f, h * 0.8f), strokeWidth = h * 0.05f)
-        }
+        TurntableIcon(modifier = Modifier.size(width = 40.dp, height = 30.dp))
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text("PRIZE", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 2.sp, color = BrightGold, fontSize = 12.sp, lineHeight = 13.sp)
             Text(PRIZE_NAME, fontFamily = FontFamily.Monospace, color = PaleGold, fontSize = 9.sp, lineHeight = 10.sp)
@@ -263,9 +269,13 @@ internal fun ChampionSplash(onIrl: () -> Unit, onDismiss: () -> Unit) {
         ) {
             Text("🏆", fontSize = 44.sp)
             Text("CHAMPION", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 6.sp, color = BrightGold, fontSize = 34.sp)
-            CoachHead(modifier = Modifier.padding(vertical = 10.dp).size(230.dp))
+            // Double Trouble presents the prize: the record player, held out in front of him
+            Box(modifier = Modifier.padding(vertical = 10.dp).size(width = 260.dp, height = 230.dp)) {
+                DoubleTroubleHead(modifier = Modifier.align(Alignment.TopStart).size(210.dp))
+                TurntableIcon(modifier = Modifier.align(Alignment.BottomEnd).size(width = 128.dp, height = 96.dp).graphicsLayer { rotationZ = -8f })
+            }
             Box(modifier = Modifier.background(Charcoal).border(2.dp, Gold).padding(horizontal = 18.dp, vertical = 6.dp)) {
-                Text("THE COACH", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, fontWeight = FontWeight.Black, color = Gold, fontSize = 16.sp)
+                Text("DOUBLE TROUBLE", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, fontWeight = FontWeight.Black, color = Gold, fontSize = 16.sp)
             }
             Box(
                 modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
@@ -275,7 +285,7 @@ internal fun ChampionSplash(onIrl: () -> Unit, onDismiss: () -> Unit) {
                     .padding(16.dp)
             ) {
                 Text(
-                    if (page == 0) "Congratulations, champion! You beat the lot of them — and you now have the throwing rhythm of a professional darts player. Your prize, the record player, is waiting on the main menu."
+                    if (page == 0) "Congratulations, champion! Double Trouble here, darling. You beat the lot of them — you've got the throwing rhythm of a pro. This beauty is yours: the SL-2000 record player, waiting for you on the main menu. And fancy a rematch? I'm in the opponents list now. Bring your doubles."
                     else "For real, the swipe and tap timing is based on real darts, and there is a metronome function in the Darts IRL menu to explore this further. GAME ON!",
                     color = BubbleText, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
                 )

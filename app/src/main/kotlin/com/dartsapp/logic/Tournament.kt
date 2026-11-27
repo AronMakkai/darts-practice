@@ -39,7 +39,7 @@ object Tournament {
 
     /** Draws the bracket. Seeded so your path gets harder: weakest first, strongest side kept away from you. */
     fun start(coachUnlocked: Boolean = false) {
-        val ops = Opponent.values().filter { it != Opponent.COACH }.sortedBy { it.skill }       // weakest .. strongest
+        val ops = Opponent.values().filter { it != Opponent.COACH && it != Opponent.TROUBLE }.sortedBy { it.skill }       // weakest .. strongest
         val you = Entrant("YOU", null)
         val list = ops.map { Entrant(it.displayName, it) }
         // The eighth slot: the Coach if you have earned him, otherwise a bye (a bye has no skill, so it always loses)

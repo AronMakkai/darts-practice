@@ -113,6 +113,14 @@ object Banter {
             "I'd write it on the whiteboard but you'd just stand in front of it.",
             "It's giving 'student who revised the wrong exam'. You revised nothing. But still.",
             "Right. Dartless Checkout. Fifty perfect ones. Off you go. Don't argue."
+        ),
+        Opponent.TROUBLE to listOf(
+            "Double top, darling. Twice. They don't call me Double Trouble for my dancing. Well, they do a bit.",
+            "I gave you that record player and this is how you thank me? By losing beautifully. Fair.",
+            "Did you hear that? That was the sound of my ponytail swishing in victory.",
+            "Doubles are like old friends, sweetheart. Mine always turn up.",
+            "Chin up. Both of them, in my case.",
+            "Lovely effort. Encore? No? Probably wise."
         )
     )
 
@@ -174,6 +182,13 @@ object Banter {
             "Right. New rule: you're not allowed to beat me in front of the Cockney.",
             "I taught you the book routes. I did not teach you to use them against me. Cheeky.",
             "Lovely finish, pet. Now help me find my glasses, I've been throwing blind."
+        ),
+        Opponent.TROUBLE to listOf(
+            "Beaten! By the champion I crowned! I'm going to need a moment and a mirror.",
+            "You've got double trouble written all over you. I'd sue, but it suits you.",
+            "My jacket's still shinier than your average. Small mercies.",
+            "Gorgeous finishing. I taught you that. I didn't, but let me have it.",
+            "Fine. Keep the record player. And my dignity, apparently."
         )
     )
 }

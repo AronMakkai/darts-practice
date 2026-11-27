@@ -58,7 +58,7 @@ fun FiveOhOneScreen(navController: NavHostController, vsBot: Boolean = false) {
     val context = LocalContext.current
     val difficulty = remember { Settings.difficulty(context) }
     var opponent by remember {
-        mutableStateOf(Opponent.values()[Settings.opponentIndex(context).coerceIn(0, Opponent.values().size - 1)].let { if (it == Opponent.COACH) Opponent.MULLET else it })
+        mutableStateOf(Opponent.values()[Settings.opponentIndex(context).coerceIn(0, Opponent.values().size - 1)].let { if (it == Opponent.COACH || (it == Opponent.TROUBLE && !Settings.turntableUnlocked(context))) Opponent.MULLET else it })
     }
     var botKey by remember { mutableStateOf(0) }          // bumps when it is the character's turn
     var botThrowing by remember { mutableStateOf(false) }
@@ -426,7 +426,7 @@ private fun MatchSetupDialog(
                 } else {
                     // You on your real board against one of the characters
                     Text("Opponent", fontSize = 12.sp, color = Grey)
-                    for (row in Opponent.values().filter { it != Opponent.COACH }.chunked(3)) {
+                    for (row in Opponent.values().filter { it != Opponent.COACH && (it != Opponent.TROUBLE || Settings.turntableUnlocked(context)) }.chunked(3)) {
                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                             for (o in row) {
                                 val sel = o == opponent

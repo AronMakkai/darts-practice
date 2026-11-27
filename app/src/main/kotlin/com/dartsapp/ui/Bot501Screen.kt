@@ -157,7 +157,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         mutableStateOf(
             if (tournament) (Tournament.currentOpponent() ?: Opponent.MULLET)
             else Opponent.values()[Settings.opponentIndex(context).coerceIn(0, Opponent.values().size - 1)]
-                .let { if (it == Opponent.COACH) Opponent.MULLET else it }   // the Coach only plays in tournaments
+                .let { if (it == Opponent.COACH || (it == Opponent.TROUBLE && !Settings.turntableUnlocked(context))) Opponent.MULLET else it }   // the Coach only plays in tournaments; Double Trouble once you've won one
         )
     }
     val tourMul = if (tournament) Tournament.skillMultiplier(tourRound) else 1f
@@ -565,7 +565,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             text = {
                 Column {
                     Text("Opponent", fontSize = 12.sp, color = Grey)
-                    for (row in Opponent.values().filter { it != Opponent.COACH }.chunked(3)) {
+                    for (row in Opponent.values().filter { it != Opponent.COACH && (it != Opponent.TROUBLE || Settings.turntableUnlocked(context)) }.chunked(3)) {
                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                             for (o in row) {
                                 val sel = o == opponent
