@@ -654,11 +654,6 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                             .onGloballyPositioned { coachIconPos = it.positionInRoot() }
                             .graphicsLayer { alpha = if (coachPop.value > 0.01f) 0f else 1f })
                     }
-                    // TEMPORARY: try the nine-darter effect — the crowd builds for a few seconds, then the nine lands
-                    TextButton(onClick = {
-                        Music.nineDartBuild()
-                        scope.launch { delay(4000); nineDarterCelebration() }
-                    }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("9", color = NeonPink, fontWeight = FontWeight.Black) }
                     if (!tournament) TextButton(onClick = { setupOpen = true }) { Text("Match", color = Gold) }
                 }
               }
