@@ -426,7 +426,7 @@ private fun MatchSetupDialog(
                 } else {
                     // You on your real board against one of the characters
                     Text("Opponent", fontSize = 12.sp, color = Grey)
-                    for (row in Opponent.values().filter { it != Opponent.COACH && (it != Opponent.TROUBLE || Settings.turntableUnlocked(context)) }.chunked(3)) {
+                    for (row in Opponent.values().filter { it != Opponent.COACH && (it != Opponent.TROUBLE || Settings.turntableUnlocked(LocalContext.current)) }.chunked(3)) {
                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                             for (o in row) {
                                 val sel = o == opponent
