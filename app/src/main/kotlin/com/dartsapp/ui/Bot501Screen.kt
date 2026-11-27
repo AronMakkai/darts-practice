@@ -200,6 +200,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     DisposableEffect(Unit) { onDispose { Music.stopBuild() } }
     var coachKick by remember { mutableStateOf(0) }               // the nine-darter: the Coach's big moment
     var coachWink by remember { mutableStateOf(false) }
+    var coachIconPos by remember { mutableStateOf(Offset.Zero) }  // where the header's Coach sits, so the big one grows from there
     val coachPop = remember { androidx.compose.animation.core.Animatable(0f) }
     LaunchedEffect(coachKick) {
         if (coachKick == 0) return@LaunchedEffect
@@ -647,13 +648,11 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     if (tournament) "${Tournament.rounds[tourRound.coerceIn(0, 2)]} · first to ${legsPerSet / 2 + 1}" else if (startScore == 301) "301 · 1 Player" else "501 · 1 Player",
                     navController
                 ) {
-                    IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp).zIndex(10f)) {
-                        // after a nine-darter the Coach swells up out of the header and winks at you
-                        CoachHead(modifier = Modifier.size(34.dp).graphicsLayer {
-                            val k = coachPop.value
-                            scaleX = 1f + 2.2f * k; scaleY = 1f + 2.2f * k
-                            translationY = 40.dp.toPx() * k
-                        }, wink = coachWink)
+                    IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp)) {
+                        // (after a nine-darter he leaves this button: a full-size copy pops out over the whole screen)
+                        CoachHead(modifier = Modifier.size(34.dp)
+                            .onGloballyPositioned { coachIconPos = it.positionInRoot() }
+                            .graphicsLayer { alpha = if (coachPop.value > 0.01f) 0f else 1f })
                     }
                     // TEMPORARY: try the nine-darter effect — the crowd builds for a few seconds, then the nine lands
                     TextButton(onClick = {
@@ -848,6 +847,26 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         BigPop(trigger = popTrigger, text = popText, huge = popHuge, origin = popOrigin, modifier = Modifier.fillMaxSize(), score = popScore)
         BustOverlay(trigger = bustTrigger, origin = bustOrigin, modifier = Modifier.fillMaxSize())
         StarRain(trigger = starRain)
+        // The nine-darter Coach: out of his little round button and in front of everything, swelling up
+        // from where he sits in the header, dropping down over the game, and winking at you
+        if (coachPop.value > 0.01f) {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val base = with(density) { 34.dp.toPx() }
+            CoachHead(
+                modifier = Modifier
+                    .offset { androidx.compose.ui.unit.IntOffset(coachIconPos.x.toInt(), coachIconPos.y.toInt()) }
+                    .size(34.dp)
+                    .graphicsLayer {
+                        val k = coachPop.value
+                        val s = 1f + 3.4f * k
+                        scaleX = s; scaleY = s
+                        // grow down and in towards the middle so the whole of him stays on screen
+                        translationY = base * 1.9f * k
+                        translationX = -base * 1.2f * k
+                    },
+                wink = coachWink
+            )
+        }
         StarBurst(trigger = camBurst, origin = Offset(boardPos.x + boardSize.width / 2f, boardPos.y + boardSize.height / 2f), modifier = Modifier.fillMaxSize(), count = 70)
     }
 }
