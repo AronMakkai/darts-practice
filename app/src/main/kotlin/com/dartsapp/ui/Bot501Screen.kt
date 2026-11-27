@@ -246,9 +246,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         1 -> Music.oneDartFinish(rem)
         else -> false
     }
-    fun nineDarterCelebration() {
-        Music.nineDarter()
-        Announcer.say("Nine darter!")
+    fun nineDarterCelebration(cheered: Boolean = false) {
+        if (!cheered) { Music.nineDarter(); Announcer.say("Nine darter!") }
         shakeKick++
         starRain++
         coachKick++
@@ -258,7 +257,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         Sounds.playCheckoutJingle()
     }
 
-    fun celebrate(i: Int, score: Int, finished: Boolean) {
+    fun celebrate(i: Int, score: Int, finished: Boolean, cheered: Boolean = false) {
         val text = when {
             finished && score >= 100 -> "$score OUT!"
             score == 180 -> "180!"
@@ -271,8 +270,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         popOrigin = marks.lastOrNull()?.let { boardPoint(it.x, it.y) } ?: panelCentre(i)
         popTrigger++
         if (popHuge) Sounds.playCheckoutJingle()
-        Sounds.cheer(big = popHuge)
-        if (finished) Announcer.checkout(score) else Announcer.score(score)
+        if (!cheered) {
+            Sounds.cheer(big = popHuge)
+            if (finished) Announcer.checkout(score) else Announcer.score(score)
+        }
     }
 
     fun legsNeeded() = legsPerSet / 2 + 1
@@ -308,16 +309,16 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     if (tournament) LaunchedEffect(Unit) { if (sides[0].darts == 0 && sides[1].darts == 0 && !matchOver) startMatch() }
 
     /** Handles a leg won by side [i]; returns true if the match is over. */
-    fun legWon(i: Int, visitScore: Int, dartsThisLeg: Int) {
+    fun legWon(i: Int, visitScore: Int, dartsThisLeg: Int, cheered: Boolean = false) {
         val s = sides[i]
         val o = sides[1 - i]
         s.legs++
         if (i == 0 && dartsThisLeg == 9 && startScore == 501) {
-            nineDarterCelebration()
+            nineDarterCelebration(cheered)
         } else {
             Music.stopBuild()
-            celebrate(i, visitScore, finished = true)
-            if (visitScore < 100) { Announcer.gameShot(); Sounds.cheer(big = true) }
+            celebrate(i, visitScore, finished = true, cheered = cheered)
+            if (visitScore < 100 && !cheered) { Announcer.gameShot(); Sounds.cheer(big = true) }
         }
         var text = "${s.name} takes the leg in $dartsThisLeg darts"
         if (s.legs >= legsNeeded()) {
@@ -433,6 +434,9 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             newRem == 0 && hit.isDoubleOut -> {
                 me.scored += hit.score; me.remaining = 0
                 val visit = thrown.sumOf { it.score }
+                // The crowd goes up the instant the double lands, not after the replay
+                if (me.darts == 9 && startScore == 501) { Music.nineDarter(); Announcer.say("Nine darter!") }
+                else { Music.stopBuild(); Sounds.cheer(big = true); if (visit >= 100) Announcer.checkout(visit) else Announcer.gameShot() }
                 // GAME SHOT: replay the winning dart — zoom in, slow motion — then take the leg
                 camPoint = Offset(lx, ly); camTrigger++; camBusy = true
                 message = "${hit.label} — GAME SHOT!"
@@ -440,7 +444,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 scope.launch {
                     delay((GAME_SHOT_SECONDS * 1000).toLong())
                     camBusy = false
-                    legWon(0, visit, me.darts)
+                    legWon(0, visit, me.darts, cheered = true)
                 }
             }
             newRem < 0 || newRem == 1 || newRem == 0 -> {
@@ -504,9 +508,11 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     bot.scored += hit.score; bot.remaining = 0; visit += hit.score
                     message = "$botName: ${hit.label} — game shot"
                     version++
+                    // the crowd and the caller go the instant the double lands, before the replay
+                    Music.stopBuild(); Sounds.cheer(big = true); if (visit >= 100) Announcer.checkout(visit) else Announcer.gameShot()
                     camPoint = Offset(lx, ly); camTrigger++
                     delay((GAME_SHOT_SECONDS * 1000).toLong() + 200)
-                    legWon(1, visit, bot.darts)
+                    legWon(1, visit, bot.darts, cheered = true)
                     done = true
                 }
                 newRem < 0 || newRem == 1 || newRem == 0 -> {
