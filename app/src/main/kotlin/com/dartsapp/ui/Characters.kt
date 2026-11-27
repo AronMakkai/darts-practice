@@ -438,7 +438,7 @@ private fun DrawScope.drawSilhouette() {
         lineTo(w, h); close()
     }
     drawPath(shoulders, body)
-    drawRect(body, Offset(cx - w * 0.1f, h * 0.6f), Size(w * 0.2f, h * 0.18f))                       // neck
+    drawRect(body, Offset(cx - w * 0.14f, h * 0.6f), Size(w * 0.28f, h * 0.18f))                      // neck: a proper bloke's neck
     drawOval(body, Offset(cx - w * 0.3f, h * 0.4f), Size(w * 0.08f, h * 0.13f))                        // ears
     drawOval(body, Offset(cx + w * 0.22f, h * 0.4f), Size(w * 0.08f, h * 0.13f))
     drawOval(body, Offset(cx - w * 0.24f, h * 0.17f), Size(w * 0.48f, h * 0.53f))                      // head
