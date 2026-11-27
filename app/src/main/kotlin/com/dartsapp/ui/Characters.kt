@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -423,7 +424,12 @@ fun PlayerHead(modifier: Modifier = Modifier) {
 
 private fun DrawScope.drawSilhouette() {
     val w = size.width; val h = size.height; val cx = w / 2f
-    val body = Color(0xFF4B4163); val rim = NeonPink
+    val body = Color(0xFF120D18)
+    // a bright stage glow behind him, so he reads as a silhouette: hot pink-orange at head height,
+    // falling off to purple at the corners
+    drawRect(Brush.radialGradient(
+        0f to Color(0xFFFFB27A), 0.35f to Color(0xFFFF5E9A), 0.75f to Color(0xFF7A3AA8), 1f to Color(0xFF3A1E5A),
+        center = Offset(cx, h * 0.4f), radius = maxOf(w, h) * 0.75f))
     val shoulders = Path().apply {
         moveTo(0f, h); lineTo(w * 0.04f, h * 0.86f)
         quadraticBezierTo(cx - w * 0.3f, h * 0.76f, cx - w * 0.12f, h * 0.74f)
@@ -436,24 +442,37 @@ private fun DrawScope.drawSilhouette() {
     drawOval(body, Offset(cx - w * 0.3f, h * 0.4f), Size(w * 0.08f, h * 0.13f))                        // ears
     drawOval(body, Offset(cx + w * 0.22f, h * 0.4f), Size(w * 0.08f, h * 0.13f))
     drawOval(body, Offset(cx - w * 0.24f, h * 0.17f), Size(w * 0.48f, h * 0.53f))                      // head
-    val hair = Path().apply {                                                                            // short hair, a little fuller than the skull
-        moveTo(cx - w * 0.245f, h * 0.4f)
-        quadraticBezierTo(cx - w * 0.28f, h * 0.11f, cx, h * 0.12f)
-        quadraticBezierTo(cx + w * 0.28f, h * 0.11f, cx + w * 0.245f, h * 0.4f); close()
+    // Hair: a scruffy crop — the outline broken into tufts that sweep forward (to our left), a few
+    // stray strands sticking up
+    val hcy = h * 0.37f; val rx = w * 0.25f; val ry = h * 0.245f
+    fun onHead(deg: Double, r: Float, lean: Float = 0f) = Offset(
+        cx + (rx * r * kotlin.math.cos(Math.toRadians(deg))).toFloat() + lean,
+        hcy + (ry * r * kotlin.math.sin(Math.toRadians(deg))).toFloat())
+    // the outline: rounded tufts all over the top, each one leaning forward (to our left)
+    fun Path.tufts() {
+        val start = onHead(190.0, 1f)
+        moveTo(start.x, start.y)
+        val tufts = 9
+        for (k in 0 until tufts) {
+            val a0 = 190.0 + 160.0 * k / tufts; val a1 = 190.0 + 160.0 * (k + 1) / tufts
+            val tip = onHead((a0 + a1) / 2 - 4.0, 1.2f + (if (k % 3 == 1) 0.06f else 0f), lean = -w * 0.02f)
+            val end = onHead(a1, 1f)
+            quadraticBezierTo(tip.x, tip.y, end.x, end.y)
+        }
+    }
+    val outline = Path().apply { tufts() }
+    val hair = Path().apply {
+        tufts()
+        lineTo(cx + w * 0.245f, h * 0.42f); lineTo(cx - w * 0.245f, h * 0.42f); close()
     }
     drawPath(hair, body)
-    // the pink rim light down his right side (our left), like the stage lights on the others:
-    // round the hair, down the cheek, the ear and the shoulder
-    drawPath(Path().apply {
-        moveTo(cx - w * 0.05f, h * 0.12f); quadraticBezierTo(cx - w * 0.28f, h * 0.11f, cx - w * 0.245f, h * 0.4f)
-        quadraticBezierTo(cx - w * 0.245f, h * 0.55f, cx - w * 0.17f, h * 0.62f)
-    }, rim.copy(alpha = 0.75f), style = Stroke(width = h * 0.018f, cap = StrokeCap.Round))
-    drawArc(rim.copy(alpha = 0.55f), 120f, 60f, false, Offset(cx - w * 0.3f, h * 0.4f), Size(w * 0.08f, h * 0.13f), style = Stroke(width = h * 0.012f, cap = StrokeCap.Round))
-    drawPath(Path().apply {
-        moveTo(w * 0.05f, h * 0.88f); quadraticBezierTo(cx - w * 0.3f, h * 0.78f, cx - w * 0.13f, h * 0.76f)
-    }, rim.copy(alpha = 0.6f), style = Stroke(width = h * 0.016f, cap = StrokeCap.Round))
-    // the neckline of the t-shirt
-    drawArc(Color(0xFF3A3050), 20f, 140f, false, Offset(cx - w * 0.12f, h * 0.66f), Size(w * 0.24f, h * 0.14f), style = Stroke(width = h * 0.014f))
+    // a couple of stray hairs on the crown
+    drawPath(Path().apply { moveTo(cx + w * 0.01f, h * 0.12f); quadraticBezierTo(cx - w * 0.01f, h * 0.08f, cx - w * 0.04f, h * 0.075f) },
+        body, style = Stroke(width = h * 0.01f, cap = StrokeCap.Round))
+    drawPath(Path().apply { moveTo(cx + w * 0.08f, h * 0.125f); quadraticBezierTo(cx + w * 0.08f, h * 0.09f, cx + w * 0.06f, h * 0.07f) },
+        body, style = Stroke(width = h * 0.008f, cap = StrokeCap.Round))
+    // the faintest rim of light catching the tufts
+    drawPath(outline, Color(0xFFFFD2B0).copy(alpha = 0.35f), style = Stroke(width = h * 0.007f))
 }
 
 // ---- Double Trouble -----------------------------------------------------------------------------
