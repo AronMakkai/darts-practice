@@ -880,11 +880,18 @@ object Music {
             playOnce(if (muffled) underwater(pcm) else pcm, 1f)
         }
         thread(name = "nine2") {
-            val pcm = synchronized(roarCache) { ninePcm ?: renderRoar(true, seed = 909, voiceScale = 2f, lenSec = 5.5f).also { ninePcm = it } }
+            val pcm = synchronized(roarCache) { ninePcm ?: renderRoar(true, seed = 909, voiceScale = 2.5f, lenSec = 10f, gain = 3.8f).also { ninePcm = it } }
+            playOnce(if (muffled) underwater(pcm) else pcm, 1f)
+        }
+        // ...and a second wave as the place realises what it has just seen
+        thread(name = "nine3") {
+            Thread.sleep(3500)
+            val pcm = synchronized(roarCache) { nine2Pcm ?: renderRoar(true, seed = 919, voiceScale = 2f, lenSec = 7f, gain = 3.4f).also { nine2Pcm = it } }
             playOnce(if (muffled) underwater(pcm) else pcm, 1f)
         }
     }
     private var ninePcm: ShortArray? = null
+    private var nine2Pcm: ShortArray? = null
 
     /** A seamless 4-second loop: lots of voices cheering on top of the whole crowd clapping in time. */
     private fun renderBuild(): ShortArray {
@@ -925,7 +932,7 @@ object Music {
     /** One dart left and a single dart finishes it: a double (2-40) or the bull. */
     fun oneDartFinish(r: Int) = r == 50 || (r in 2..40 && r % 2 == 0)
 
-    private fun renderRoar(big: Boolean, seed: Int = if (big) 101 else 57, voiceScale: Float = 1f, lenSec: Float = 0f): ShortArray {
+    private fun renderRoar(big: Boolean, seed: Int = if (big) 101 else 57, voiceScale: Float = 1f, lenSec: Float = 0f, gain: Float = 2.6f): ShortArray {
         val len = if (lenSec > 0f) lenSec else if (big) 3.6f else 2.4f
         val n = (RATE * len).toInt()
         val buf = FloatArray(n)
@@ -953,7 +960,7 @@ object Music {
         for (i in 0 until n) {
             val p = i.toFloat() / n
             val env = minOf(1f, p / 0.12f).let { it * it * (3f - 2f * it) } * (if (p > 0.6f) ((1f - p) / 0.4f).let { it * it * (3f - 2f * it) } else 1f)
-            val x = buf[i] * env * 2.6f
+            val x = buf[i] * env * gain
             buf[i] = x / (1f + kotlin.math.abs(x) * 0.6f)
         }
         return toPcm(buf)

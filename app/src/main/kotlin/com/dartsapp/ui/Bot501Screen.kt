@@ -195,7 +195,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     LaunchedEffect(shakeKick) {
         if (shakeKick == 0) return@LaunchedEffect
         shake.snapTo(1f)
-        shake.animateTo(0f, androidx.compose.animation.core.tween(3500, easing = androidx.compose.animation.core.LinearEasing))
+        shake.animateTo(0f, androidx.compose.animation.core.tween(6500, easing = androidx.compose.animation.core.LinearEasing))
     }
     DisposableEffect(Unit) { onDispose { Music.stopBuild() } }
     var coachKick by remember { mutableStateOf(0) }               // the nine-darter: the Coach's big moment
@@ -720,12 +720,14 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     boardPos = it.positionInRoot(); boardSize = it.size
                 }.gameShotCamera(camT, camPoint.x, camPoint.y).graphicsLayer {
                     // the nine-darter: the whole board rattles with the crowd, dying away over a few seconds
-                    val k = shake.value
-                    if (k > 0f) {
-                        val t = shake.value * 60f
-                        translationX = kotlin.math.sin(t * 7.3f) * 7.dp.toPx() * k
-                        translationY = kotlin.math.cos(t * 9.1f) * 5.dp.toPx() * k
-                        rotationZ = kotlin.math.sin(t * 5.7f) * 1.2f * k
+                    val v = shake.value
+                    if (v > 0f) {
+                        // a steady rattle (same speed throughout) whose size dies away smoothly
+                        val t = (1f - v) * 6.5f                 // seconds since the nine
+                        val k = v * v
+                        translationX = kotlin.math.sin(t * 46f) * 7.dp.toPx() * k
+                        translationY = kotlin.math.cos(t * 57f) * 5.dp.toPx() * k
+                        rotationZ = kotlin.math.sin(t * 36f) * 1.2f * k
                     }
                 },
                 contentAlignment = Alignment.Center
