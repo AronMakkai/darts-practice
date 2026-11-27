@@ -61,7 +61,8 @@ object Sounds {
                     val idx = start + i; if (idx >= n) break
                     val t = i.toFloat() / RATE
                     val env = (1f - exp(-t * 180f)) * exp(-t * 26f)
-                    val body = sin(2 * PI * f * (1f - 0.25f * t / 0.18f) * t).toFloat() + 0.3f * sin(2 * PI * f * 2.1f * t).toFloat()
+                    // the fundamental is felt more than heard; the overtones let a phone speaker carry it
+                    val body = sin(2 * PI * f * (1f - 0.25f * t / 0.18f) * t).toFloat() + 0.6f * sin(2 * PI * f * 2.1f * t).toFloat() + 0.25f * sin(2 * PI * f * 3.2f * t).toFloat()
                     buf[idx] += body * env * amp
                 }
             }
