@@ -852,10 +852,9 @@ object Music {
             }
             // the nine's roars are big renders: get them ready while the crowd builds
             thread(name = "ninePrep") {
-                synchronized(roarCache) {
-                    if (ninePcm == null) ninePcm = renderRoar(true, seed = 909, voiceScale = 2.5f, lenSec = 10f, gain = 3.8f)
-                    if (nine2Pcm == null) nine2Pcm = renderRoar(true, seed = 919, voiceScale = 2f, lenSec = 7f, gain = 3.4f)
-                }
+                // (rendered outside the lock so the other cheers are never held up)
+                if (ninePcm == null) renderRoar(true, seed = 909, voiceScale = 2.5f, lenSec = 10f, gain = 3.8f).let { synchronized(roarCache) { if (ninePcm == null) ninePcm = it } }
+                if (nine2Pcm == null) renderRoar(true, seed = 919, voiceScale = 2f, lenSec = 7f, gain = 3.4f).let { synchronized(roarCache) { if (nine2Pcm == null) nine2Pcm = it } }
             }
             for (i in 1..80) {
                 Thread.sleep(100)
