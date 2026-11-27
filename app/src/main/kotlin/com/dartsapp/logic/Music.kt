@@ -773,6 +773,66 @@ object Music {
         }
     }
 
+    private var oohPcm: ShortArray? = null
+
+    /**
+     * The crowd sitting up: a rising "ooooooh" when you are on for something (two treble 20s, the 180
+     * is on; or two perfect darts leaving a one-dart finish). Softer than a roar, it swells as the
+     * pitch climbs and is cut off sharp, as if everyone is holding their breath for the third dart.
+     */
+    fun anticipation() {
+        thread(name = "ooh") {
+            val pcm = synchronized(roarCache) { oohPcm ?: renderOoh().also { oohPcm = it } }
+            if (muffled) playOnce(underwater(pcm), WET_GAIN * 0.8f) else playOnce(pcm, 0.8f)
+        }
+    }
+
+    private fun renderOoh(): ShortArray {
+        val len = 1.9f
+        val n = (RATE * len).toInt()
+        val buf = FloatArray(n)
+        val rnd = Random(202)
+        for (v in 0 until 60) {
+            val female = rnd.nextFloat() < 0.45f
+            val f0 = (if (female) 220f else 120f) * (0.9f + rnd.nextFloat() * 0.25f)
+            val onset = rnd.nextFloat() * 0.35f
+            val dur = len - onset - rnd.nextFloat() * 0.15f
+            val start = (onset * RATE).toInt(); val d = (dur * RATE).toInt()
+            val rise = 0.3f + rnd.nextFloat() * 0.2f
+            val amp = 0.017f * (0.7f + rnd.nextFloat() * 0.6f)
+            var phase = 0.0
+            val vib = 4.5 + rnd.nextFloat() * 2
+            for (i in 0 until d) {
+                val idx = start + i; if (idx >= n) break
+                val p = i.toFloat() / d
+                // the pitch climbs the whole way: the tension building
+                val f = f0 * (1f + rise * p * p) * (1f + 0.01f * sin(2 * PI * vib * i / RATE).toFloat())
+                phase += 2 * PI * f / RATE
+                // "oo" (300/870) opening slightly towards "oh" (450/800)
+                val f1 = 300f + 150f * p; val f2 = 870f - 70f * p
+                var s = 0.0
+                for (h in 1..8) {
+                    val fh = f * h
+                    s += (1f / (1f + ((fh - f1) / 150f).let { it * it }) + 0.5f / (1f + ((fh - f2) / 220f).let { it * it }) + 0.05f) / h * sin(h * phase)
+                }
+                buf[idx] += (s * amp).toFloat()
+            }
+        }
+        var y = 0f
+        for (i in 0 until n) { y += 0.3f * (buf[i] - y); buf[i] = y }
+        for (i in 0 until n) {
+            val p = i.toFloat() / n
+            // swell in, keep building, then a quick cut as the breath is held
+            val env = (p / 0.85f).coerceAtMost(1f).let { it * it } * (if (p > 0.9f) ((1f - p) / 0.1f) else 1f)
+            val x = buf[i] * env * 2.4f
+            buf[i] = x / (1f + kotlin.math.abs(x) * 0.6f)
+        }
+        return toPcm(buf)
+    }
+
+    /** One dart left and a single dart finishes it: a double (2-40) or the bull. */
+    fun oneDartFinish(r: Int) = r == 50 || (r in 2..40 && r % 2 == 0)
+
     private fun renderRoar(big: Boolean): ShortArray {
         val len = if (big) 3.6f else 2.4f
         val n = (RATE * len).toInt()

@@ -32,6 +32,7 @@ import com.dartsapp.data.Ring
 import com.dartsapp.logic.AccuracyModel
 import com.dartsapp.logic.CheckoutLogic
 import com.dartsapp.logic.Sounds
+import com.dartsapp.logic.Music
 import com.dartsapp.logic.Announcer
 import com.dartsapp.logic.Settings
 import com.dartsapp.logic.Difficulty
@@ -109,6 +110,7 @@ fun DartlessScreen(navController: NavHostController) {
     var finished by remember { mutableStateOf(false) }
     val marks = remember { mutableStateListOf<Offset>() }
     val thrown = remember { mutableStateListOf<Hit>() }
+    val visitPerfect = remember { mutableListOf<Boolean>() }      // your darts this visit: on the beat or not
     val allThrown = remember { mutableStateListOf<Hit>() }     // every dart of this checkout, for the coach
     val allAimed = remember { mutableStateListOf<Hit>() }
     var busts by remember { mutableStateOf(0) }
@@ -177,7 +179,7 @@ fun DartlessScreen(navController: NavHostController) {
         message = idleMessage()
         timingNote = ""
         marks.clear()
-        thrown.clear()
+        thrown.clear(); visitPerfect.clear()
         allThrown.clear()
         allAimed.clear()
         busts = 0
@@ -200,7 +202,7 @@ fun DartlessScreen(navController: NavHostController) {
             dartsInVisit = 0
             visitStart = remaining
             marks.clear()
-            thrown.clear()
+            thrown.clear(); visitPerfect.clear()
         }
 
         // Metronome mode: a throw must be armed by the swipe. Two things are judged:
@@ -253,6 +255,7 @@ fun DartlessScreen(navController: NavHostController) {
         Sounds.thud()
         marks.add(Offset(lx, ly))
         thrown.add(hit)
+        visitPerfect.add(lastPerfect)
         allThrown.add(hit)
         allAimed.add(target)
         dartsInVisit++
@@ -306,6 +309,12 @@ fun DartlessScreen(navController: NavHostController) {
             else -> {
                 remaining = newRem
                 message = hitText
+                // The crowd is watching: two treble 20s, or two perfect darts leaving a one-dart finish
+                if (dartsInVisit == 2 && thrown.size == 2) {
+                    val maxOn = thrown.all { it.ring == Ring.TREBLE && it.score == 60 }
+                    val finishOn = visitPerfect.size >= 2 && visitPerfect[0] && visitPerfect[1] && Music.oneDartFinish(newRem)
+                    if (maxOn || finishOn) Music.anticipation()
+                }
             }
         }
         if (dartsInVisit >= 3 || finished) lastTapMs = 0L

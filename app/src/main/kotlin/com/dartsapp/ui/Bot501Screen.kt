@@ -34,6 +34,7 @@ import com.dartsapp.logic.CheckoutLogic
 import com.dartsapp.logic.Difficulty
 import com.dartsapp.logic.Settings
 import com.dartsapp.logic.Sounds
+import com.dartsapp.logic.Music
 import com.dartsapp.logic.Announcer
 import com.dartsapp.logic.Banter
 import com.dartsapp.logic.TimingPreset
@@ -186,6 +187,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     var visitStart by remember { mutableStateOf(501) }
     val marks = remember { mutableStateListOf<Offset>() }
     val thrown = remember { mutableStateListOf<Hit>() }
+    val visitPerfect = remember { mutableListOf<Boolean>() }      // your darts this visit: on the beat or not
     var accuracy by remember { mutableStateOf(0.8f) }
     var throwStartMs by remember { mutableStateOf(0L) }
     var lastTapMs by remember { mutableStateOf(0L) }
@@ -235,7 +237,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
 
     fun resetVisit() {
         dartsInVisit = 0; visitStart = sides[0].remaining
-        marks.clear(); thrown.clear()
+        marks.clear(); thrown.clear(); visitPerfect.clear()
         throwStartMs = 0L; lastTapMs = 0L; pauseSec = -1f
     }
 
@@ -330,7 +332,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         val p = preset ?: run { message = "Pick a game pace in Settings first"; return }
         if (throwStartMs == 0L) { message = "Swipe up from the arrow first"; return }
         val now = System.currentTimeMillis()
-        if (dartsInVisit >= 3) { dartsInVisit = 0; marks.clear(); thrown.clear(); visitStart = sides[0].remaining }
+        if (dartsInVisit >= 3) { dartsInVisit = 0; marks.clear(); thrown.clear(); visitPerfect.clear(); visitStart = sides[0].remaining }
         // Pace -> accuracy (same rules as Checkout Game)
         val elapsed = (now - throwStartMs) / 1000f
         val throwAcc = throwAccuracy(elapsed, p.dart, difficulty)
@@ -362,7 +364,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                 Sounds.playCheckoutJingle()
             }
         }
-        Sounds.thud(); marks.add(Offset(lx, ly)); thrown.add(hit)
+        Sounds.thud(); marks.add(Offset(lx, ly)); thrown.add(hit); visitPerfect.add(perfect)
         coachAngle = 40f + kotlin.random.Random.nextFloat() * 280f   // never close to upright
         dartsInVisit++
         val me = sides[0]
@@ -410,6 +412,13 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     celebrate(0, visit, finished = false)
                     endUserVisit()
                 } else {
+                    // The crowd is watching: two treble 20s (the 180 is on), or two perfect darts leaving a
+                    // one-dart finish, and they sit up with a rising "ooooh"
+                    if (dartsInVisit == 2 && thrown.size == 2) {
+                        val maxOn = thrown.all { it.ring == Ring.TREBLE && it.score == 60 }
+                        val finishOn = visitPerfect.size >= 2 && visitPerfect[0] && visitPerfect[1] && Music.oneDartFinish(newRem)
+                        if (maxOn || finishOn) Music.anticipation()
+                    }
                     version++
                 }
             }
@@ -421,7 +430,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         if (botTurnKey == 0 || matchOver || current != 1) return@LaunchedEffect
         val bot = sides[1]
         val botMarks = mutableListOf<Offset>()
-        marks.clear(); thrown.clear()
+        marks.clear(); thrown.clear(); visitPerfect.clear()
         delay(900)
         val start = bot.remaining
         var visit = 0
