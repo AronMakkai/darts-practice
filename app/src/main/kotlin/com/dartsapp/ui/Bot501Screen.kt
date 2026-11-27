@@ -188,6 +188,15 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     val marks = remember { mutableStateListOf<Offset>() }
     val thrown = remember { mutableStateListOf<Hit>() }
     val visitPerfect = remember { mutableListOf<Boolean>() }      // your darts this visit: on the beat or not
+    var starRain by remember { mutableStateOf(0) }                // the nine-darter star rain
+    var shakeKick by remember { mutableStateOf(0) }               // the nine-darter: the board shakes with the crowd
+    val shake = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(shakeKick) {
+        if (shakeKick == 0) return@LaunchedEffect
+        shake.snapTo(1f)
+        shake.animateTo(0f, androidx.compose.animation.core.tween(3500, easing = androidx.compose.animation.core.LinearEasing))
+    }
+    DisposableEffect(Unit) { onDispose { Music.stopBuild() } }
     var accuracy by remember { mutableStateOf(0.8f) }
     var throwStartMs by remember { mutableStateOf(0L) }
     var lastTapMs by remember { mutableStateOf(0L) }
@@ -216,6 +225,25 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
     fun panelCentre(i: Int) = Offset(panelPos[i].x + panelSize[i].width / 2f, panelPos[i].y + panelSize[i].height / 2f)
 
+    // ---- the nine-darter: the crowd builds after six darts on pace; if the nine lands the place goes up,
+    // the board shakes, stars rain down and "9 DARTER!" fills the screen
+    fun nineStillOn(rem: Int, dartsLeft: Int): Boolean = when (dartsLeft) {
+        3 -> CheckoutLogic.isFinishable(rem)
+        2 -> rem in 2..110 && rem !in setOf(99, 102, 103, 105, 106, 108, 109)
+        1 -> Music.oneDartFinish(rem)
+        else -> false
+    }
+    fun nineDarterCelebration() {
+        Music.nineDarter()
+        Announcer.say("Nine darter!")
+        shakeKick++
+        starRain++
+        popText = "9 DARTER!"; popHuge = true; popScore = 180
+        popOrigin = Offset(boardPos.x + boardSize.width / 2f, boardPos.y + boardSize.height / 2f)
+        popTrigger++
+        Sounds.playCheckoutJingle()
+    }
+
     fun celebrate(i: Int, score: Int, finished: Boolean) {
         val text = when {
             finished && score >= 100 -> "$score OUT!"
@@ -242,6 +270,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
 
     fun newLeg() {
+        Music.stopBuild()
         for (s in sides) { s.remaining = startScore; s.darts = 0; s.scored = 0 }
         legStarter = 1 - legStarter
         powerActive = false; powerUsed = false
@@ -269,8 +298,13 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         val s = sides[i]
         val o = sides[1 - i]
         s.legs++
-        celebrate(i, visitScore, finished = true)
-        if (visitScore < 100) { Announcer.gameShot(); Sounds.cheer(big = true) }
+        if (i == 0 && dartsThisLeg == 9 && startScore == 501) {
+            nineDarterCelebration()
+        } else {
+            Music.stopBuild()
+            celebrate(i, visitScore, finished = true)
+            if (visitScore < 100) { Announcer.gameShot(); Sounds.cheer(big = true) }
+        }
         var text = "${s.name} takes the leg in $dartsThisLeg darts"
         if (s.legs >= legsNeeded()) {
             s.sets++; s.legs = 0; o.legs = 0
@@ -298,6 +332,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
 
     fun endUserVisit() {
+        if (sides[0].darts >= 9 || sides[0].darts < 6) Music.stopBuild()     // the third visit is over: no nine
         dartsInVisit = 3
         throwStartMs = 0L; lastTapMs = 0L; pauseSec = -1f
         current = 1
@@ -410,8 +445,12 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     val visit = thrown.sumOf { it.score }
                     message = "Visit $visit — $botName to throw"
                     celebrate(0, visit, finished = false)
+                    // Six darts, still on for a nine: the crowd knows
+                    if (me.darts == 6 && startScore == 501 && nineStillOn(me.remaining, 3)) Music.nineDartBuild()
                     endUserVisit()
                 } else {
+                    // ...and it's gone the moment the seventh or eighth dart leaves the nine impossible
+                    if (me.darts in 7..8 && startScore == 501 && !nineStillOn(me.remaining, 9 - me.darts)) Music.stopBuild()
                     // The crowd is watching: two treble 20s (the 180 is on), or two perfect darts leaving a
                     // one-dart finish, and they sit up with a rising "ooooh"
                     if (dartsInVisit == 2 && thrown.size == 2) {
@@ -589,6 +628,11 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     navController
                 ) {
                     IconButton(onClick = { coachOpen = true }, modifier = Modifier.size(40.dp)) { CoachHead(modifier = Modifier.size(34.dp)) }
+                    // TEMPORARY: try the nine-darter effect — the crowd builds for a few seconds, then the nine lands
+                    TextButton(onClick = {
+                        Music.nineDartBuild()
+                        scope.launch { delay(4000); nineDarterCelebration() }
+                    }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("9", color = NeonPink, fontWeight = FontWeight.Black) }
                     if (!tournament) TextButton(onClick = { setupOpen = true }) { Text("Match", color = Gold) }
                 }
         }
@@ -647,7 +691,16 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             Box(
                 modifier = sizing.padding(top = 2.dp).onGloballyPositioned {
                     boardPos = it.positionInRoot(); boardSize = it.size
-                }.gameShotCamera(camT, camPoint.x, camPoint.y),
+                }.gameShotCamera(camT, camPoint.x, camPoint.y).graphicsLayer {
+                    // the nine-darter: the whole board rattles with the crowd, dying away over a few seconds
+                    val k = shake.value
+                    if (k > 0f) {
+                        val t = shake.value * 60f
+                        translationX = kotlin.math.sin(t * 7.3f) * 14.dp.toPx() * k
+                        translationY = kotlin.math.cos(t * 9.1f) * 10.dp.toPx() * k
+                        rotationZ = kotlin.math.sin(t * 5.7f) * 2.5f * k
+                    }
+                },
                 contentAlignment = Alignment.Center
             ) {
                 // ONE FOR THE ROAD: the Jockey gets you drunk — the board sways and ripples on your turn
@@ -766,6 +819,7 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
         InTheZone(on = hot && current == 0 && !matchOver)
         BigPop(trigger = popTrigger, text = popText, huge = popHuge, origin = popOrigin, modifier = Modifier.fillMaxSize(), score = popScore)
         BustOverlay(trigger = bustTrigger, origin = bustOrigin, modifier = Modifier.fillMaxSize())
+        StarRain(trigger = starRain)
         StarBurst(trigger = camBurst, origin = Offset(boardPos.x + boardSize.width / 2f, boardPos.y + boardSize.height / 2f), modifier = Modifier.fillMaxSize(), count = 70)
     }
 }

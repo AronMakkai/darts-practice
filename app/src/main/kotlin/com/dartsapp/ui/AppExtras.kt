@@ -312,3 +312,56 @@ fun InTheZone(on: Boolean, modifier: Modifier = Modifier) {
         }
     }
 }
+
+/**
+ * A rain of stars falling from the top of the screen for a few seconds after [trigger] changes:
+ * gold, pink and teal, tumbling as they fall, at different sizes and speeds. Taps pass through.
+ */
+@Composable
+fun StarRain(trigger: Int, modifier: Modifier = Modifier, count: Int = 140, seconds: Float = 5f) {
+    if (trigger == 0) return
+    var t by remember(trigger) { mutableStateOf(0f) }
+    LaunchedEffect(trigger) {
+        val start = withFrameNanos { it }
+        while (t < seconds + 2f) { val now = withFrameNanos { it }; t = (now - start) / 1e9f }
+    }
+    if (t > seconds + 2f) return
+    val stars = remember(trigger) {
+        val rnd = kotlin.random.Random(trigger * 31 + 7)
+        List(count) {
+            floatArrayOf(
+                rnd.nextFloat(),                   // x across the screen
+                rnd.nextFloat() * seconds,         // when it starts falling
+                0.35f + rnd.nextFloat() * 0.5f,    // fall speed, screens a second
+                0.6f + rnd.nextFloat() * 0.9f,     // size
+                rnd.nextFloat() * 360f,            // spin start
+                (rnd.nextFloat() - 0.5f) * 400f,   // spin speed
+                rnd.nextInt(3).toFloat(),          // colour
+                (rnd.nextFloat() - 0.5f) * 0.08f   // drift
+            )
+        }
+    }
+    val colours = listOf(Color(0xFFFFD34D), Color(0xFFFF4F8B), Color(0xFF3FE0D0))
+    androidx.compose.foundation.Canvas(modifier = modifier.fillMaxSize()) {
+        val w = size.width; val h = size.height
+        val unit = minOf(w, h) * 0.022f
+        for (s in stars) {
+            val age = t - s[1]
+            if (age < 0f) continue
+            val y = -unit * 2 + age * s[2] * h
+            if (y > h + unit * 2) continue
+            val x = (s[0] + s[7] * age) * w + kotlin.math.sin(age * 3f + s[4]) * unit
+            val r = unit * s[3]
+            val path = androidx.compose.ui.graphics.Path()
+            for (k in 0 until 10) {
+                val a = Math.toRadians((s[4] + s[5] * age + k * 36f).toDouble())
+                val rr = if (k % 2 == 0) r else r * 0.45f
+                val px = x + (rr * kotlin.math.cos(a)).toFloat(); val py = y + (rr * kotlin.math.sin(a)).toFloat()
+                if (k == 0) path.moveTo(px, py) else path.lineTo(px, py)
+            }
+            path.close()
+            val fade = if (t > seconds) (1f - (t - seconds) / 2f).coerceIn(0f, 1f) else 1f
+            drawPath(path, colours[s[6].toInt()].copy(alpha = fade))
+        }
+    }
+}

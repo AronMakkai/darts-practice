@@ -830,17 +830,109 @@ object Music {
         return toPcm(buf)
     }
 
+    // ---- the nine-darter ------------------------------------------------------------------------
+
+    private var buildTrack: AudioTrack? = null
+    private var buildPcm: ShortArray? = null
+    @Volatile private var buildGen = 0
+
+    /**
+     * Six perfect darts in: the crowd knows. A looping wall of cheering over rhythmic clapping that
+     * swells from a murmur to full voice over about eight seconds, and keeps going until the nine
+     * lands or the chance is gone ([stopBuild]).
+     */
+    fun nineDartBuild() {
+        thread(name = "nineBuild") {
+            val gen: Int
+            synchronized(roarCache) {
+                stopBuildLocked()
+                gen = ++buildGen
+                val pcm = buildPcm ?: renderBuild().also { buildPcm = it }
+                buildTrack = loop(if (muffled) underwater(pcm) else pcm, 0.15f)
+            }
+            for (i in 1..80) {
+                Thread.sleep(100)
+                if (buildGen != gen) return@thread
+                try { buildTrack?.setVolume(0.15f + 0.85f * i / 80f) } catch (e: Exception) { }
+            }
+        }
+    }
+
+    /** The nine-dart chance is gone (or the nine landed): the build fades out fast. */
+    fun stopBuild() { thread(name = "nineStop") { synchronized(roarCache) { stopBuildLocked() } } }
+
+    private fun stopBuildLocked() {
+        buildGen++
+        val t = buildTrack ?: return
+        buildTrack = null
+        try { for (i in 5 downTo 0) { t.setVolume(i / 6f); Thread.sleep(40) } } catch (e: Exception) { }
+        safeStop(t)
+    }
+
+    /**
+     * THE NINE: the whole place goes up. Twice the crowd and twice as loud as a normal big roar,
+     * running longer, with whistles everywhere.
+     */
+    fun nineDarter() {
+        stopBuild()
+        thread(name = "nine1") {
+            val pcm = synchronized(roarCache) { roarCache.getOrPut(true) { renderRoar(true) } }
+            playOnce(if (muffled) underwater(pcm) else pcm, 1f)
+        }
+        thread(name = "nine2") {
+            val pcm = synchronized(roarCache) { ninePcm ?: renderRoar(true, seed = 909, voiceScale = 2f, lenSec = 5.5f).also { ninePcm = it } }
+            playOnce(if (muffled) underwater(pcm) else pcm, 1f)
+        }
+    }
+    private var ninePcm: ShortArray? = null
+
+    /** A seamless 4-second loop: lots of voices cheering on top of the whole crowd clapping in time. */
+    private fun renderBuild(): ShortArray {
+        val len = 4f
+        val n = (RATE * len).toInt()
+        val tmp = FloatArray(n + RATE * 3)
+        val rnd = Random(909)
+        for (v in 0 until 70) {
+            val female = rnd.nextFloat() < 0.45f
+            val f0 = (if (female) 230f else 125f) * (0.88f + rnd.nextFloat() * 0.3f)
+            shout(tmp, rnd.nextFloat() * len, f0, 1.0f + rnd.nextFloat() * 1.4f, 0.012f * (0.7f + rnd.nextFloat() * 0.6f), rnd)
+        }
+        for (w in 0 until 3) whistle(tmp, rnd.nextFloat() * len, 1500f + rnd.nextFloat() * 600f, 0.45f, 0.03f)
+        // the clap: ten beats in the loop (2.5 a second), each one dozens of pairs of hands, slightly ragged
+        for (beat in 0 until 10) {
+            val t = beat * len / 10f
+            for (hand in 0 until 40) {
+                val start = ((t + (rnd.nextFloat() - 0.5f) * 0.05f) * RATE).toInt().coerceAtLeast(0)
+                val dur = (RATE * 0.03f).toInt()
+                val amp = 0.03f * (0.6f + rnd.nextFloat() * 0.8f)
+                var hp = 0f; var prev = 0f
+                for (i in 0 until dur) {
+                    val idx = start + i; if (idx >= tmp.size) break
+                    val white = rnd.nextFloat() * 2f - 1f
+                    hp = 0.6f * (hp + white - prev); prev = white
+                    tmp[idx] += hp * amp * (1f - i.toFloat() / dur).let { it * it * it }
+                }
+            }
+        }
+        // fold the tail back onto the start so the loop has no seam
+        val buf = FloatArray(n) { tmp[it] + (if (it + n < tmp.size) tmp[it + n] else 0f) }
+        var y = 0f
+        for (i in 0 until n) { y += 0.4f * (buf[i] - y); buf[i] = y }
+        for (i in 0 until n) { val x = buf[i] * 2.4f; buf[i] = x / (1f + kotlin.math.abs(x) * 0.6f) }
+        return toPcm(buf)
+    }
+
     /** One dart left and a single dart finishes it: a double (2-40) or the bull. */
     fun oneDartFinish(r: Int) = r == 50 || (r in 2..40 && r % 2 == 0)
 
-    private fun renderRoar(big: Boolean): ShortArray {
-        val len = if (big) 3.6f else 2.4f
+    private fun renderRoar(big: Boolean, seed: Int = if (big) 101 else 57, voiceScale: Float = 1f, lenSec: Float = 0f): ShortArray {
+        val len = if (lenSec > 0f) lenSec else if (big) 3.6f else 2.4f
         val n = (RATE * len).toInt()
         val buf = FloatArray(n)
-        val rnd = Random(if (big) 101 else 57)
+        val rnd = Random(seed)
         // One big collective "Waaayyy": everyone starts on a "w/o" and opens into "ay", the pitch
         // of the whole crowd lifts together then settles, and every voice is long and smooth.
-        val voices = if (big) 120 else 70
+        val voices = ((if (big) 120 else 70) * voiceScale).toInt()
         for (v in 0 until voices) {
             val female = rnd.nextFloat() < 0.45f
             val f0 = (if (female) 230f else 125f) * (0.88f + rnd.nextFloat() * 0.3f)
