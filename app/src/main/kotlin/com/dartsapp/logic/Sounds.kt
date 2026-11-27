@@ -45,6 +45,33 @@ object Sounds {
 
     private var thudPcm: ShortArray? = null
 
+    private var heartPcm: ShortArray? = null
+
+    /**
+     * IN THE ZONE: one soft heartbeat, "lub-dub". Two deep, muffled thumps (around 55 and 48 Hz with
+     * a little body above), the second a touch quieter, a quarter of a second apart.
+     */
+    fun heartbeat() {
+        val pcm = heartPcm ?: run {
+            val n = (RATE * 0.5f).toInt()
+            val buf = FloatArray(n)
+            fun thump(t0: Float, f: Float, amp: Float) {
+                val start = (t0 * RATE).toInt()
+                for (i in 0 until (RATE * 0.18f).toInt()) {
+                    val idx = start + i; if (idx >= n) break
+                    val t = i.toFloat() / RATE
+                    val env = (1f - exp(-t * 180f)) * exp(-t * 26f)
+                    val body = sin(2 * PI * f * (1f - 0.25f * t / 0.18f) * t).toFloat() + 0.3f * sin(2 * PI * f * 2.1f * t).toFloat()
+                    buf[idx] += body * env * amp
+                }
+            }
+            thump(0f, 55f, 0.55f)        // lub
+            thump(0.24f, 48f, 0.42f)     // dub
+            toPcm(buf).also { heartPcm = it }
+        }
+        thread(name = "heart") { playPcm(pcm) }
+    }
+
     /** A dart hitting the sisal: a short knock with a soft noise burst. */
     fun thud() {
         val pcm = thudPcm ?: run {

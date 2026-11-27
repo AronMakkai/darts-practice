@@ -275,6 +275,11 @@ fun InTheZone(on: Boolean, modifier: Modifier = Modifier) {
     LaunchedEffect(on) {
         com.dartsapp.logic.Music.setMuffled(on)
         com.dartsapp.logic.Announcer.setMuffled(on)
+        // ...and under it all, a slow, subtle heartbeat (about 70 a minute) for as long as you're in the zone
+        while (on) {
+            com.dartsapp.logic.Sounds.heartbeat()
+            kotlinx.coroutines.delay(860)
+        }
     }
     DisposableEffect(Unit) {
         onDispose { com.dartsapp.logic.Music.setMuffled(false); com.dartsapp.logic.Announcer.setMuffled(false) }
@@ -294,15 +299,16 @@ fun InTheZone(on: Boolean, modifier: Modifier = Modifier) {
         // stretched to the screen's shape, so the dark closes in on all four edges, not just the corners
         val m = minOf(size.width, size.height)
         val c = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
-        val inner = 0.5f - 0.05f * pulse.value
+        // clear right out to near the edge, so the doubles stay easy to see; the dark is only a thin frame
+        val inner = 0.8f - 0.03f * pulse.value
         val dark = Color(0xFF05000C)
         scale(scaleX = size.width / m, scaleY = size.height / m, pivot = c) {
             drawRect(
                 brush = androidx.compose.ui.graphics.Brush.radialGradient(
                     0f to Color.Transparent,
                     inner to Color.Transparent,
-                    0.78f to dark.copy(alpha = 0.45f * k),
-                    0.95f to dark.copy(alpha = 0.8f * k),
+                    0.92f to dark.copy(alpha = 0.45f * k),
+                    0.97f to dark.copy(alpha = 0.78f * k),
                     1f to dark.copy(alpha = 0.88f * k),
                     center = c, radius = m / 2f
                 ),
