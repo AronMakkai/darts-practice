@@ -118,7 +118,8 @@ fun ValueCheckerScreen(navController: NavHostController, checkoutMode: Boolean =
     }
 
     if (tipOpen) {
-        CoachTipDialog(remaining = remaining, playerName = "You", onDismiss = { tipOpen = false })
+        CoachTipDialog(remaining = remaining, playerName = "You", onDismiss = { tipOpen = false },
+            dartsLeft = if (dartsInVisit in 1..2) 3 - dartsInVisit else 3)
     }
 
     val avg = if (dartsTotal == 0) 0f else scored * 3f / dartsTotal
@@ -160,7 +161,13 @@ fun ValueCheckerScreen(navController: NavHostController, checkoutMode: Boolean =
                 )
                 if (checkoutMode) {
                     // The Coach's route for what's left, always on show; tap it for his full advice
-                    val route = remember(remaining) { if (remaining in 2..170) CheckoutLogic.suggest(remaining)?.let { CheckoutLogic.routeLabel(it.best) } else null }
+                    // for the darts still in hand this visit
+                    val left = if (dartsInVisit in 1..2) 3 - dartsInVisit else 3
+                    val route = remember(remaining, left) {
+                        if (remaining !in 2..170) null
+                        else CheckoutLogic.suggest(remaining, left)?.let { CheckoutLogic.routeLabel(it.best) }
+                            ?: CheckoutLogic.leaveAdvice(remaining, left)?.let { "${it.first} (set up)" }
+                    }
                     Row(
                         modifier = Modifier.height(24.dp).clickable { tipOpen = true },
                         verticalAlignment = Alignment.CenterVertically

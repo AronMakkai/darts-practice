@@ -466,11 +466,11 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
                     if (me.darts in 7..8 && startScore == 501 && !nineStillOn(me.remaining, 9 - me.darts)) Music.stopBuild()
                     // The crowd is watching: two treble 20s (the 180 is on), or two perfect darts leaving a
                     // one-dart finish, and they sit up with a rising "ooooh"
-                    if (dartsInVisit == 2 && thrown.size == 2) {
-                        val maxOn = thrown.all { it.ring == Ring.TREBLE && it.score == 60 }
-                        val finishOn = visitPerfect.size >= 2 && visitPerfect[0] && visitPerfect[1] && Music.oneDartFinish(newRem)
-                        if (maxOn || finishOn) Music.anticipation()
-                    }
+                    val maxOn = dartsInVisit == 2 && thrown.size == 2 && thrown.all { it.ring == Ring.TREBLE && it.score == 60 }
+                    val finishOn = dartsInVisit == 2 && visitPerfect.size >= 2 && visitPerfect[0] && visitPerfect[1] && Music.oneDartFinish(newRem)
+                    // ...and they get excited whenever you have a dart at a double for the set
+                    val forTheSet = Music.oneDartFinish(newRem) && me.legs == legsNeeded() - 1
+                    if (maxOn || finishOn || forTheSet) Music.anticipation()
                     version++
                 }
             }
@@ -532,6 +532,10 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
             current = 0
             resetVisit()
             version++
+            // Back to you, on a double, and this leg wins the set: the crowd sits up
+            if (Music.oneDartFinish(sides[0].remaining) && sides[0].legs == legsNeeded() - 1) {
+                delay(700); Music.anticipation()
+            }
             // Being beaten with some margin: you are on a finish and he is 100+ behind -> special power
             if (opponent.powerName != null && !powerUsed && sides[0].remaining <= 170 && sides[1].remaining - sides[0].remaining >= 100) {
                 powerUsed = true; powerSplash = true
@@ -540,7 +544,8 @@ fun Bot501Screen(navController: NavHostController, tournament: Boolean = false) 
     }
 
     if (coachOpen) {
-        CoachTipDialog(remaining = sides[0].remaining, playerName = "You", onDismiss = { coachOpen = false })
+        CoachTipDialog(remaining = sides[0].remaining, playerName = "You", onDismiss = { coachOpen = false },
+            dartsLeft = if (current == 0 && dartsInVisit in 1..2) 3 - dartsInVisit else 3)
     }
     // After the match: the opponent appears for a word
     LaunchedEffect(banterKey) {

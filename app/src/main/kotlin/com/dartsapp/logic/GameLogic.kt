@@ -289,6 +289,51 @@ object CheckoutLogic {
         return Suggestion(best, bestWhy, alt, altWhy)
     }
 
+    /**
+     * The same advice for part-way through a visit: only routes that fit in the [dartsLeft] darts you
+     * still hold. Null when there is no finish with those darts (see [leaveAdvice]).
+     */
+    fun suggest(remaining: Int, dartsLeft: Int): Suggestion? {
+        if (dartsLeft >= 3) return suggest(remaining)
+        val routes = allFinishes(remaining).filter { it.size <= dartsLeft }
+        val best = routes.firstOrNull() ?: return null
+        val alt = routes.firstOrNull { it.last() != best.last() }
+        val darts = if (dartsLeft == 1) "your last dart" else "your last two darts"
+        val bestWhy = "With $darts. " + explain(best, remaining, true)
+        val altWhy = alt?.let { explain(it, remaining, false) } ?: ""
+        return Suggestion(best, bestWhy, alt, altWhy)
+    }
+
+    /**
+     * No finish with the darts left this visit: what to throw them at so the next visit starts on a good
+     * finish — a favourite double if possible, otherwise anything that can be taken out in three.
+     */
+    fun leaveAdvice(remaining: Int, dartsLeft: Int): Pair<String, String>? {
+        if (remaining < 2) return null
+        var bestSeq: List<Hit>? = null; var bestRank = Int.MAX_VALUE
+        fun consider(seq: List<Hit>) {
+            val left = remaining - seq.sumOf { it.score }
+            if (left < 2) return
+            val one = finishers.indexOfFirst { it.score == left }
+            val rank = when {
+                one >= 0 -> one                                           // straight onto a double
+                allFinishes(left).firstOrNull()?.size == 2 -> 1_000 + left
+                isFinishable(left) -> 2_000 + left
+                else -> return
+            } + seq.sumOf { setupDarts.indexOf(it) }
+            if (rank < bestRank) { bestRank = rank; bestSeq = seq }
+        }
+        for (a in setupDarts) {
+            consider(listOf(a))
+            if (dartsLeft >= 2) for (b in setupDarts) consider(listOf(a, b))
+        }
+        val seq = bestSeq ?: return null
+        val left = remaining - seq.sumOf { it.score }
+        val why = if (finishers.any { it.score == left }) "Leaves you a straight double for your next visit."
+            else "Leaves $left — a finish you can take out next visit."
+        return routeLabel(seq) to "No finish with ${if (dartsLeft == 1) "one dart" else "$dartsLeft darts"} from $remaining. $why"
+    }
+
     fun routeLabel(route: List<Hit>): String = route.joinToString("  ") { it.label }
 
     private fun explain(route: List<Hit>, remaining: Int, isBest: Boolean): String {

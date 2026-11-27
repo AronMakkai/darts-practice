@@ -340,7 +340,8 @@ fun DartlessScreen(navController: NavHostController) {
     }
 
     if (coachAdviceOpen) {
-        CoachTipDialog(remaining = remaining, playerName = "You", onDismiss = { coachAdviceOpen = false })
+        CoachTipDialog(remaining = remaining, playerName = "You", onDismiss = { coachAdviceOpen = false },
+            dartsLeft = if (dartsInVisit in 1..2) 3 - dartsInVisit else 3)
     }
 
     // Darts still in hand this visit. Between visits (all three thrown) they are shown as outlines
@@ -668,8 +669,10 @@ private fun coachPointers(start: Int, thrown: List<Hit>, aimed: List<Hit>, busts
 
 /** The coach, mid-leg: what to throw from [remaining] and why. Tap anywhere to close. */
 @Composable
-internal fun CoachTipDialog(remaining: Int, playerName: String, onDismiss: () -> Unit) {
-    val suggestion = remember(remaining) { if (remaining in 2..170) CheckoutLogic.suggest(remaining) else null }
+internal fun CoachTipDialog(remaining: Int, playerName: String, onDismiss: () -> Unit, dartsLeft: Int = 3) {
+    // part-way through a visit the advice is for the darts you still hold
+    val suggestion = remember(remaining, dartsLeft) { if (remaining in 2..170) CheckoutLogic.suggest(remaining, dartsLeft) else null }
+    val leave = remember(remaining, dartsLeft) { if (dartsLeft < 3 && suggestion == null) CheckoutLogic.leaveAdvice(remaining, dartsLeft) else null }
     val setup = remember(remaining) { CheckoutLogic.setupAdvice(remaining) }
     val bogeyNote = remember(remaining) {
         if (remaining in 2..170 && suggestion == null) CheckoutLogic.tip(remaining) + ". No three-dart finish from here: take the single that leaves an even double." else ""
@@ -689,6 +692,7 @@ internal fun CoachTipDialog(remaining: Int, playerName: String, onDismiss: () ->
                     Column {
                         Text("COACH", fontFamily = FontFamily.Monospace, letterSpacing = 3.sp, color = Gold, fontSize = 14.sp)
                         Text("$playerName on $remaining", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = OffWhite)
+                        if (dartsLeft < 3) Text(if (dartsLeft == 1) "1 dart left" else "$dartsLeft darts left", fontSize = 13.sp, color = PaleGold)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -702,6 +706,10 @@ internal fun CoachTipDialog(remaining: Int, playerName: String, onDismiss: () ->
                         Text(CheckoutLogic.routeLabel(suggestion.alt), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = PaleGold, fontFamily = FontFamily.Monospace)
                         Text(suggestion.altWhy, fontSize = 13.sp, color = Grey, modifier = Modifier.padding(top = 4.dp))
                     }
+                } else if (leave != null) {
+                    Text("Set up", fontSize = 12.sp, color = Grey)
+                    Text(leave.first, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Gold, fontFamily = FontFamily.Monospace)
+                    Text(leave.second, fontSize = 14.sp, color = OffWhite, modifier = Modifier.padding(top = 4.dp))
                 } else if (setup != null) {
                     Text("Set up", fontSize = 12.sp, color = Grey)
                     Text("${setup.visit}  ·  ${setup.route}", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Gold, fontFamily = FontFamily.Monospace)
